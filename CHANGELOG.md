@@ -1,8 +1,11 @@
-## 1.4.0 — Platform & Mobile Foundation
+# Changelog
 
-- Added portable package contracts, typed event bus, installable web-app manifest, and an isolated Expo mobile foundation.
-- Decoupled Decision Engine from web-only type aliases.
-- No database migration.
+## v1.4.0.1 — PWA Manifest Build Hotfix
+
+- Fixed the Web App Manifest icon `purpose` value to use the valid Next.js metadata literal `maskable`.
+- Restored TypeScript compatibility during the Vercel build validation stage.
+- Updated the visible application version to v1.4.0.1.
+- No database migration is required.
 
 ## [1.2.0.1] - 2026-07-26
 
