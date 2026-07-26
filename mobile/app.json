@@ -9,7 +9,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yosseufradwan.os",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.yosseufradwan.os",
@@ -17,7 +20,10 @@
     },
     "extra": {
       "product": "YOSSEUF OS Mobile Live Foundation",
-      "release": "v1.5.1 Cross Platform Stabilization"
+      "release": "v1.5.1 Cross Platform Stabilization",
+      "eas": {
+        "projectId": "6f770730-8c8e-49b0-81b9-f9773faf567a"
+      }
     },
     "description": "Decision-first executive operating system for projects and architectural work."
   }
