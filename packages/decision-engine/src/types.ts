@@ -1,4 +1,4 @@
-import type { ActivityEvent, Client, FinanceTransaction, Notification, Project, Task } from "@/lib/types";
+import type { ActivityEvent, Client, FinanceTransaction, Notification, Project, Task } from "@yosseuf/shared-types";
 
 export type DecisionTarget = "dashboard" | "projects" | "tasks" | "clients" | "finance" | "activity" | "notifications";
 export type DecisionSeverity = "critical" | "warning" | "info" | "positive";

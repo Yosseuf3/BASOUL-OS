@@ -1,3 +1,9 @@
+## 1.4.0 — Platform & Mobile Foundation
+
+- Added portable package contracts, typed event bus, installable web-app manifest, and an isolated Expo mobile foundation.
+- Decoupled Decision Engine from web-only type aliases.
+- No database migration.
+
 ## [1.2.0.1] - 2026-07-26
 
 ### Fixed
@@ -224,6 +230,3 @@
 - Upgraded the English and Arabic README files for the public GitHub launch.
 - Added the GitHub release body and official launch checklist.
 - Added pull request, bug report, and feature request templates.
-
-## v1.3.0 — Executive Decision Engine
-- Added explainable priorities, alerts, recommendations, and factor-based health scoring.

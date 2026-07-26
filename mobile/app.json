@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "YOSSEUF OS",
+    "slug": "yosseuf-os",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "yosseufos",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yosseufradwan.os"
+    },
+    "android": {
+      "package": "com.yosseufradwan.os"
+    },
+    "extra": {
+      "product": "YOSSEUF OS Mobile Foundation"
+    }
+  }
+}

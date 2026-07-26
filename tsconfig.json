@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": false,
     "skipLibCheck": true,
     "strict": true,
@@ -13,9 +17,47 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./*"] }
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@yosseuf/shared-types": [
+        "packages/shared-types/src/index.ts"
+      ],
+      "@yosseuf/decision-engine": [
+        "packages/decision-engine/src/index.ts"
+      ],
+      "@yosseuf/event-bus": [
+        "packages/event-bus/src/index.ts"
+      ],
+      "@yosseuf/core": [
+        "packages/core/src/index.ts"
+      ],
+      "@yosseuf/services": [
+        "packages/services/src/index.ts"
+      ],
+      "@yosseuf/intelligence": [
+        "packages/intelligence/src/index.ts"
+      ],
+      "@yosseuf/ui-tokens": [
+        "packages/ui-tokens/src/index.ts"
+      ]
+    },
+    "baseUrl": "."
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "mobile"
+  ]
 }

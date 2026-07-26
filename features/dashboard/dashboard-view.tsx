@@ -1,7 +1,7 @@
 "use client";
 import { Activity, AlertTriangle, ArrowDownLeft, ArrowUpRight, BookOpen, CalendarDays, CheckCircle2, ChevronLeft, ClipboardList, Clock3, Film, FolderKanban, Plus, Sparkles, Users, Wallet } from "lucide-react";
 import type { ActivityEvent, Client, FinanceTransaction, Notification, Project, Task } from "@/lib/types";
-import { getExecutiveDecision, type DecisionSignal, type DecisionTarget } from "@/packages/decision-engine/src";
+import { getExecutiveDecision, type DecisionSignal, type DecisionTarget } from "@yosseuf/decision-engine";
 
 type QuickAction = "project"|"task"|"client"|"finance"|"knowledge"|"content";
 type Props={projects:Project[];tasks:Task[];clients:Client[];financeItems:FinanceTransaction[];activityEvents:ActivityEvent[];notifications:Notification[];userName?:string;onNavigate:(target:DecisionTarget)=>void;onQuickAction:(action:QuickAction)=>void};
