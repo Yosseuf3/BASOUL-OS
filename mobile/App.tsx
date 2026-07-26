@@ -1,59 +1,98 @@
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import type { Session } from "@supabase/supabase-js";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { isMobileConfigured } from "./src/config/supabase";
+import { LoginScreen } from "./src/features/auth/LoginScreen";
+import { DashboardScreen } from "./src/features/dashboard/DashboardScreen";
+import { NotificationsScreen } from "./src/features/notifications/NotificationsScreen";
+import { ProjectsScreen } from "./src/features/projects/ProjectsScreen";
+import { isMobileConfigured, supabase } from "./src/config/supabase";
+import { loadMobileWorkspace, markMobileNotificationRead } from "./src/services/workspace";
 import { tokens } from "./src/theme/tokens";
+import type { MobileWorkspaceData } from "./src/types/domain";
 
-const priorities = ["راجع المشروع الأقرب للتسليم", "أنشئ مهام للمشروعات النشطة", "تابع المعاملات المالية المعلقة"];
+const emptyData: MobileWorkspaceData = { projects: [], tasks: [], notifications: [] };
+type ScreenName = "dashboard" | "projects" | "notifications";
 
 export default function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [booting, setBooting] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [screen, setScreen] = useState<ScreenName>("dashboard");
+  const [data, setData] = useState<MobileWorkspaceData>(emptyData);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!session?.user.id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      setData(await loadMobileWorkspace(session.user.id));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر تحميل بيانات مساحة العمل.");
+    } finally {
+      setLoading(false);
+    }
+  }, [session?.user.id]);
+
+  useEffect(() => {
+    if (!supabase) {
+      setBooting(false);
+      return;
+    }
+    void supabase.auth.getSession().then(({ data: result }) => {
+      setSession(result.session);
+      setBooting(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setScreen("dashboard");
+      if (!nextSession) setData(emptyData);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (session) void refresh();
+  }, [session, refresh]);
+
+  async function readNotification(id: string) {
+    try {
+      await markMobileNotificationRead(id);
+      setData((current) => ({ ...current, notifications: current.notifications.map((item) => item.id === id ? { ...item, is_read: true } : item) }));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر تحديث الإشعار.");
+    }
+  }
+
+  if (booting) {
+    return <View style={styles.center}><StatusBar style="light" /><ActivityIndicator color={tokens.colors.gold} size="large" /></View>;
+  }
+
+  if (!isMobileConfigured || !session) return <><StatusBar style="light" /><LoginScreen /></>;
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.app}>
       <StatusBar style="light" />
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.kicker}>YOSSEUF OS · MOBILE FOUNDATION</Text>
-        <Text style={styles.title}>مركز القيادة</Text>
-        <Text style={styles.subtitle}>وصول سريع إلى قراراتك ومشروعاتك من أي مكان.</Text>
-
-        <View style={styles.brief}>
-          <Text style={styles.label}>الملخص التنفيذي</Text>
-          <Text style={styles.briefTitle}>مساء النور، Yosseuf</Text>
-          <Text style={styles.body}>تطبيق الهاتف أصبح جزءًا من معمارية المنصة. الخطوة التالية ربط الجلسة والبيانات الحية.</Text>
-        </View>
-
-        <View style={styles.row}>
-          <View style={styles.metric}><Text style={styles.metricValue}>2</Text><Text style={styles.metricLabel}>مشاريع نشطة</Text></View>
-          <View style={styles.metric}><Text style={styles.metricValue}>76%</Text><Text style={styles.metricLabel}>صحة العمل</Text></View>
-        </View>
-
-        <Text style={styles.sectionTitle}>ماذا أفعل الآن؟</Text>
-        {priorities.map((item, index) => <View key={item} style={styles.priority}><Text style={styles.priorityIndex}>{index + 1}</Text><Text style={styles.priorityText}>{item}</Text></View>)}
-
-        <TouchableOpacity style={styles.primary}><Text style={styles.primaryText}>فتح المشروعات</Text></TouchableOpacity>
-        <Text style={styles.status}>{isMobileConfigured ? "Supabase configured" : "أضف مفاتيح Supabase في ملف .env لبدء الربط"}</Text>
-      </ScrollView>
-    </SafeAreaView>
+      {error ? <View style={styles.errorBar}><Text style={styles.errorText}>{error}</Text><TouchableOpacity onPress={() => setError(null)}><Text style={styles.dismiss}>×</Text></TouchableOpacity></View> : null}
+      {screen === "dashboard" ? <DashboardScreen data={data} onNavigate={setScreen} onRefresh={refresh} refreshing={loading} /> : null}
+      {screen === "projects" ? <ProjectsScreen projects={data.projects} onBack={() => setScreen("dashboard")} /> : null}
+      {screen === "notifications" ? <NotificationsScreen notifications={data.notifications} onBack={() => setScreen("dashboard")} onRead={readNotification} /> : null}
+      <View style={styles.footer}>
+        <Text style={styles.version}>v1.5.0 · Mobile Live Foundation</Text>
+        <TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: tokens.colors.background },
-  container: { padding: tokens.space.lg, direction: "rtl" },
-  kicker: { color: tokens.colors.gold, fontWeight: "800", letterSpacing: 1, marginTop: tokens.space.lg },
-  title: { color: tokens.colors.text, fontSize: 36, fontWeight: "900", marginTop: tokens.space.sm, textAlign: "right" },
-  subtitle: { color: tokens.colors.muted, fontSize: 16, lineHeight: 26, textAlign: "right", marginBottom: tokens.space.xl },
-  brief: { backgroundColor: tokens.colors.surface, borderColor: tokens.colors.border, borderWidth: 1, borderRadius: tokens.radius.lg, padding: tokens.space.lg },
-  label: { color: tokens.colors.gold, fontWeight: "800", textAlign: "right" },
-  briefTitle: { color: tokens.colors.text, fontSize: 24, fontWeight: "900", textAlign: "right", marginTop: tokens.space.sm },
-  body: { color: tokens.colors.muted, lineHeight: 24, textAlign: "right", marginTop: tokens.space.sm },
-  row: { flexDirection: "row", gap: tokens.space.md, marginTop: tokens.space.md },
-  metric: { flex: 1, backgroundColor: tokens.colors.surface, borderColor: tokens.colors.border, borderWidth: 1, borderRadius: tokens.radius.md, padding: tokens.space.lg },
-  metricValue: { color: tokens.colors.success, fontSize: 26, fontWeight: "900", textAlign: "right" },
-  metricLabel: { color: tokens.colors.muted, textAlign: "right", marginTop: 4 },
-  sectionTitle: { color: tokens.colors.text, fontSize: 22, fontWeight: "900", textAlign: "right", marginTop: tokens.space.xl, marginBottom: tokens.space.md },
-  priority: { flexDirection: "row-reverse", alignItems: "center", gap: tokens.space.md, backgroundColor: tokens.colors.surface, borderRadius: tokens.radius.md, padding: tokens.space.md, marginBottom: tokens.space.sm },
-  priorityIndex: { color: tokens.colors.background, backgroundColor: tokens.colors.gold, width: 30, height: 30, borderRadius: 15, textAlign: "center", lineHeight: 30, fontWeight: "900" },
-  priorityText: { color: tokens.colors.text, flex: 1, textAlign: "right" },
-  primary: { backgroundColor: tokens.colors.gold, padding: tokens.space.md, borderRadius: tokens.radius.md, marginTop: tokens.space.lg },
-  primaryText: { color: tokens.colors.background, fontWeight: "900", textAlign: "center", fontSize: 17 },
-  status: { color: tokens.colors.muted, textAlign: "center", marginTop: tokens.space.md, marginBottom: tokens.space.xl },
+  app: { flex: 1, backgroundColor: tokens.colors.background },
+  center: { flex: 1, backgroundColor: tokens.colors.background, alignItems: "center", justifyContent: "center" },
+  errorBar: { backgroundColor: "#4a2020", paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center" },
+  errorText: { color: "#ffdada", flex: 1, textAlign: "right" },
+  dismiss: { color: "#ffdada", fontSize: 24, marginLeft: 12 },
+  footer: { borderTopWidth: 1, borderTopColor: tokens.colors.border, paddingHorizontal: 18, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", backgroundColor: tokens.colors.surface },
+  version: { color: tokens.colors.muted, fontSize: 11 },
+  logout: { color: "#df8d8d", fontWeight: "800" },
 });

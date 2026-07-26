@@ -233,3 +233,12 @@
 - Upgraded the English and Arabic README files for the public GitHub launch.
 - Added the GitHub release body and official launch checklist.
 - Added pull request, bug report, and feature request templates.
+
+## [1.5.0] - 2026-07-26
+### Added
+- Supabase mobile authentication with persisted sessions.
+- Live mobile executive dashboard.
+- Live projects directory and notification center.
+- Mobile workspace service and modular screen architecture.
+### Changed
+- Product version updated to Mobile Live Foundation.

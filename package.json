@@ -1,6 +1,6 @@
 {
   "name": "yosseuf-os-cloud",
-  "version": "1.4.0.1",
+  "version": "1.5.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
