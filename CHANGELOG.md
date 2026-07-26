@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0] - 2026-07-26
+
+### Added
+- Project Workspace متعددة التبويبات.
+- Executive Brief بقواعد قرار تشغيلية.
+- Architecture phase tracker.
+- Project Kanban, timeline, finance summary, and activity stream.
+
+### Changed
+- Updated product version and workspace presentation to v1.2.0.
+
+
 ## [1.1.1] - 2026-07-26
 ### Added
 - Four-step professional project creation wizard.
