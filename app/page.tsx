@@ -52,6 +52,7 @@ const contentFilters: ContentFilter[] = ["All", "Idea", "Draft", "Recording", "E
 const platformFilters: PlatformFilter[] = ["All", "TikTok", "Instagram", "YouTube", "Facebook", "LinkedIn", "X"];
 const knowledgeTypeLabels: Record<KnowledgeType, string> = { Note: "ملاحظة", Idea: "فكرة", Reference: "مرجع", Template: "قالب" };
 const knowledgeFilters: KnowledgeFilter[] = ["All", "Note", "Idea", "Reference", "Template"];
+const phaseLabels: Record<DesignPhase, string> = { Concept: "التصميم المفاهيمي", Schematic: "التصميم المبدئي", "Design Development": "تطوير التصميم", "Construction Documents": "مستندات التنفيذ", "Site Supervision": "الإشراف الموقعي", Handover: "التسليم" };
 
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null);
@@ -329,7 +330,7 @@ export default function Home() {
     {sidebarOpen && <button className="sidebar-overlay" onClick={() => setSidebarOpen(false)} aria-label="إغلاق القائمة" />}
     <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
       <button className="sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="إغلاق القائمة"><X size={19} /></button>
-      <div className="logo"><div className="logo-mark"><Brain size={25} /></div><div><strong>YOSSEUF OS</strong><span>v1.2.0 · Project Workspace</span></div></div>
+      <div className="logo"><div className="logo-mark"><Brain size={25} /></div><div><strong>YOSSEUF OS</strong><span>v1.2.0.1 · Project Workspace</span></div></div>
       <WorkspaceSwitcher value={workspace} onChange={(next) => { setWorkspace(next); if (next === "executive") navigate("dashboard"); else if (next === "operations") navigate("projects"); else if (next === "knowledge") navigate("knowledge"); }} />
       <nav>
         <button className={view === "dashboard" ? "active" : ""} onClick={() => navigate("dashboard")}><LayoutDashboard size={18}/> لوحة القيادة</button>
@@ -479,7 +480,6 @@ function ProjectModal({ state, clients, onClose, onSave }: { state:Exclude<Proje
   });
   const steps=["المعلومات الأساسية","الجدول والتنفيذ","الميزانية والهوية","المراجعة"];
   const projectTypeLabels:Record<ProjectType,string>={Villa:"فيلا","Residential Building":"مبنى سكني",Commercial:"تجاري",Office:"مكتب",Interior:"تصميم داخلي",Other:"أخرى"};
-  const phaseLabels:Record<DesignPhase,string>={Concept:"التصميم المفاهيمي",Schematic:"التصميم المبدئي","Design Development":"تطوير التصميم","Construction Documents":"مستندات التنفيذ","Site Supervision":"الإشراف الموقعي",Handover:"التسليم"};
   const update=(key:string,value:string)=>setForm(current=>({...current,[key]:value}));
   const canContinue=step!==0||form.name.trim().length>0;
   async function submit(e:FormEvent<HTMLFormElement>){
@@ -566,7 +566,7 @@ function ProjectWorkspace({project,tasks,financeItems,activityEvents,client,onCl
   const currentPhase=Math.max(0,phases.indexOf(project.design_phase||"Concept"));
   const taskColumns:TaskStatus[]=["To Do","In Progress","Review","Done"];
   return <div className="modal-backdrop project-workspace-backdrop" onMouseDown={onClose}><section className="project-workspace project-workspace-v2" onMouseDown={e=>e.stopPropagation()}>
-    <header className="project-workspace-head"><div><span className="section-kicker">PROJECT WORKSPACE · v1.2.0</span><div className="workspace-title-row"><span className={`status-dot ${projectStatusClass(project.status)}`}/><h2>{project.name}</h2><span className="workspace-status">{projectStatusLabels[project.status]}</span></div><p>{project.description||project.notes||project.location||project.area||"مساحة تنفيذ موحدة للمشروع."}</p></div><div className="project-workspace-actions"><button onClick={onEdit}><Pencil size={16}/> تعديل</button><button className="primary compact" onClick={onCreateTask}><Plus size={16}/> مهمة جديدة</button><button className="icon-button" onClick={onClose}><X size={20}/></button></div></header>
+    <header className="project-workspace-head"><div><span className="section-kicker">PROJECT WORKSPACE · v1.2.0.1</span><div className="workspace-title-row"><span className={`status-dot ${projectStatusClass(project.status)}`}/><h2>{project.name}</h2><span className="workspace-status">{projectStatusLabels[project.status]}</span></div><p>{project.description||project.notes||project.location||project.area||"مساحة تنفيذ موحدة للمشروع."}</p></div><div className="project-workspace-actions"><button onClick={onEdit}><Pencil size={16}/> تعديل</button><button className="primary compact" onClick={onCreateTask}><Plus size={16}/> مهمة جديدة</button><button className="icon-button" onClick={onClose}><X size={20}/></button></div></header>
     <div className="executive-brief"><div className="executive-brief-icon"><Brain size={22}/></div><div><span className="section-kicker">EXECUTIVE BRIEF</span><strong>{brief}</strong></div><button onClick={()=>setTab("tasks")}>فتح التنفيذ <ChevronLeft size={16}/></button></div>
     <div className="project-workspace-kpis"><Metric icon={<FolderKanban/>} label="حالة المشروع" value={projectStatusLabels[project.status]} detail={priorityLabels[project.priority]}/><Metric icon={<ClipboardList/>} label="المهام" value={`${completed}/${tasks.length}`} detail={overdue?`${overdue} متأخرة`:"لا توجد مهام متأخرة"} danger={overdue>0}/><Metric icon={<Activity/>} label="تقدم التنفيذ" value={`${taskProgress}%`} detail={tasks.length?"محسوب من المهام":"التقدم المسجل"}/><Metric icon={<Wallet/>} label="صافي المشروع" value={new Intl.NumberFormat("en-US",{maximumFractionDigits:0}).format(income-expenses)} detail={financeItems[0]?.currency||project.currency||"SAR"}/></div>
     <nav className="project-workspace-tabs" aria-label="أقسام مساحة المشروع">{tabs.map(item=><button key={item.id} className={tab===item.id?"active":""} onClick={()=>setTab(item.id)}>{item.icon}<span>{item.label}</span>{item.count!==undefined&&item.count>0?<em>{item.count}</em>:null}</button>)}</nav>

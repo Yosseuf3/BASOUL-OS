@@ -1,3 +1,9 @@
+## [1.2.0.1] - 2026-07-26
+
+### Fixed
+- Fixed the production TypeScript build failure by moving `phaseLabels` to shared module scope so Project Workspace and Project Wizard can both access it.
+- Updated the visible product version to v1.2.0.1.
+
 # Changelog
 
 ## [1.2.0] - 2026-07-26
