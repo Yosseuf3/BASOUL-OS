@@ -1,5 +1,3 @@
-YOSSEUF OS v1.0.1 Auth Diagnostics Hotfix
-
 .env.example
 .eslintrc.json
 .github/ISSUE_TEMPLATE/bug_report.md
@@ -14,10 +12,12 @@ GITHUB_RELEASE_v1.0.0.md
 INSTALL.md
 LICENSE
 OFFICIAL_LAUNCH_CHECKLIST.md
+PACKAGE_MANIFEST.txt
 README.md
 README_AR.md
 RELEASE_NOTES_v1.0.0.md
 RELEASE_NOTES_v1.0.1.md
+RELEASE_NOTES_v1.1.0.md
 RELEASE_PACKAGE_REPORT.md
 RELEASE_PACKAGE_REPORT_v1.0.1.md
 SECURITY.md
@@ -43,6 +43,7 @@ TEST_CHECKLIST_v1.0.0-RC1.1.md
 TEST_CHECKLIST_v1.0.0-RC1.md
 TEST_CHECKLIST_v1.0.0.md
 TEST_CHECKLIST_v1.0.1.md
+TEST_CHECKLIST_v1.1.0.md
 app/error.tsx
 app/globals.css
 app/layout.tsx
@@ -102,4 +103,3 @@ supabase/migration_v0.9.3.sql
 supabase/migration_v1.0.0_rc1.sql
 supabase/schema.sql
 tsconfig.json
-PACKAGE_MANIFEST.txt

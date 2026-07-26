@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0] - 2026-07-26
+
+### Added
+- Project Workspace Foundation with live operational and financial context.
+- Project detail KPIs, task stream, client and delivery overview.
+- Direct project edit and task creation actions.
+
 ## [1.0.1] - 2026-07-26
 
 ### Fixed

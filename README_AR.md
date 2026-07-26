@@ -1,6 +1,6 @@
 # YOSSEUF OS
 
-![الإصدار](https://img.shields.io/badge/version-v1.0.1-d4af37)
+![الإصدار](https://img.shields.io/badge/version-v1.1.0-d4af37)
 ![الحالة](https://img.shields.io/badge/status-stable-2ea44f)
 ![Node](https://img.shields.io/badge/node-22.x-43853d)
 ![الترخيص](https://img.shields.io/badge/license-MIT-blue)
@@ -89,14 +89,14 @@ npm run quality
 - [بنية مساحة العمل](docs/WORKSPACE_ARCHITECTURE.md)
 - [مبادئ المنتج](docs/PRODUCT_PRINCIPLES.md)
 - [خارطة طريق الذكاء الاصطناعي](docs/AI_ROADMAP.md)
-- [ملاحظات إصلاح v1.0.1](RELEASE_NOTES_v1.0.1.md)
+- [ملاحظات إصلاح v1.1.0](RELEASE_NOTES_v1.1.0.md)
 - [ملاحظات إصدار v1.0.0](RELEASE_NOTES_v1.0.0.md)
-- [قائمة اختبارات إصلاح v1.0.1](TEST_CHECKLIST_v1.0.1.md)
+- [قائمة اختبارات إصلاح v1.1.0](TEST_CHECKLIST_v1.1.0.md)
 - [قائمة اختبارات v1.0.0](TEST_CHECKLIST_v1.0.0.md)
 
 ## حالة الإصدار
 
-**v1.0.1** هو إصلاح تشخيص المصادقة المبني على أول إطلاق رسمي مستقر v1.0.0. يجب إبقاء الفرع المستقر محميًا، وعدم دمج أي تطوير جديد إلا بعد اجتياز بوابة الجودة والاختبارات الوظيفية.
+**v1.1.0** هو إصلاح تشخيص المصادقة المبني على أول إطلاق رسمي مستقر v1.0.0. يجب إبقاء الفرع المستقر محميًا، وعدم دمج أي تطوير جديد إلا بعد اجتياز بوابة الجودة والاختبارات الوظيفية.
 
 ## خارطة الطريق
 
