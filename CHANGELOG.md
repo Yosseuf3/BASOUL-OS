@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1] - 2026-07-26
+
+### Fixed
+- Added a preflight health check for the Supabase Auth endpoint before requesting a magic link.
+- Added timeout, offline, network-blocking, configuration, and HTTP-status diagnostics.
+- Replaced generic `Failed to fetch` feedback with actionable Arabic error messages and diagnostic codes.
+- Added accessible live status messaging to the login screen.
+
 ## 1.0.0 — Stable
 
 - Published the first stable production release.

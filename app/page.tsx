@@ -328,7 +328,7 @@ export default function Home() {
     {sidebarOpen && <button className="sidebar-overlay" onClick={() => setSidebarOpen(false)} aria-label="إغلاق القائمة" />}
     <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
       <button className="sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="إغلاق القائمة"><X size={19} /></button>
-      <div className="logo"><div className="logo-mark"><Brain size={25} /></div><div><strong>YOSSEUF OS</strong><span>v1.0.0 · Stable</span></div></div>
+      <div className="logo"><div className="logo-mark"><Brain size={25} /></div><div><strong>YOSSEUF OS</strong><span>v1.0.1 · Auth Hotfix</span></div></div>
       <WorkspaceSwitcher value={workspace} onChange={(next) => { setWorkspace(next); if (next === "executive") navigate("dashboard"); else if (next === "operations") navigate("projects"); else if (next === "knowledge") navigate("knowledge"); }} />
       <nav>
         <button className={view === "dashboard" ? "active" : ""} onClick={() => navigate("dashboard")}><LayoutDashboard size={18}/> لوحة القيادة</button>
@@ -477,7 +477,69 @@ function ConfirmDelete({ title,text,onCancel,onConfirm }: { title:string;text:st
 function Metric({ icon,label,value,detail,danger }: { icon:ReactNode;label:string;value:string|number;detail:string;danger?:boolean }) { return <div className={`metric-card ${danger?"danger":""}`}><span>{icon}</span><div><small>{label}</small><strong>{value}</strong><em>{detail}</em></div></div>; }
 function EmptyState({ text="لا توجد بيانات بعد.",compact,onCreate }: { text?:string;compact?:boolean;onCreate?:()=>void }) { return <div className={`empty-state ${compact?"compact":""}`}><span><ClipboardList/></span><h3>{text}</h3>{onCreate&&<button className="primary compact" onClick={onCreate}><Plus size={16}/> إضافة الآن</button>}</div>; }
 
-function Auth(){const[email,setEmail]=useState("");const[message,setMessage]=useState("");const[busy,setBusy]=useState(false);async function submit(e:FormEvent){e.preventDefault();setBusy(true);const{error}=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.origin}});setMessage(error?error.message:"تم إرسال رابط الدخول الآمن إلى بريدك.");setBusy(false);}return <div className="auth-page"><div className="auth-card"><div className="logo-mark auth-logo"><Brain/></div><span className="section-kicker">PERSONAL OPERATING SYSTEM</span><h1>YOSSEUF OS</h1><p>سجّل الدخول للوصول إلى مشاريعك ومهامك.</p><form onSubmit={submit}><label><span>البريد الإلكتروني</span><input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required/></label><button className="primary" disabled={busy}>{busy?"جارٍ الإرسال…":"إرسال رابط الدخول"}</button></form>{message&&<div className="auth-message">{message}</div>}</div></div>}
+function Auth(){
+  const[email,setEmail]=useState("");
+  const[message,setMessage]=useState("");
+  const[messageTone,setMessageTone]=useState<"success"|"error"|"info">("info");
+  const[busy,setBusy]=useState(false);
+
+  async function verifyAuthEndpoint(){
+    const baseUrl=process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if(!baseUrl||!anonKey) throw new Error("AUTH_CONFIG_MISSING");
+    if(!navigator.onLine) throw new Error("BROWSER_OFFLINE");
+
+    const controller=new AbortController();
+    const timeout=window.setTimeout(()=>controller.abort(),8000);
+    try{
+      const response=await fetch(`${baseUrl.replace(/\/$/,"")}/auth/v1/health`,{
+        method:"GET",
+        headers:{apikey:anonKey},
+        signal:controller.signal,
+        cache:"no-store"
+      });
+      if(!response.ok) throw new Error(`AUTH_HEALTH_${response.status}`);
+    }finally{
+      window.clearTimeout(timeout);
+    }
+  }
+
+  async function submit(e:FormEvent){
+    e.preventDefault();
+    setBusy(true);
+    setMessageTone("info");
+    setMessage("جارٍ التحقق من اتصال المصادقة…");
+    try{
+      await verifyAuthEndpoint();
+      const{error}=await supabase.auth.signInWithOtp({
+        email:email.trim(),
+        options:{emailRedirectTo:window.location.origin}
+      });
+      if(error) throw error;
+      setMessageTone("success");
+      setMessage("تم إرسال رابط الدخول الآمن إلى بريدك. تحقق من صندوق الوارد والرسائل غير المرغوب فيها.");
+    }catch(error){
+      console.error("YOSSEUF OS authentication diagnostics",{
+        error,
+        online:navigator.onLine,
+        origin:window.location.origin,
+        supabaseHost:(()=>{try{return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL||"").host}catch{return "invalid"}})()
+      });
+      const raw=error instanceof Error?error.message:String(error);
+      setMessageTone("error");
+      if(raw==="AUTH_CONFIG_MISSING") setMessage("إعدادات Supabase غير مكتملة في بيئة النشر. راجع متغيرات Vercel ثم أعد النشر.");
+      else if(raw==="BROWSER_OFFLINE") setMessage("الجهاز غير متصل بالإنترنت. تحقق من الاتصال ثم أعد المحاولة.");
+      else if(error instanceof DOMException&&error.name==="AbortError") setMessage("انتهت مهلة الاتصال بخدمة المصادقة. جرّب شبكة أخرى أو تحقق من حظر نطاق supabase.co.");
+      else if(error instanceof TypeError||raw.toLowerCase().includes("failed to fetch")) setMessage("تعذر الوصول إلى خدمة Supabase من هذه الشبكة. جرّب شبكة الهاتف أو اسمح للنطاق *.supabase.co في الجدار الناري. [AUTH-NETWORK]");
+      else if(raw.startsWith("AUTH_HEALTH_")) setMessage(`خدمة المصادقة أعادت حالة غير متوقعة (${raw.replace("AUTH_HEALTH_","")}). [AUTH-HEALTH]`);
+      else setMessage(`${raw} [AUTH-OTP]`);
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  return <div className="auth-page"><div className="auth-card"><div className="logo-mark auth-logo"><Brain/></div><span className="section-kicker">PERSONAL OPERATING SYSTEM</span><h1>YOSSEUF OS</h1><p>سجّل الدخول للوصول إلى مشاريعك ومهامك.</p><form onSubmit={submit}><label><span>البريد الإلكتروني</span><input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required autoComplete="email" inputMode="email"/></label><button className="primary" disabled={busy}>{busy?"جارٍ التحقق والإرسال…":"إرسال رابط الدخول"}</button></form>{message&&<div className={`auth-message ${messageTone}`} role="status" aria-live="polite">{message}</div>}<small className="auth-diagnostic-note">v1.0.1 · Auth Diagnostics Hotfix</small></div></div>
+}
 function LoadingScreen(){return <div className="center-screen"><div className="loader"><Brain size={38}/><span>جارٍ تشغيل YOSSEUF OS…</span></div></div>}
 
 const clamp=(n:number)=>Math.max(0,Math.min(100,Number.isFinite(n)?n:0));
