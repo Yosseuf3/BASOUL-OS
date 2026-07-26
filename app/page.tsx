@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import type { Client, ClientInput, ClientStatus, ContentItem, ContentInput, ContentPlatform, ContentStatus, ActivityEvent, Notification, FinanceTransaction, FinanceTransactionInput, KnowledgeInput, KnowledgeItem, KnowledgeType, PriorityLevel, Project, ProjectInput, ProjectStatus, Task, TaskInput, TaskStatus } from "@/lib/types";
+import type { Client, ClientInput, ClientStatus, ContentItem, ContentInput, ContentPlatform, ContentStatus, ActivityEvent, Notification, FinanceTransaction, FinanceTransactionInput, KnowledgeInput, KnowledgeItem, KnowledgeType, PriorityLevel, Project, ProjectInput, ProjectStatus, ProjectType, DesignPhase, Task, TaskInput, TaskStatus } from "@/lib/types";
 import { deleteRow, saveRow } from "@/lib/data/os-repository";
 import { loadWorkspaceData } from "@/lib/data/workspace-service";
 import { FinanceModal, FinanceView } from "@/features/finance/finance-view";
@@ -466,7 +466,76 @@ function ContentModal({state,projects,clients,onClose,onSave}:{state:Exclude<Con
   return <Modal title={state.mode==="create"?"إنشاء محتوى جديد":"تعديل المحتوى"} kicker="CONTENT STUDIO" onClose={onClose}><form className="project-form" onSubmit={submit}><Field name="title" label="عنوان المحتوى *" defaultValue={item?.title} required full maxLength={180}/><Select name="status" label="مرحلة الإنتاج" defaultValue={item?.status||"Idea"} options={contentStatusLabels}/><Select name="platform" label="المنصة" defaultValue={item?.platform||"TikTok"} options={platformLabels}/><label><span>المشروع المرتبط</span><select name="project_id" defaultValue={item?.project_id??""}><option value="">بدون مشروع</option>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label><span>العميل المرتبط</span><select name="client_id" defaultValue={item?.client_id??""}><option value="">بدون عميل</option>{clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><Field name="publish_date" label="موعد النشر" type="date" defaultValue={item?.publish_date}/><label className="full"><span>Hook</span><textarea name="hook" rows={2} defaultValue={item?.hook??""}/></label><label className="full"><span>Script</span><textarea name="script" rows={8} defaultValue={item?.script??""}/></label><Field name="cta" label="CTA" defaultValue={item?.cta} full/><Field name="hashtags" label="Hashtags" defaultValue={item?.hashtags} full/><label className="full"><span>ملاحظات الإنتاج</span><textarea name="notes" rows={4} defaultValue={item?.notes??""}/></label><Actions saving={saving} onClose={onClose}/></form></Modal>;
 }
 
-function ProjectModal({ state, clients, onClose, onSave }: { state:Exclude<ProjectModalState,null>; clients:Client[]; onClose:()=>void; onSave:(i:ProjectInput,p?:Project)=>Promise<boolean> }) { const p=state.project; const [saving,setSaving]=useState(false); async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setSaving(true);const f=new FormData(e.currentTarget);const input:ProjectInput={name:String(f.get("name")||"").trim(),status:String(f.get("status")) as ProjectStatus,priority:String(f.get("priority")) as PriorityLevel,progress:clamp(Number(f.get("progress")||0)),client_name:nullableText(f.get("client_name")),area:nullableText(f.get("area")),start_date:dateValue(f.get("start_date")),due_date:dateValue(f.get("due_date")),notes:nullableText(f.get("notes")),client_id:nullableText(f.get("client_id"))};if(!await onSave(input,p??undefined))setSaving(false);} return <Modal title={state.mode==="create"?"إنشاء مشروع جديد":"تعديل المشروع"} kicker="PROJECT" onClose={onClose}><form className="project-form" onSubmit={submit}><Field name="name" label="اسم المشروع *" defaultValue={p?.name} required full/><Select name="status" label="الحالة" defaultValue={p?.status||"Planning"} options={projectStatusLabels}/><Select name="priority" label="الأولوية" defaultValue={p?.priority||"Medium"} options={priorityLabels}/><label><span>العميل المرتبط</span><select name="client_id" defaultValue={p?.client_id??""}><option value="">بدون عميل</option>{clients.map(c=><option key={c.id} value={c.id}>{c.name}{c.company?` — ${c.company}`:""}</option>)}</select></label><Field name="client_name" label="اسم عميل يدوي (اختياري)" defaultValue={p?.client_name}/><Field name="area" label="المجال" defaultValue={p?.area}/><Field name="progress" label="نسبة التقدم" type="number" defaultValue={p?.progress??0} min={0} max={100}/><Field name="start_date" label="تاريخ البداية" type="date" defaultValue={p?.start_date}/><Field name="due_date" label="موعد التسليم" type="date" defaultValue={p?.due_date}/><label className="full"><span>الملاحظات</span><textarea name="notes" rows={4} defaultValue={p?.notes??""}/></label><Actions saving={saving} onClose={onClose}/></form></Modal>; }
+function ProjectModal({ state, clients, onClose, onSave }: { state:Exclude<ProjectModalState,null>; clients:Client[]; onClose:()=>void; onSave:(i:ProjectInput,p?:Project)=>Promise<boolean> }) {
+  const p=state.project;
+  const [saving,setSaving]=useState(false);
+  const [step,setStep]=useState(0);
+  const [form,setForm]=useState({
+    name:p?.name??"", project_number:p?.project_number??"", project_type:p?.project_type??"Villa", location:p?.location??"",
+    description:p?.description??p?.notes??"", client_id:p?.client_id??"", client_name:p?.client_name??"", area:p?.area??"",
+    status:p?.status??"Planning", priority:p?.priority??"Medium", design_phase:p?.design_phase??"Concept",
+    start_date:p?.start_date??"", due_date:p?.due_date??"", progress:String(p?.progress??0), budget:p?.budget==null?"":String(p.budget),
+    currency:p?.currency??"SAR", color:p?.color??"#C9A24A", icon:p?.icon??"building"
+  });
+  const steps=["المعلومات الأساسية","الجدول والتنفيذ","الميزانية والهوية","المراجعة"];
+  const projectTypeLabels:Record<ProjectType,string>={Villa:"فيلا","Residential Building":"مبنى سكني",Commercial:"تجاري",Office:"مكتب",Interior:"تصميم داخلي",Other:"أخرى"};
+  const phaseLabels:Record<DesignPhase,string>={Concept:"التصميم المفاهيمي",Schematic:"التصميم المبدئي","Design Development":"تطوير التصميم","Construction Documents":"مستندات التنفيذ","Site Supervision":"الإشراف الموقعي",Handover:"التسليم"};
+  const update=(key:string,value:string)=>setForm(current=>({...current,[key]:value}));
+  const canContinue=step!==0||form.name.trim().length>0;
+  async function submit(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    if(step<steps.length-1){ if(canContinue)setStep(v=>v+1); return; }
+    setSaving(true);
+    const selectedClient=clients.find(c=>c.id===form.client_id);
+    const input:ProjectInput={
+      name:form.name.trim(), project_number:nullableText(form.project_number), project_type:form.project_type as ProjectType,
+      location:nullableText(form.location), description:nullableText(form.description), status:form.status as ProjectStatus,
+      priority:form.priority as PriorityLevel, design_phase:form.design_phase as DesignPhase, progress:clamp(Number(form.progress||0)),
+      client_id:nullableText(form.client_id), client_name:selectedClient?.name??nullableText(form.client_name), area:nullableText(form.area),
+      start_date:dateValue(form.start_date), due_date:dateValue(form.due_date), budget:form.budget===""?null:Math.max(0,Number(form.budget)),
+      currency:form.currency||"SAR", color:nullableText(form.color), icon:nullableText(form.icon), notes:nullableText(form.description)
+    };
+    if(!await onSave(input,p??undefined))setSaving(false);
+  }
+  return <Modal title={state.mode==="create"?"إنشاء مشروع جديد":"تعديل المشروع"} kicker="PROJECT WIZARD · v1.1.1" onClose={onClose}>
+    <div className="wizard-progress">{steps.map((label,index)=><button type="button" key={label} className={index===step?"active":index<step?"done":""} onClick={()=>index<=step&&setStep(index)}><b>{index+1}</b><span>{label}</span></button>)}</div>
+    <form className="project-form wizard-form" onSubmit={submit}>
+      {step===0&&<>
+        <label className="full"><span>اسم المشروع *</span><input value={form.name} onChange={e=>update("name",e.target.value)} required maxLength={120}/></label>
+        <label><span>رقم المشروع</span><input value={form.project_number} onChange={e=>update("project_number",e.target.value)} placeholder="YR-2026-001"/></label>
+        <label><span>نوع المشروع</span><select value={form.project_type} onChange={e=>update("project_type",e.target.value)}>{Object.entries(projectTypeLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
+        <label><span>العميل المرتبط</span><select value={form.client_id} onChange={e=>update("client_id",e.target.value)}><option value="">بدون عميل</option>{clients.map(c=><option key={c.id} value={c.id}>{c.name}{c.company?` — ${c.company}`:""}</option>)}</select></label>
+        {!form.client_id&&<label><span>اسم عميل يدوي</span><input value={form.client_name} onChange={e=>update("client_name",e.target.value)}/></label>}
+        <label><span>الموقع / المدينة</span><input value={form.location} onChange={e=>update("location",e.target.value)} placeholder="جدة، المملكة العربية السعودية"/></label>
+        <label><span>المساحة أو المجال</span><input value={form.area} onChange={e=>update("area",e.target.value)} placeholder="450 م²"/></label>
+        <label className="full"><span>وصف المشروع</span><textarea rows={5} value={form.description} onChange={e=>update("description",e.target.value)}/></label>
+      </>}
+      {step===1&&<>
+        <label><span>الحالة</span><select value={form.status} onChange={e=>update("status",e.target.value)}>{Object.entries(projectStatusLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
+        <label><span>الأولوية</span><select value={form.priority} onChange={e=>update("priority",e.target.value)}>{Object.entries(priorityLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
+        <label className="full"><span>المرحلة التصميمية</span><select value={form.design_phase} onChange={e=>update("design_phase",e.target.value)}>{Object.entries(phaseLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
+        <label><span>تاريخ البداية</span><input type="date" value={form.start_date} onChange={e=>update("start_date",e.target.value)}/></label>
+        <label><span>موعد التسليم</span><input type="date" min={form.start_date||undefined} value={form.due_date} onChange={e=>update("due_date",e.target.value)}/></label>
+        <label className="full"><span>نسبة التقدم: {form.progress}%</span><input type="range" min="0" max="100" value={form.progress} onChange={e=>update("progress",e.target.value)}/></label>
+      </>}
+      {step===2&&<>
+        <label><span>الميزانية</span><input type="number" min="0" step="0.01" value={form.budget} onChange={e=>update("budget",e.target.value)} placeholder="0.00"/></label>
+        <label><span>العملة</span><select value={form.currency} onChange={e=>update("currency",e.target.value)}><option value="SAR">SAR</option><option value="USD">USD</option><option value="EGP">EGP</option><option value="AED">AED</option></select></label>
+        <label><span>لون المشروع</span><input type="color" value={form.color} onChange={e=>update("color",e.target.value)}/></label>
+        <label><span>أيقونة المشروع</span><select value={form.icon} onChange={e=>update("icon",e.target.value)}><option value="building">مبنى</option><option value="home">منزل</option><option value="briefcase">أعمال</option><option value="palette">تصميم</option></select></label>
+        <div className="project-identity-preview full" style={{borderInlineStartColor:form.color}}><span>معاينة بطاقة المشروع</span><b>{form.name||"اسم المشروع"}</b><small>{projectTypeLabels[form.project_type as ProjectType]} · {form.currency} {form.budget||"0"}</small></div>
+      </>}
+      {step===3&&<div className="project-review full">
+        <div><span>المشروع</span><b>{form.name}</b><small>{form.project_number||"سيتم العمل بدون رقم مشروع"}</small></div>
+        <div><span>العميل</span><b>{clients.find(c=>c.id===form.client_id)?.name||form.client_name||"غير محدد"}</b><small>{form.location||"الموقع غير محدد"}</small></div>
+        <div><span>التنفيذ</span><b>{phaseLabels[form.design_phase as DesignPhase]}</b><small>{projectStatusLabels[form.status as ProjectStatus]} · {priorityLabels[form.priority as PriorityLevel]}</small></div>
+        <div><span>الجدول</span><b>{formatDate(form.start_date)} ← {formatDate(form.due_date)}</b><small>التقدم المبدئي {form.progress}%</small></div>
+        <div><span>الميزانية</span><b>{form.currency} {form.budget||"0"}</b><small>يمكن تعديلها لاحقًا من مساحة المشروع</small></div>
+      </div>}
+      <div className="form-actions full wizard-actions"><button type="button" onClick={step===0?onClose:()=>setStep(v=>v-1)}>{step===0?"إلغاء":"السابق"}</button><button className="primary" disabled={saving||!canContinue}>{saving?"جارٍ الحفظ…":step===steps.length-1?(state.mode==="create"?"إنشاء المشروع":"حفظ التعديلات"):"التالي"}</button></div>
+    </form>
+  </Modal>;
+}
 
 function ProjectWorkspace({project,tasks,financeItems,client,onClose,onEdit,onCreateTask}:{project:Project;tasks:Task[];financeItems:FinanceTransaction[];client?:Client;onClose:()=>void;onEdit:()=>void;onCreateTask:()=>void}){
   const completed=tasks.filter(t=>t.status==="Done").length;
@@ -475,9 +544,9 @@ function ProjectWorkspace({project,tasks,financeItems,client,onClose,onEdit,onCr
   const expenses=financeItems.filter(i=>i.type==="Expense"&&i.status!=="Cancelled").reduce((sum,i)=>sum+i.amount,0);
   const taskProgress=tasks.length?Math.round(tasks.reduce((sum,t)=>sum+t.progress,0)/tasks.length):project.progress;
   return <div className="modal-backdrop project-workspace-backdrop" onMouseDown={onClose}><section className="project-workspace" onMouseDown={e=>e.stopPropagation()}>
-    <header className="project-workspace-head"><div><span className="section-kicker">PROJECT WORKSPACE · v1.1</span><h2>{project.name}</h2><p>{project.notes||project.area||"مساحة تنفيذ موحدة للمشروع."}</p></div><div className="project-workspace-actions"><button onClick={onEdit}><Pencil size={16}/> تعديل</button><button className="primary compact" onClick={onCreateTask}><Plus size={16}/> مهمة جديدة</button><button className="icon-button" onClick={onClose}><X size={20}/></button></div></header>
+    <header className="project-workspace-head"><div><span className="section-kicker">PROJECT WORKSPACE · v1.1</span><h2>{project.name}</h2><p>{project.description||project.notes||project.location||project.area||"مساحة تنفيذ موحدة للمشروع."}</p></div><div className="project-workspace-actions"><button onClick={onEdit}><Pencil size={16}/> تعديل</button><button className="primary compact" onClick={onCreateTask}><Plus size={16}/> مهمة جديدة</button><button className="icon-button" onClick={onClose}><X size={20}/></button></div></header>
     <div className="project-workspace-kpis"><Metric icon={<FolderKanban/>} label="حالة المشروع" value={projectStatusLabels[project.status]} detail={priorityLabels[project.priority]}/><Metric icon={<ClipboardList/>} label="المهام" value={`${completed}/${tasks.length}`} detail={overdue?`${overdue} متأخرة`:"لا توجد مهام متأخرة"} danger={overdue>0}/><Metric icon={<Activity/>} label="تقدم التنفيذ" value={`${taskProgress}%`} detail={`المشروع المسجل ${project.progress}%`}/><Metric icon={<Wallet/>} label="صافي المشروع" value={`${income-expenses}`} detail={`${financeItems[0]?.currency||"USD"}`}/></div>
-    <div className="project-workspace-grid"><article className="project-overview-card"><span className="section-kicker">OVERVIEW</span><h3>ملخص المشروع</h3><dl><div><dt>العميل</dt><dd>{client?.name||project.client_name||"غير محدد"}</dd></div><div><dt>المجال</dt><dd>{project.area||"غير محدد"}</dd></div><div><dt>البداية</dt><dd>{formatDate(project.start_date)}</dd></div><div><dt>التسليم</dt><dd>{formatDate(project.due_date)}</dd></div></dl><div className="card-progress-head"><span>التقدم</span><b>{project.progress}%</b></div><div className="progress"><i style={{width:`${project.progress}%`}}/></div></article>
+    <div className="project-workspace-grid"><article className="project-overview-card"><span className="section-kicker">OVERVIEW</span><h3>ملخص المشروع</h3><dl><div><dt>العميل</dt><dd>{client?.name||project.client_name||"غير محدد"}</dd></div><div><dt>رقم المشروع</dt><dd>{project.project_number||"غير محدد"}</dd></div><div><dt>النوع</dt><dd>{project.project_type||"غير محدد"}</dd></div><div><dt>الموقع</dt><dd>{project.location||"غير محدد"}</dd></div><div><dt>المجال</dt><dd>{project.area||"غير محدد"}</dd></div><div><dt>المرحلة</dt><dd>{project.design_phase||"غير محدد"}</dd></div><div><dt>الميزانية</dt><dd>{project.budget==null?"غير محددة":`${project.currency} ${project.budget}`}</dd></div><div><dt>البداية</dt><dd>{formatDate(project.start_date)}</dd></div><div><dt>التسليم</dt><dd>{formatDate(project.due_date)}</dd></div></dl><div className="card-progress-head"><span>التقدم</span><b>{project.progress}%</b></div><div className="progress"><i style={{width:`${project.progress}%`}}/></div></article>
       <article className="project-overview-card"><span className="section-kicker">TASKS</span><h3>مسار التنفيذ</h3>{tasks.length?<div className="workspace-task-list">{tasks.slice(0,6).map(t=><div key={t.id}><span className={`status-dot ${taskStatusClass(t.status)}`}/><div><b>{t.title}</b><small>{taskStatusLabels[t.status]} · {formatDate(t.due_date)}</small></div><strong>{t.progress}%</strong></div>)}</div>:<EmptyState compact text="لا توجد مهام لهذا المشروع." onCreate={onCreateTask}/>}</article>
     </div>
   </section></div>;

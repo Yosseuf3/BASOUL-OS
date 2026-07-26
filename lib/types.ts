@@ -1,4 +1,6 @@
 export type ProjectStatus = "Planning" | "Active" | "On Hold" | "Completed";
+export type ProjectType = "Villa" | "Residential Building" | "Commercial" | "Office" | "Interior" | "Other";
+export type DesignPhase = "Concept" | "Schematic" | "Design Development" | "Construction Documents" | "Site Supervision" | "Handover";
 export type PriorityLevel = "Low" | "Medium" | "High" | "Critical";
 export type TaskStatus = "To Do" | "In Progress" | "Review" | "Done";
 export type ClientStatus = "Lead" | "Active" | "Inactive" | "Completed";
@@ -6,6 +8,8 @@ export type ClientStatus = "Lead" | "Active" | "Inactive" | "Completed";
 export type Project = {
   id: string; user_id: string; name: string; status: ProjectStatus; priority: PriorityLevel;
   progress: number; client_name: string | null; client_id: string | null; area: string | null;
+  project_number: string | null; project_type: ProjectType | null; location: string | null; description: string | null;
+  budget: number | null; currency: string; design_phase: DesignPhase | null; color: string | null; icon: string | null;
   start_date: string | null; due_date: string | null; notes: string | null;
   created_at: string; updated_at: string;
 };

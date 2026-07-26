@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.1] - 2026-07-26
+### Added
+- Four-step professional project creation wizard.
+- Architectural project type and design phase fields.
+- Project number, location, description, budget, currency, color and icon.
+- Supabase migration and release test checklist.
+
+### Changed
+- Project workspace now exposes richer execution and commercial context.
+
 ## [1.1.0] - 2026-07-26
 
 ### Added
