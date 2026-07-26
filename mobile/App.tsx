@@ -79,7 +79,7 @@ export default function App() {
       {screen === "projects" ? <ProjectsScreen projects={data.projects} onBack={() => setScreen("dashboard")} /> : null}
       {screen === "notifications" ? <NotificationsScreen notifications={data.notifications} onBack={() => setScreen("dashboard")} onRead={readNotification} /> : null}
       <View style={styles.footer}>
-        <Text style={styles.version}>v1.5.0 · Mobile Live Foundation</Text>
+        <Text style={styles.version}>v1.5.1 · Cross Platform Stabilization</Text>
         <TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity>
       </View>
     </View>

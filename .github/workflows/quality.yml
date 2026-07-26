@@ -2,16 +2,22 @@ name: Quality Gate
 
 on:
   push:
+    branches: [main, develop]
   pull_request:
 
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  quality:
+  web:
+    name: Web quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.13.1
       - run: npm install
       - run: npm run lint
       - run: npm run typecheck
@@ -19,3 +25,18 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+
+  mobile:
+    name: Mobile quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+      - run: npm install
+      - run: npm run typecheck
+      - run: npm run doctor
