@@ -34,8 +34,45 @@ export type Notification = {
   created_at: string;
 };
 
+export type ArchitecturalDrawing = {
+  id: string;
+  project_id: string;
+  name: string;
+  revision: string;
+  format: "pdf" | "image";
+  status: "uploaded" | "reviewed" | "archived";
+  page_count: number | null;
+  created_at: string;
+};
+
+export type ArchitecturalFinding = {
+  id: string;
+  review_id: string;
+  drawing_id: string;
+  code: string;
+  title: string;
+  description: string;
+  recommendation: string;
+  severity: "info" | "opportunity" | "warning" | "critical";
+  status: "open" | "accepted" | "rejected" | "resolved" | "converted_to_task";
+  confidence_score: number;
+  task_id: string | null;
+};
+
+export type ArchitecturalReview = {
+  id: string;
+  drawing_id: string;
+  project_id: string;
+  status: "draft" | "ready" | "completed";
+  plan_health: number;
+  created_at: string;
+  architectural_review_findings: ArchitecturalFinding[];
+};
+
 export type MobileWorkspaceData = {
   projects: Project[];
   tasks: Task[];
   notifications: Notification[];
+  drawings: ArchitecturalDrawing[];
+  reviews: ArchitecturalReview[];
 };

@@ -1,10 +1,10 @@
 import { supabase } from "../config/supabase";
-import type { MobileWorkspaceData, Notification, Project, Task } from "../types/domain";
+import type { ArchitecturalDrawing, ArchitecturalFinding, ArchitecturalReview, MobileWorkspaceData, Notification, Project, Task } from "../types/domain";
 
 export async function loadMobileWorkspace(userId: string): Promise<MobileWorkspaceData> {
   if (!supabase) throw new Error("Supabase is not configured.");
 
-  const [projectsResult, tasksResult, notificationsResult] = await Promise.all([
+  const [projectsResult, tasksResult, notificationsResult, drawingsResult, reviewsResult] = await Promise.all([
     supabase
       .from("projects")
       .select("id,name,status,priority,progress,client_name,project_number,location,design_phase,due_date,updated_at")
@@ -21,16 +21,56 @@ export async function loadMobileWorkspace(userId: string): Promise<MobileWorkspa
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(30),
+    supabase
+      .from("architectural_drawings")
+      .select("id,project_id,name,revision,format,status,page_count,created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(30),
+    supabase
+      .from("architectural_reviews")
+      .select("id,drawing_id,project_id,status,plan_health,created_at,architectural_review_findings(id,review_id,drawing_id,code,title,description,recommendation,severity,status,confidence_score,task_id)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20),
   ]);
 
-  const firstError = projectsResult.error ?? tasksResult.error ?? notificationsResult.error;
+  const firstError = projectsResult.error ?? tasksResult.error ?? notificationsResult.error ?? drawingsResult.error ?? reviewsResult.error;
   if (firstError) throw firstError;
 
   return {
     projects: (projectsResult.data ?? []) as Project[],
     tasks: (tasksResult.data ?? []) as Task[],
     notifications: (notificationsResult.data ?? []) as Notification[],
+    drawings: (drawingsResult.data ?? []) as ArchitecturalDrawing[],
+    reviews: (reviewsResult.data ?? []) as ArchitecturalReview[],
   };
+}
+
+export async function convertMobileFindingToTask(
+  userId: string,
+  projectId: string,
+  finding: ArchitecturalFinding,
+): Promise<void> {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const priority =
+    finding.severity === "critical" ? "Critical" :
+    finding.severity === "warning" ? "High" : "Medium";
+  const { data: task, error } = await supabase.from("tasks").insert({
+    user_id: userId,
+    project_id: projectId,
+    title: finding.title,
+    description: `${finding.description}\n\nالتوصية: ${finding.recommendation}`,
+    priority,
+    status: "To Do",
+    progress: 0,
+  }).select("id").single();
+  if (error) throw error;
+  const { error: findingError } = await supabase
+    .from("architectural_review_findings")
+    .update({ status: "converted_to_task", task_id: task.id })
+    .eq("id", finding.id);
+  if (findingError) throw findingError;
 }
 
 export async function markMobileNotificationRead(notificationId: string): Promise<void> {
