@@ -2,21 +2,21 @@
   "expo": {
     "name": "YOSSEUF OS",
     "slug": "yosseuf-os",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "yosseufos",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yosseufradwan.os",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.yosseufradwan.os",
-      "versionCode": 5
+      "versionCode": 6
     },
     "extra": {
       "product": "YOSSEUF OS Executive Operating System",

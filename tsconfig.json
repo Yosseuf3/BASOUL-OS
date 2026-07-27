@@ -46,6 +46,12 @@
       ],
       "@yosseuf/ui-tokens": [
         "packages/ui-tokens/src/index.ts"
+      ],
+      "@yosseuf/cognitive-core": [
+        "packages/cognitive-core/src/index.ts"
+      ],
+      "@yosseuf/architectural-intelligence": [
+        "packages/architectural-intelligence/src/index.ts"
       ]
     },
     "baseUrl": "."

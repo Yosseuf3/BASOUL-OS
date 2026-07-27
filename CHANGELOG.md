@@ -254,3 +254,10 @@
 ## 2.1.0 — Executive Productivity
 - Added Executive Timeline, Global Search, dashboard Quick Actions, and Workspace Health 2.0.
 - Connected mobile task creation and stage advancement to Supabase.
+
+## [2.2.0] - Cognitive & Architectural Foundation
+- Added YOSSEUF Cognitive Core typed contracts and pipeline.
+- Added Engineering Confidence Engine.
+- Added Architectural Intelligence contracts and review report generator.
+- Added persistent drawing/review/finding schema with RLS.
+- Added approved architecture, principles, and roadmap documents.
