@@ -4,7 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 import {
   AlertTriangle, Brain, CalendarDays, CheckCircle2, ChevronLeft, CirclePause,
   ClipboardList, FolderKanban, LayoutDashboard, LogOut, Menu, MoreHorizontal, Users, Mail, Phone, Building2,
-  Pencil, Plus, Search, Trash2, X, List, Columns3, ArrowUpDown, Clock3, Film, Hash, Send, BookOpen, Star, FileText, Lightbulb, Library, Wallet, Activity, Bell,
+  Pencil, Plus, Search, Trash2, X, List, Columns3, ArrowUpDown, Clock3, Film, Hash, Send, BookOpen, Star, FileText, Lightbulb, Library, Wallet, Activity, Bell, ScanLine,
 } from "lucide-react";
 import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -16,6 +16,7 @@ import { DashboardView } from "@/features/dashboard/dashboard-view";
 import { GlobalSearch } from "@/features/global-search";
 import { ActivityView } from "@/features/activity/activity-view";
 import { NotificationsView } from "@/features/notifications/notifications-view";
+import { ArchitectureReviewView } from "@/features/architecture/architecture-review-view";
 import { deleteNotification, markAllNotificationsRead, markNotificationRead } from "@/lib/notifications/notification-service";
 import { recordActivity } from "@/lib/events/activity-service";
 import { WorkspaceSwitcher } from "@/components/shell/workspace-switcher";
@@ -24,7 +25,7 @@ import type { QuickCreateTarget, WorkspaceId } from "@/packages/types/src";
 import { DEFAULT_WORKSPACE } from "@/packages/core/src";
 import { APP_INFO } from "@/lib/config/app-info";
 
-type View = "dashboard" | "projects" | "tasks" | "clients" | "content" | "knowledge" | "finance" | "activity" | "notifications";
+type View = "dashboard" | "projects" | "tasks" | "clients" | "content" | "knowledge" | "finance" | "activity" | "notifications" | "architecture";
 type ProjectFilter = "All" | ProjectStatus;
 type TaskFilter = "All" | TaskStatus;
 type ClientFilter = "All" | ClientStatus;
@@ -336,6 +337,7 @@ export default function Home() {
       <nav>
         <button className={view === "dashboard" ? "active" : ""} onClick={() => navigate("dashboard")}><LayoutDashboard size={18}/> لوحة القيادة</button>
         <button className={view === "projects" ? "active" : ""} onClick={() => navigate("projects")}><FolderKanban size={18}/> المشاريع</button>
+        <button className={view === "architecture" ? "active" : ""} onClick={() => navigate("architecture")}><ScanLine size={18}/> الذكاء المعماري</button>
         <button className={view === "tasks" ? "active" : ""} onClick={() => navigate("tasks")}><ClipboardList size={18}/> المهام {tasks.length > 0 && <span className="nav-count">{tasks.length}</span>}</button>
         <button className={view === "clients" ? "active" : ""} onClick={() => navigate("clients")}><Users size={18}/> العملاء {clients.length > 0 && <span className="nav-count">{clients.length}</span>}</button>
         <button className={view === "content" ? "active" : ""} onClick={() => navigate("content")}><Film size={18}/> المحتوى {contentItems.length > 0 && <span className="nav-count">{contentItems.length}</span>}</button>
@@ -354,6 +356,7 @@ export default function Home() {
       {view === "dashboard" && loading && !lastSyncedAt ? <DashboardSkeleton /> : view === "dashboard" && <DashboardView projects={projects} tasks={tasks} clients={clients} financeItems={financeItems} activityEvents={activityEvents} notifications={notifications} userName="Yosseuf" onNavigate={navigate} onQuickAction={(action) => action === "project" ? setProjectModal({ mode: "create", project: null }) : action === "task" ? requestCreateTask() : action === "client" ? setClientModal({ mode: "create", client: null }) : action === "finance" ? setFinanceModal("create") : action === "knowledge" ? setKnowledgeModal({ mode: "create", item: null }) : setContentModal({ mode: "create", item: null })} />}
       {view === "activity" && <ActivityView events={activityEvents} onNavigate={navigate} onClear={() => void clearActivity()} />}
       {view === "notifications" && <NotificationsView notifications={notifications} onNavigate={navigate} onToggleRead={(n)=>void toggleNotificationRead(n)} onMarkAll={()=>void markAllRead()} onDelete={(n)=>void removeNotification(n)} />}
+      {view === "architecture" && <ArchitectureReviewView projects={projects} />}
       {view === "projects" && <ProjectsView projects={filteredProjects} totalCount={projects.length} query={projectQuery} filter={projectFilter} onQuery={setProjectQuery} onFilter={setProjectFilter} onCreate={() => setProjectModal({ mode: "create", project: null })} onOpen={setProjectDetail} onEdit={(project) => setProjectModal({ mode: "edit", project })} onDelete={setDeleteProjectTarget} />}
       {view === "tasks" && <TasksView tasks={filteredTasks} allTasks={tasks} projects={projects} query={taskQuery} filter={taskFilter} projectFilter={taskProjectFilter} onQuery={setTaskQuery} onFilter={setTaskFilter} onProjectFilter={setTaskProjectFilter} onCreate={requestCreateTask} onEdit={(task) => setTaskModal({ mode: "edit", task })} onDelete={setDeleteTaskTarget} />}
       {view === "clients" && <ClientsView clients={filteredClients} allClients={clients} projects={projects} query={clientQuery} filter={clientFilter} onQuery={setClientQuery} onFilter={setClientFilter} onCreate={() => setClientModal({ mode: "create", client: null })} onEdit={(client) => setClientModal({ mode: "edit", client })} onDelete={setDeleteClientTarget} />}
