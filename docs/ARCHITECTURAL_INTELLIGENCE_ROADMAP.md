@@ -1,0 +1,30 @@
+# Architectural Intelligence Roadmap
+
+## Phase 1 — Review Foundation
+- PDF and image intake contracts
+- drawing and revision records
+- findings anchored to sheet/floor/room/coordinates
+- review sessions and report generation
+- finding acceptance, rejection, resolution, and task conversion
+
+## Phase 2 — Plan Understanding
+- walls, openings, rooms, labels, and dimensions
+- confidence-aware extraction
+- human correction workflow
+
+## Phase 3 — Design Reasoning
+- circulation, privacy, adjacency, daylight, furnishing, and area efficiency
+- Project DNA and company standards
+
+## Phase 4 — Compliance Knowledge
+- jurisdiction- and version-aware rule packs
+- Saudi Building Code and local authority references
+- urban identity review
+
+## Phase 5 — CAD/BIM Intelligence
+- DWG/DXF/IFC adapters
+- revision comparison
+- AutoCAD/Revit copilot integrations
+
+## North Star
+YOSSEUF OS should operate as an explainable digital architectural reviewer that preserves and amplifies the engineering knowledge of each firm.

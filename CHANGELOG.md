@@ -1,3 +1,11 @@
+# 2.0.0 — Executive Operating System
+
+- Added the Executive Kernel orchestration layer.
+- Added explainable decision signals and ranked executive actions.
+- Added workspace health factors and predictive risk analysis.
+- Added a dedicated mobile Command Center connected to live workspace data.
+- Preserved decision logic outside React presentation components.
+
 # Changelog
 
 ## v1.4.0.1 — PWA Manifest Build Hotfix
@@ -242,3 +250,14 @@
 - Mobile workspace service and modular screen architecture.
 ### Changed
 - Product version updated to Mobile Live Foundation.
+
+## 2.1.0 — Executive Productivity
+- Added Executive Timeline, Global Search, dashboard Quick Actions, and Workspace Health 2.0.
+- Connected mobile task creation and stage advancement to Supabase.
+
+## [2.2.0] - Cognitive & Architectural Foundation
+- Added YOSSEUF Cognitive Core typed contracts and pipeline.
+- Added Engineering Confidence Engine.
+- Added Architectural Intelligence contracts and review report generator.
+- Added persistent drawing/review/finding schema with RLS.
+- Added approved architecture, principles, and roadmap documents.

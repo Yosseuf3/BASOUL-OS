@@ -41,3 +41,29 @@ export async function markMobileNotificationRead(notificationId: string): Promis
     .eq("id", notificationId);
   if (error) throw error;
 }
+
+export async function createMobileTask(userId: string, input: { title: string; project_id: string; priority: string; due_date: string | null }): Promise<void> {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.from("tasks").insert({
+    user_id: userId,
+    project_id: input.project_id,
+    title: input.title,
+    priority: input.priority,
+    due_date: input.due_date,
+    status: "To Do",
+    progress: 0,
+  });
+  if (error) throw error;
+}
+
+export async function advanceMobileTask(task: Task): Promise<void> {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const next: Record<Task["status"], { status: Task["status"]; progress: number }> = {
+    "To Do": { status: "In Progress", progress: Math.max(15, task.progress) },
+    "In Progress": { status: "Review", progress: Math.max(80, task.progress) },
+    Review: { status: "Done", progress: 100 },
+    Done: { status: "Done", progress: 100 },
+  };
+  const { error } = await supabase.from("tasks").update(next[task.status]).eq("id", task.id);
+  if (error) throw error;
+}
