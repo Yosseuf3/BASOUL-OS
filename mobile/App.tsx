@@ -12,13 +12,14 @@ import { CommandCenterScreen } from "./src/features/command-center/CommandCenter
 import { CreateTaskScreen, type NewTaskInput } from "./src/features/create/CreateTaskScreen";
 import { TimelineScreen } from "./src/features/timeline/TimelineScreen";
 import { GlobalSearchScreen } from "./src/features/search/GlobalSearchScreen";
+import { ArchitectureReviewScreen } from "./src/features/architecture/architecture-review-screen";
 import { isMobileConfigured, supabase } from "./src/config/supabase";
-import { advanceMobileTask, createMobileTask, loadMobileWorkspace, markMobileNotificationRead } from "./src/services/workspace";
+import { advanceMobileTask, convertMobileFindingToTask, createMobileTask, loadMobileWorkspace, markMobileNotificationRead } from "./src/services/workspace";
 import { tokens } from "./src/theme/tokens";
-import type { MobileWorkspaceData, Task } from "./src/types/domain";
+import type { ArchitecturalFinding, MobileWorkspaceData, Task } from "./src/types/domain";
 
-const emptyData: MobileWorkspaceData = { projects: [], tasks: [], notifications: [] };
-type ScreenName = "dashboard" | "projects" | "tasks" | "notifications" | "intelligence" | "createTask" | "timeline" | "search";
+const emptyData: MobileWorkspaceData = { projects: [], tasks: [], notifications: [], drawings: [], reviews: [] };
+type ScreenName = "dashboard" | "projects" | "tasks" | "notifications" | "intelligence" | "architecture" | "createTask" | "timeline" | "search";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -27,6 +28,7 @@ export default function App() {
   const [screen, setScreen] = useState<ScreenName>("dashboard");
   const [data, setData] = useState<MobileWorkspaceData>(emptyData);
   const [error, setError] = useState<string | null>(null);
+  const [convertingFindingId, setConvertingFindingId] = useState("");
 
   const refresh = useCallback(async () => {
     if (!session?.user.id) return;
@@ -51,6 +53,18 @@ export default function App() {
   async function readNotification(id: string) { try { await markMobileNotificationRead(id); setData((current) => ({ ...current, notifications: current.notifications.map((item) => item.id === id ? { ...item, is_read: true } : item) })); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحديث الإشعار."); } }
   async function createTask(input: NewTaskInput) { if (!session) return; await createMobileTask(session.user.id, input); await refresh(); setScreen("tasks"); }
   async function advanceTask(task: Task) { try { await advanceMobileTask(task); await refresh(); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحديث المهمة."); } }
+  async function convertFinding(finding: ArchitecturalFinding, projectId: string) {
+    if (!session) return;
+    setConvertingFindingId(finding.id);
+    try {
+      await convertMobileFindingToTask(session.user.id, projectId, finding);
+      await refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر تحويل الملاحظة إلى مهمة.");
+    } finally {
+      setConvertingFindingId("");
+    }
+  }
 
   if (booting) return <View style={styles.center}><StatusBar style="light" /><ActivityIndicator color={tokens.colors.gold} size="large" /></View>;
   if (!isMobileConfigured || !session) return <><StatusBar style="light" /><LoginScreen /></>;
@@ -63,10 +77,11 @@ export default function App() {
     {screen === "tasks" ? <TasksScreen tasks={data.tasks} projects={data.projects} onBack={() => setScreen("dashboard")} onCreate={() => setScreen("createTask")} onAdvance={(task) => void advanceTask(task)} /> : null}
     {screen === "notifications" ? <NotificationsScreen notifications={data.notifications} onBack={() => setScreen("dashboard")} onRead={readNotification} /> : null}
     {screen === "intelligence" ? <CommandCenterScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
+    {screen === "architecture" ? <ArchitectureReviewScreen data={data} onBack={() => setScreen("dashboard")} onConvertFinding={(finding, projectId) => void convertFinding(finding, projectId)} convertingFindingId={convertingFindingId} /> : null}
     {screen === "createTask" ? <CreateTaskScreen projects={data.projects} onCancel={() => setScreen("dashboard")} onSubmit={createTask} /> : null}
     {screen === "timeline" ? <TimelineScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "search" ? <GlobalSearchScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
-    <View style={styles.footer}><Text style={styles.version}>v3.0.0-alpha.6 · Drawing Review Workflow</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
+    <View style={styles.footer}><Text style={styles.version}>v3.0.0-alpha.7 · Mobile Architectural Review</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
   </View>;
 }
 

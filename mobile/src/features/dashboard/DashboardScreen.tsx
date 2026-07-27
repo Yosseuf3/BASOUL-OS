@@ -4,7 +4,7 @@ import { buildExecutiveSnapshot } from "../../decision/executive";
 import { tokens } from "../../theme/tokens";
 import type { MobileWorkspaceData } from "../../types/domain";
 
-type Destination = "projects" | "tasks" | "notifications" | "intelligence" | "createTask" | "timeline" | "search";
+type Destination = "projects" | "tasks" | "notifications" | "intelligence" | "architecture" | "createTask" | "timeline" | "search";
 
 export function DashboardScreen({ data, onNavigate, onRefresh, refreshing }: { data: MobileWorkspaceData; onNavigate: (screen: Destination) => void; onRefresh: () => void; refreshing: boolean }) {
   const snapshot = buildExecutiveSnapshot(data);
@@ -31,7 +31,8 @@ export function DashboardScreen({ data, onNavigate, onRefresh, refreshing }: { d
 
     <TouchableOpacity style={styles.commandCenter} onPress={() => onNavigate("intelligence")}><Text style={styles.commandKicker}>EXECUTIVE KERNEL</Text><Text style={styles.commandTitle}>فتح مركز القيادة الذكي</Text><Text style={styles.actionMeta}>قرارات مرتبة، صحة مساحة العمل، ومخاطر متوقعة.</Text></TouchableOpacity>
 
-    <Text style={styles.sectionTitle}>وصول سريع</Text><View style={styles.quickGrid}><Quick title="المشاريع" meta={`${data.projects.length} مشروع`} onPress={() => onNavigate("projects")} /><Quick title="المهام" meta={`${snapshot.openTasks} مفتوحة`} onPress={() => onNavigate("tasks")} /></View>
+    <Text style={styles.sectionTitle}>وصول سريع</Text><View style={styles.quickGrid}><Quick title="المشاريع" meta={`${data.projects.length} مشروع`} onPress={() => onNavigate("projects")} /><Quick title="الذكاء المعماري" meta={`${data.reviews.length} مراجعات`} onPress={() => onNavigate("architecture")} /></View>
+    <TouchableOpacity style={styles.action} onPress={() => onNavigate("architecture")}><Text style={styles.actionTitle}>المخططات والمراجعات</Text><Text style={styles.actionMeta}>{data.drawings.length} مخططات محفوظة · {data.reviews.length} جلسات قابلة للتنفيذ</Text></TouchableOpacity>
     <TouchableOpacity style={styles.action} onPress={() => onNavigate("notifications")}><Text style={styles.actionTitle}>الإشعارات</Text><Text style={styles.actionMeta}>{snapshot.unreadAlerts ? `${snapshot.unreadAlerts} غير مقروءة` : "كل الإشعارات تمت مراجعتها"}</Text></TouchableOpacity>
   </Screen>;
 }

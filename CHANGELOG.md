@@ -1,3 +1,11 @@
+# 3.0.0-alpha.7 — Mobile Architectural Review
+
+- Added architectural drawings and review sessions to the Expo workspace payload.
+- Added a native mobile architectural review screen.
+- Added mobile conversion of explainable findings into project tasks.
+- Added review and drawing shortcuts to the mobile executive dashboard.
+- Advanced iOS build number and Android version code to 8.
+
 # 3.0.0-alpha.6 — Drawing Review Workflow
 
 - Added persistent architectural review sessions and explainable findings.
