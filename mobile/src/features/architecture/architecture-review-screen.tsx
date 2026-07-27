@@ -1,4 +1,6 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import * as DocumentPicker from "expo-document-picker";
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Screen } from "../../components/Screen";
 import { tokens } from "../../theme/tokens";
 import type { ArchitecturalFinding, MobileWorkspaceData } from "../../types/domain";
@@ -8,12 +10,20 @@ export function ArchitectureReviewScreen({
   onBack,
   onConvertFinding,
   convertingFindingId,
+  onUploadDrawing,
+  uploadingDrawing,
 }: {
   data: MobileWorkspaceData;
   onBack: () => void;
   onConvertFinding: (finding: ArchitecturalFinding, projectId: string) => void;
   convertingFindingId: string;
+  onUploadDrawing: (input: { projectId: string; revision: string; uri: string; name: string; mimeType: string; size: number }) => Promise<void>;
+  uploadingDrawing: boolean;
 }) {
+  const [projectId, setProjectId] = useState(data.projects[0]?.id ?? "");
+  const [revision, setRevision] = useState("A");
+  const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [message, setMessage] = useState("");
   const projectNames = new Map(data.projects.map((project) => [project.id, project.name]));
   const drawingNames = new Map(data.drawings.map((drawing) => [drawing.id, `${drawing.name} · ${drawing.revision}`]));
   const openFindings = data.reviews.flatMap((review) =>
@@ -21,6 +31,37 @@ export function ArchitectureReviewScreen({
       .filter((finding) => finding.status !== "converted_to_task")
       .map((finding) => ({ finding, projectId: review.project_id })),
   );
+
+  async function chooseDrawing() {
+    setMessage("");
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ["application/pdf", "image/png", "image/jpeg", "image/webp"],
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+    if (!result.canceled) setSelectedFile(result.assets[0]);
+  }
+
+  async function uploadDrawing() {
+    if (!projectId || !selectedFile) {
+      setMessage("اختر مشروعًا وملف مخطط أولًا.");
+      return;
+    }
+    try {
+      await onUploadDrawing({
+        projectId,
+        revision,
+        uri: selectedFile.uri,
+        name: selectedFile.name,
+        mimeType: selectedFile.mimeType || "application/octet-stream",
+        size: selectedFile.size || 0,
+      });
+      setSelectedFile(null);
+      setMessage("تم رفع المخطط وفتح جلسة مراجعة بنجاح.");
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : "تعذر رفع المخطط.");
+    }
+  }
 
   return (
     <Screen>
@@ -33,6 +74,45 @@ export function ArchitectureReviewScreen({
         <Metric value={String(data.drawings.length)} label="مخططات" />
         <Metric value={String(data.reviews.length)} label="جلسات مراجعة" />
         <Metric value={String(openFindings.length)} label="ملاحظات مفتوحة" />
+      </View>
+
+      <View style={styles.uploadCard}>
+        <Text selectable style={styles.sectionTitleInline}>رفع مخطط من الهاتف</Text>
+        <Text selectable style={styles.uploadHint}>PDF أو PNG أو JPG أو WebP، بحد أقصى 50 MB.</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectChoices}>
+          {data.projects.map((project) => (
+            <TouchableOpacity
+              key={project.id}
+              onPress={() => setProjectId(project.id)}
+              style={[styles.projectChoice, projectId === project.id && styles.projectChoiceActive]}
+            >
+              <Text selectable style={[styles.projectChoiceText, projectId === project.id && styles.projectChoiceTextActive]}>{project.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <View style={styles.uploadRow}>
+          <TextInput
+            value={revision}
+            onChangeText={setRevision}
+            maxLength={12}
+            placeholder="الإصدار A"
+            placeholderTextColor={tokens.colors.muted}
+            style={styles.revisionInput}
+            textAlign="right"
+          />
+          <TouchableOpacity style={styles.fileButton} onPress={() => void chooseDrawing()}>
+            <Text style={styles.fileButtonText}>{selectedFile ? "تغيير الملف" : "اختيار ملف"}</Text>
+          </TouchableOpacity>
+        </View>
+        {selectedFile ? <Text selectable style={styles.fileName}>{selectedFile.name}</Text> : null}
+        <TouchableOpacity
+          style={[styles.uploadButton, (!projectId || !selectedFile || uploadingDrawing) && styles.uploadButtonDisabled]}
+          disabled={!projectId || !selectedFile || uploadingDrawing}
+          onPress={() => void uploadDrawing()}
+        >
+          <Text style={styles.uploadButtonText}>{uploadingDrawing ? "جارٍ الرفع وفتح المراجعة…" : "رفع وبدء المراجعة"}</Text>
+        </TouchableOpacity>
+        {message ? <Text selectable style={styles.uploadMessage}>{message}</Text> : null}
       </View>
 
       <Text style={styles.sectionTitle}>آخر جلسات المراجعة</Text>
@@ -85,6 +165,23 @@ const styles = StyleSheet.create({
   metric: { flex: 1, backgroundColor: tokens.colors.surface, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.md, padding: 12 },
   metricValue: { color: tokens.colors.gold, fontSize: 21, fontWeight: "900", textAlign: "right", fontVariant: ["tabular-nums"] },
   metricLabel: { color: tokens.colors.muted, fontSize: 10, textAlign: "right", marginTop: 3 },
+  uploadCard: { backgroundColor: tokens.colors.surface, borderWidth: 1, borderColor: tokens.colors.gold, borderRadius: tokens.radius.lg, padding: tokens.space.md, marginTop: tokens.space.lg, gap: 10 },
+  sectionTitleInline: { color: tokens.colors.text, fontSize: 19, fontWeight: "900", textAlign: "right" },
+  uploadHint: { color: tokens.colors.muted, fontSize: 12, textAlign: "right" },
+  projectChoices: { flexDirection: "row-reverse", gap: 8 },
+  projectChoice: { borderWidth: 1, borderColor: tokens.colors.border, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
+  projectChoiceActive: { borderColor: tokens.colors.gold, backgroundColor: "#2d2717" },
+  projectChoiceText: { color: tokens.colors.muted, fontSize: 11, fontWeight: "700" },
+  projectChoiceTextActive: { color: tokens.colors.gold },
+  uploadRow: { flexDirection: "row", gap: 8 },
+  revisionInput: { width: 100, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.md, color: tokens.colors.text, paddingHorizontal: 12, paddingVertical: 10 },
+  fileButton: { flex: 1, borderWidth: 1, borderColor: tokens.colors.gold, borderRadius: tokens.radius.md, alignItems: "center", justifyContent: "center", paddingVertical: 11 },
+  fileButtonText: { color: tokens.colors.gold, fontWeight: "900" },
+  fileName: { color: tokens.colors.text, fontSize: 12, textAlign: "right" },
+  uploadButton: { backgroundColor: tokens.colors.gold, borderRadius: tokens.radius.md, alignItems: "center", paddingVertical: 13 },
+  uploadButtonDisabled: { opacity: .45 },
+  uploadButtonText: { color: tokens.colors.background, fontWeight: "900" },
+  uploadMessage: { color: tokens.colors.success, lineHeight: 20, textAlign: "right" },
   sectionTitle: { color: tokens.colors.text, fontSize: 20, fontWeight: "900", textAlign: "right", marginTop: tokens.space.xl, marginBottom: tokens.space.md },
   empty: { backgroundColor: tokens.colors.surface, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.lg, padding: tokens.space.lg },
   emptyTitle: { color: tokens.colors.text, fontSize: 17, fontWeight: "900", textAlign: "right" },

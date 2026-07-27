@@ -1,0 +1,27 @@
+# Dependencies and caches
+node_modules/
+.npm-cache/
+mobile/node_modules/
+mobile/.npm-cache/
+.next/
+.expo/
+mobile/.expo/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+credentials.json
+
+# Build output and local tooling
+dist/
+web-build/
+coverage/
+*.log
+.vscode/
+.idea/
+.DS_Store
