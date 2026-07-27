@@ -1,5 +1,7 @@
 import type { DecisionInput, DecisionSignal, ExecutiveDecision, HealthFactor } from "./types";
 export * from "./types";
+export * from "./executive-insight";
+export * from "./executive-timeline";
 
 const day=86400000;
 const priorityWeight={Low:5,Medium:15,High:30,Critical:45} as const;
