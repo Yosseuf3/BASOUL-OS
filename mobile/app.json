@@ -2,25 +2,25 @@
   "expo": {
     "name": "YOSSEUF OS",
     "slug": "yosseuf-os",
-    "version": "1.5.1",
+    "version": "1.6.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "yosseufos",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yosseufradwan.os",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.yosseufradwan.os",
-      "versionCode": 1
+      "versionCode": 2
     },
     "extra": {
-      "product": "YOSSEUF OS Mobile Live Foundation",
-      "release": "v1.5.1 Cross Platform Stabilization",
+      "product": "YOSSEUF OS Executive Workspace",
+      "release": "v1.6.0 Executive Workspace",
       "eas": {
         "projectId": "6f770730-8c8e-49b0-81b9-f9773faf567a"
       }

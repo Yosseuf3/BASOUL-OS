@@ -1,0 +1,23 @@
+import { useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Screen } from "../../components/Screen";
+import { tokens } from "../../theme/tokens";
+import type { PriorityLevel, Project } from "../../types/domain";
+
+export type NewTaskInput = { title: string; project_id: string; priority: PriorityLevel; due_date: string | null };
+
+export function CreateTaskScreen({ projects, onCancel, onSubmit }: { projects: Project[]; onCancel: () => void; onSubmit: (input: NewTaskInput) => Promise<void> }) {
+  const [title, setTitle] = useState(""); const [projectId, setProjectId] = useState(projects[0]?.id || ""); const [priority, setPriority] = useState<PriorityLevel>("High"); const [dueDate, setDueDate] = useState(""); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null);
+  async function save() { if (!title.trim() || !projectId) { setError("أدخل عنوان المهمة واختر المشروع."); return; } setSaving(true); setError(null); try { await onSubmit({ title: title.trim(), project_id: projectId, priority, due_date: dueDate.trim() || null }); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر إنشاء المهمة."); } finally { setSaving(false); } }
+  return <Screen>
+    <View style={styles.header}><TouchableOpacity onPress={onCancel} style={styles.outline}><Text style={styles.outlineText}>إلغاء</Text></TouchableOpacity><Text style={styles.title}>مهمة جديدة</Text></View>
+    <View style={styles.card}>
+      <Text style={styles.label}>عنوان المهمة</Text><TextInput value={title} onChangeText={setTitle} style={styles.input} placeholder="مثال: مراجعة مخططات الواجهة" placeholderTextColor={tokens.colors.muted} textAlign="right" />
+      <Text style={styles.label}>المشروع</Text><View style={styles.options}>{projects.map((project) => <TouchableOpacity key={project.id} onPress={() => setProjectId(project.id)} style={[styles.option, projectId === project.id && styles.selected]}><Text style={[styles.optionText, projectId === project.id && styles.selectedText]} numberOfLines={1}>{project.name}</Text></TouchableOpacity>)}</View>
+      <Text style={styles.label}>الأولوية</Text><View style={styles.options}>{(["Medium", "High", "Critical"] as PriorityLevel[]).map((item) => <TouchableOpacity key={item} onPress={() => setPriority(item)} style={[styles.option, priority === item && styles.selected]}><Text style={[styles.optionText, priority === item && styles.selectedText]}>{item === "Medium" ? "متوسطة" : item === "High" ? "عالية" : "حرجة"}</Text></TouchableOpacity>)}</View>
+      <Text style={styles.label}>تاريخ التسليم (YYYY-MM-DD)</Text><TextInput value={dueDate} onChangeText={setDueDate} style={styles.input} placeholder="2026-08-15" placeholderTextColor={tokens.colors.muted} textAlign="right" />
+      {error ? <Text style={styles.error}>{error}</Text> : null}<TouchableOpacity onPress={save} disabled={saving} style={[styles.save, saving && { opacity: .7 }]}>{saving ? <ActivityIndicator color={tokens.colors.background} /> : <Text style={styles.saveText}>إنشاء المهمة</Text>}</TouchableOpacity>
+    </View>
+  </Screen>;
+}
+const styles = StyleSheet.create({ header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: tokens.space.md }, title: { color: tokens.colors.text, fontSize: 30, fontWeight: "900" }, outline: { borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.md, paddingHorizontal: 14, paddingVertical: 9 }, outlineText: { color: tokens.colors.gold, fontWeight: "800" }, card: { backgroundColor: tokens.colors.surface, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.lg, padding: tokens.space.lg, marginTop: tokens.space.xl }, label: { color: tokens.colors.muted, textAlign: "right", fontWeight: "800", marginBottom: 8, marginTop: 10 }, input: { color: tokens.colors.text, backgroundColor: tokens.colors.background, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.md, paddingHorizontal: 14, paddingVertical: 13 }, options: { gap: 8, marginBottom: 6 }, option: { borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.md, padding: 11 }, selected: { backgroundColor: tokens.colors.gold, borderColor: tokens.colors.gold }, optionText: { color: tokens.colors.text, textAlign: "right", fontWeight: "700" }, selectedText: { color: tokens.colors.background }, error: { color: "#ff9a9a", textAlign: "right", marginTop: 14 }, save: { backgroundColor: tokens.colors.gold, borderRadius: tokens.radius.md, padding: 15, alignItems: "center", marginTop: 20 }, saveText: { color: tokens.colors.background, fontWeight: "900", fontSize: 16 } });
