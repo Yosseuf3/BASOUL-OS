@@ -261,3 +261,9 @@
 - Added Architectural Intelligence contracts and review report generator.
 - Added persistent drawing/review/finding schema with RLS.
 - Added approved architecture, principles, and roadmap documents.
+
+## [2.2.1] - Release Consistency Hotfix
+- Centralized product version and codename in `lib/config/app-info.ts`.
+- Fixed stale v1.5.0 sidebar release label.
+- Synchronized web, mobile, Expo, Android, and iOS release metadata.
+- Added automated release consistency validation.

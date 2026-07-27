@@ -22,6 +22,7 @@ import { WorkspaceSwitcher } from "@/components/shell/workspace-switcher";
 import { QuickCreate } from "@/components/commands/quick-create";
 import type { QuickCreateTarget, WorkspaceId } from "@/packages/types/src";
 import { DEFAULT_WORKSPACE } from "@/packages/core/src";
+import { APP_INFO } from "@/lib/config/app-info";
 
 type View = "dashboard" | "projects" | "tasks" | "clients" | "content" | "knowledge" | "finance" | "activity" | "notifications";
 type ProjectFilter = "All" | ProjectStatus;
@@ -330,7 +331,7 @@ export default function Home() {
     {sidebarOpen && <button className="sidebar-overlay" onClick={() => setSidebarOpen(false)} aria-label="إغلاق القائمة" />}
     <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
       <button className="sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="إغلاق القائمة"><X size={19} /></button>
-      <div className="logo"><div className="logo-mark"><Brain size={25} /></div><div><strong>YOSSEUF OS</strong><span>v1.5.0 · Mobile Live Foundation</span></div></div>
+      <div className="logo"><div className="logo-mark"><Brain size={25} /></div><div><strong>{APP_INFO.name}</strong><span>{APP_INFO.fullLabel}</span></div></div>
       <WorkspaceSwitcher value={workspace} onChange={(next) => { setWorkspace(next); if (next === "executive") navigate("dashboard"); else if (next === "operations") navigate("projects"); else if (next === "knowledge") navigate("knowledge"); }} />
       <nav>
         <button className={view === "dashboard" ? "active" : ""} onClick={() => navigate("dashboard")}><LayoutDashboard size={18}/> لوحة القيادة</button>

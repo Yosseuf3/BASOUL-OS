@@ -1,6 +1,6 @@
 {
   "name": "yosseuf-os-cloud",
-  "version": "2.2.0",
+  "version": "3.0.0-alpha.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "quality": "npm run lint && npm run typecheck && npm run build",
+    "quality": "npm run check:release && npm run lint && npm run typecheck && npm run build",
     "mobile:install": "npm --prefix mobile install",
     "mobile:start": "npm --prefix mobile run start",
     "mobile:android": "npm --prefix mobile run android",
@@ -16,7 +16,8 @@
     "mobile:typecheck": "npm --prefix mobile run typecheck",
     "mobile:doctor": "npm --prefix mobile run doctor",
     "quality:mobile": "npm run mobile:typecheck && npm run mobile:doctor",
-    "quality:all": "npm run quality && npm run quality:mobile"
+    "quality:all": "npm run quality && npm run quality:mobile",
+    "check:release": "node scripts/check-release-consistency.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.49.4",
