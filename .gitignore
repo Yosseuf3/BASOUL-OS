@@ -19,3 +19,13 @@ pnpm-debug.log*
 .DS_Store
 *.pem
 .vercel
+
+# Expo local state
+.expo/
+mobile/.expo/
+mobile/node_modules/
+
+# Expo local state
+.expo/
+mobile/.expo/
+mobile/node_modules/
