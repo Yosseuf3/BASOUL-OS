@@ -1,3 +1,12 @@
+# 3.0.0-alpha.8 — Mobile Drawing Intake
+
+- Added native PDF and image selection with Expo Document Picker.
+- Added direct upload to the private architectural drawings bucket.
+- Added project and revision selection before upload.
+- Added automatic creation of an explainable review session after upload.
+- Added rollback cleanup when storage or database persistence fails.
+- Advanced iOS build number and Android version code to 9.
+
 # 3.0.0-alpha.7 — Mobile Architectural Review
 
 - Added architectural drawings and review sessions to the Expo workspace payload.

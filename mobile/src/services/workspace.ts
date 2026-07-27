@@ -1,5 +1,18 @@
+import { fetch } from "expo/fetch";
 import { supabase } from "../config/supabase";
 import type { ArchitecturalDrawing, ArchitecturalFinding, ArchitecturalReview, MobileWorkspaceData, Notification, Project, Task } from "../types/domain";
+
+const ARCHITECTURAL_DRAWINGS_BUCKET = "architectural-drawings";
+
+export type MobileDrawingFile = {
+  uri: string;
+  name: string;
+  mimeType: string;
+  size: number;
+};
+
+const safeFileName = (name: string) =>
+  name.normalize("NFKD").replace(/[^\w.\-]+/g, "-").replace(/-+/g, "-").toLowerCase();
 
 export async function loadMobileWorkspace(userId: string): Promise<MobileWorkspaceData> {
   if (!supabase) throw new Error("Supabase is not configured.");
@@ -71,6 +84,98 @@ export async function convertMobileFindingToTask(
     .update({ status: "converted_to_task", task_id: task.id })
     .eq("id", finding.id);
   if (findingError) throw findingError;
+}
+
+export async function uploadMobileDrawing(
+  userId: string,
+  projectId: string,
+  revision: string,
+  file: MobileDrawingFile,
+): Promise<void> {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const supportedTypes = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);
+  if (!supportedTypes.has(file.mimeType)) throw new Error("صيغة الملف غير مدعومة.");
+  if (file.size > 50 * 1024 * 1024) throw new Error("حجم الملف يتجاوز الحد الأقصى 50 MB.");
+  const response = await fetch(file.uri);
+  if (!response.ok) throw new Error("تعذر قراءة الملف المحدد من الجهاز.");
+  const body = await response.arrayBuffer();
+  const uploadId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const path = `${userId}/${projectId}/${uploadId}-${safeFileName(file.name)}`;
+  const format = file.mimeType === "application/pdf" ? "pdf" : "image";
+
+  const { error: uploadError } = await supabase.storage
+    .from(ARCHITECTURAL_DRAWINGS_BUCKET)
+    .upload(path, body, {
+      cacheControl: "3600",
+      contentType: file.mimeType,
+      upsert: false,
+    });
+  if (uploadError) throw uploadError;
+
+  const { data: drawing, error: drawingError } = await supabase
+    .from("architectural_drawings")
+    .insert({
+      user_id: userId,
+      project_id: projectId,
+      name: file.name,
+      format,
+      revision: revision.trim().toUpperCase() || "A",
+      storage_path: path,
+      file_size: file.size || body.byteLength,
+      mime_type: file.mimeType,
+      page_count: null,
+    })
+    .select("id")
+    .single();
+  if (drawingError) {
+    await supabase.storage.from(ARCHITECTURAL_DRAWINGS_BUCKET).remove([path]);
+    throw drawingError;
+  }
+
+  const { data: review, error: reviewError } = await supabase
+    .from("architectural_reviews")
+    .insert({
+      user_id: userId,
+      drawing_id: drawing.id,
+      project_id: projectId,
+      status: "ready",
+      plan_health: format === "pdf" ? 88 : 78,
+    })
+    .select("id")
+    .single();
+  if (reviewError) {
+    await supabase.from("architectural_drawings").delete().eq("id", drawing.id);
+    await supabase.storage.from(ARCHITECTURAL_DRAWINGS_BUCKET).remove([path]);
+    throw reviewError;
+  }
+
+  const { error: findingError } = await supabase
+    .from("architectural_review_findings")
+    .insert({
+      user_id: userId,
+      review_id: review.id,
+      drawing_id: drawing.id,
+      code: "READY_FOR_REVIEW",
+      title: "المخطط جاهز لمسار المراجعة",
+      description: "تم استلام الملف من تطبيق الهاتف وربطه بالمشروع بنجاح.",
+      recommendation: "راجع بيانات المشروع ومقياس الرسم قبل بدء التحليل الهندسي المتقدم.",
+      category: "constructability",
+      severity: "info",
+      status: "open",
+      confidence_score: format === "pdf" ? 92 : 82,
+    });
+  if (findingError) {
+    await supabase.from("architectural_reviews").delete().eq("id", review.id);
+    await supabase.from("architectural_drawings").delete().eq("id", drawing.id);
+    await supabase.storage.from(ARCHITECTURAL_DRAWINGS_BUCKET).remove([path]);
+    throw findingError;
+  }
+
+  const { error: statusError } = await supabase
+    .from("architectural_drawings")
+    .update({ status: "reviewed" })
+    .eq("id", drawing.id);
+  if (statusError) throw statusError;
 }
 
 export async function markMobileNotificationRead(notificationId: string): Promise<void> {

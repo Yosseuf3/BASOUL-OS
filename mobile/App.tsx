@@ -14,7 +14,7 @@ import { TimelineScreen } from "./src/features/timeline/TimelineScreen";
 import { GlobalSearchScreen } from "./src/features/search/GlobalSearchScreen";
 import { ArchitectureReviewScreen } from "./src/features/architecture/architecture-review-screen";
 import { isMobileConfigured, supabase } from "./src/config/supabase";
-import { advanceMobileTask, convertMobileFindingToTask, createMobileTask, loadMobileWorkspace, markMobileNotificationRead } from "./src/services/workspace";
+import { advanceMobileTask, convertMobileFindingToTask, createMobileTask, loadMobileWorkspace, markMobileNotificationRead, uploadMobileDrawing } from "./src/services/workspace";
 import { tokens } from "./src/theme/tokens";
 import type { ArchitecturalFinding, MobileWorkspaceData, Task } from "./src/types/domain";
 
@@ -29,6 +29,7 @@ export default function App() {
   const [data, setData] = useState<MobileWorkspaceData>(emptyData);
   const [error, setError] = useState<string | null>(null);
   const [convertingFindingId, setConvertingFindingId] = useState("");
+  const [uploadingDrawing, setUploadingDrawing] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!session?.user.id) return;
@@ -65,6 +66,16 @@ export default function App() {
       setConvertingFindingId("");
     }
   }
+  async function uploadDrawing(input: { projectId: string; revision: string; uri: string; name: string; mimeType: string; size: number }) {
+    if (!session) return;
+    setUploadingDrawing(true);
+    try {
+      await uploadMobileDrawing(session.user.id, input.projectId, input.revision, input);
+      await refresh();
+    } finally {
+      setUploadingDrawing(false);
+    }
+  }
 
   if (booting) return <View style={styles.center}><StatusBar style="light" /><ActivityIndicator color={tokens.colors.gold} size="large" /></View>;
   if (!isMobileConfigured || !session) return <><StatusBar style="light" /><LoginScreen /></>;
@@ -77,11 +88,11 @@ export default function App() {
     {screen === "tasks" ? <TasksScreen tasks={data.tasks} projects={data.projects} onBack={() => setScreen("dashboard")} onCreate={() => setScreen("createTask")} onAdvance={(task) => void advanceTask(task)} /> : null}
     {screen === "notifications" ? <NotificationsScreen notifications={data.notifications} onBack={() => setScreen("dashboard")} onRead={readNotification} /> : null}
     {screen === "intelligence" ? <CommandCenterScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
-    {screen === "architecture" ? <ArchitectureReviewScreen data={data} onBack={() => setScreen("dashboard")} onConvertFinding={(finding, projectId) => void convertFinding(finding, projectId)} convertingFindingId={convertingFindingId} /> : null}
+    {screen === "architecture" ? <ArchitectureReviewScreen data={data} onBack={() => setScreen("dashboard")} onConvertFinding={(finding, projectId) => void convertFinding(finding, projectId)} convertingFindingId={convertingFindingId} onUploadDrawing={uploadDrawing} uploadingDrawing={uploadingDrawing} /> : null}
     {screen === "createTask" ? <CreateTaskScreen projects={data.projects} onCancel={() => setScreen("dashboard")} onSubmit={createTask} /> : null}
     {screen === "timeline" ? <TimelineScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "search" ? <GlobalSearchScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
-    <View style={styles.footer}><Text style={styles.version}>v3.0.0-alpha.7 · Mobile Architectural Review</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
+    <View style={styles.footer}><Text style={styles.version}>v3.0.0-alpha.8 · Mobile Drawing Intake</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
   </View>;
 }
 
