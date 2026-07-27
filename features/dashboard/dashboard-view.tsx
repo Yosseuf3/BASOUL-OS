@@ -1,7 +1,7 @@
 "use client";
 import { Activity, AlertTriangle, ArrowDownLeft, ArrowUpRight, BookOpen, CalendarDays, CheckCircle2, ChevronLeft, ClipboardList, Clock3, Film, FolderKanban, Plus, Sparkles, Users, Wallet } from "lucide-react";
 import type { ActivityEvent, Client, FinanceTransaction, Notification, Project, Task } from "@/lib/types";
-import { getExecutiveDecision, type DecisionSignal, type DecisionTarget } from "@yosseuf/decision-engine";
+import { buildExecutiveInsight, buildExecutiveTimeline, getExecutiveDecision, type DecisionSignal, type DecisionTarget } from "@yosseuf/decision-engine";
 
 type QuickAction = "project"|"task"|"client"|"finance"|"knowledge"|"content";
 type Props={projects:Project[];tasks:Task[];clients:Client[];financeItems:FinanceTransaction[];activityEvents:ActivityEvent[];notifications:Notification[];userName?:string;onNavigate:(target:DecisionTarget)=>void;onQuickAction:(action:QuickAction)=>void};
@@ -9,7 +9,10 @@ const money=new Intl.NumberFormat("en-US",{maximumFractionDigits:2});
 
 export function DashboardView(props:Props){
  const {projects,tasks,clients,financeItems,activityEvents,notifications,userName="Yosseuf",onNavigate,onQuickAction}=props;
- const state=getExecutiveDecision({projects,tasks,clients,financeItems,activityEvents,notifications},userName); const s=state.stats;
+ const decisionInput={projects,tasks,clients,financeItems,activityEvents,notifications};
+ const state=getExecutiveDecision(decisionInput,userName); const s=state.stats;
+ const insight=buildExecutiveInsight(decisionInput,state);
+ const timeline=buildExecutiveTimeline(decisionInput);
  const health=state.health;
  const recent=activityEvents.slice(0,5);
  const focus=state.priorities.slice(0,3);
@@ -23,6 +26,17 @@ export function DashboardView(props:Props){
    <div className="executive-greeting"><span className="section-kicker"><Sparkles size={14}/> الملخص التنفيذي</span><h2>{state.brief.headline}</h2><p>{state.brief.message}</p><strong>{state.brief.priorityLine}</strong></div>
    <div className="hero-focus"><span className="hero-label">تركيز اليوم</span>{focus.length?<ol>{focus.map(item=><li key={item.id}><button onClick={()=>onNavigate(item.action.target)}><span>{item.title}</span><ChevronLeft size={14}/></button></li>)}</ol>:<div className="hero-empty"><CheckCircle2 size={17}/><span>لا توجد أولويات حرجة</span><button onClick={()=>onQuickAction("task")}>إضافة مهمة</button></div>}</div>
    <div className="hero-meta"><span><CalendarDays size={17}/>{new Intl.DateTimeFormat("ar-SA",{weekday:"long",day:"numeric",month:"long"}).format(new Date())}</span><button className="hero-health-link" onClick={()=>onNavigate("dashboard")}><small>صحة مساحة العمل</small><b>{health.score}%</b><em>{health.label}</em></button></div>
+ </section>
+
+  <section className={`panel executive-insight executive-insight-${insight.status}`}>
+   <div className="executive-insight-copy"><span className="section-kicker"><Sparkles size={14}/> الرؤية التنفيذية</span><h2>{insight.title}</h2><p>{insight.summary}</p><div className="executive-evidence">{insight.evidence.map(item=><span key={item}>{item}</span>)}</div></div>
+   <div className="executive-confidence"><small>درجة الثقة</small><strong>{insight.confidence}%</strong><span>مبنية على البيانات الحية</span></div>
+   <button onClick={()=>onNavigate(insight.nextAction.target)}>{insight.nextActionLabel}<ChevronLeft size={16}/></button>
+  </section>
+
+  <section className="panel executive-timeline">
+   <PanelHead kicker="الخط الزمني التنفيذي" title="ما حدث وما يستحق المتابعة" action="كل النشاط" onClick={()=>onNavigate("activity")}/>
+   <div className="activity-v2-list">{timeline.length?timeline.map(item=><button key={item.id} onClick={()=>onNavigate(item.target)}><span className={`activity-dot timeline-${item.kind}`}><Activity size={14}/></span><span><b>{item.title}</b><small>{item.detail} · {relativeTime(item.at)}</small></span><ChevronLeft size={15}/></button>):<SmartEmpty icon={<Activity/>} title="لا يوجد نشاط بعد" text="يعتمد الخط الزمني فقط على بيانات مساحة العمل الحية، وسيظهر عند بدء العمل." actions={[{label:"إنشاء مشروع",onClick:()=>onQuickAction("project")}]} />}</div>
   </section>
 
   <section className="dashboard-v2-grid executive-primary">
