@@ -1,3 +1,11 @@
+# 3.0.0-alpha.6 — Drawing Review Workflow
+
+- Added persistent architectural review sessions and explainable findings.
+- Added project-scoped review history with plan health and execution status.
+- Added one-click conversion of architectural findings into project tasks.
+- Added RLS-protected review and finding tables.
+- Preserved the private drawing storage and revision workflow from alpha.5.
+
 # 2.0.0 — Executive Operating System
 
 - Added the Executive Kernel orchestration layer.

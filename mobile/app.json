@@ -2,7 +2,7 @@
   "expo": {
     "name": "YOSSEUF OS",
     "slug": "yosseuf-os",
-    "version": "3.0.0-alpha.5",
+    "version": "3.0.0-alpha.6",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "yosseufos",
