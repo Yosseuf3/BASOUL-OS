@@ -2,7 +2,7 @@
   "expo": {
     "name": "YOSSEUF OS",
     "slug": "yosseuf-os",
-    "version": "3.0.0-alpha.4",
+    "version": "3.0.0-alpha.5",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "yosseufos",
@@ -20,7 +20,7 @@
     },
     "extra": {
       "product": "YOSSEUF OS Executive Operating System",
-      "release": "v3.0.0-alpha.4 Architectural Intelligence Alpha",
+      "release": "v3.0.0-alpha.5 Cloud Drawings & Revisions",
       "eas": {
         "projectId": "6f770730-8c8e-49b0-81b9-f9773faf567a"
       }
