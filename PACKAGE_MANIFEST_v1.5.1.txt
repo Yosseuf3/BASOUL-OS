@@ -1,0 +1,17 @@
+YOSSEUF OS v1.5.1 — Cross Platform Stabilization
+
+Primary additions:
+- mobile/eas.json
+- mobile/.easignore
+- docs/HEALTH_CHECK.md
+- docs/BUILD_GUIDE.md
+- docs/RELEASE_CHECKLIST_v1.5.1.md
+- docs/ROADMAP.md
+- RELEASE_NOTES_v1.5.1.md
+
+Primary updates:
+- package.json
+- mobile/package.json
+- mobile/app.json
+- mobile/App.tsx
+- .github/workflows/quality.yml

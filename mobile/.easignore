@@ -1,0 +1,24 @@
+# Dependencies and local Expo state
+node_modules/
+.expo/
+.expo-shared/
+
+# Local environment files and credentials
+.env
+.env.*
+!.env.example
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+credentials.json
+
+# Build output and logs
+dist/
+web-build/
+*.log
+
+# Editor and OS files
+.DS_Store
+.vscode/
+.idea/

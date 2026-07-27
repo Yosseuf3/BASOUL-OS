@@ -1,5 +1,57 @@
 # Changelog
 
+## v1.4.0.1 — PWA Manifest Build Hotfix
+
+- Fixed the Web App Manifest icon `purpose` value to use the valid Next.js metadata literal `maskable`.
+- Restored TypeScript compatibility during the Vercel build validation stage.
+- Updated the visible application version to v1.4.0.1.
+- No database migration is required.
+
+## [1.2.0.1] - 2026-07-26
+
+### Fixed
+- Fixed the production TypeScript build failure by moving `phaseLabels` to shared module scope so Project Workspace and Project Wizard can both access it.
+- Updated the visible product version to v1.2.0.1.
+
+# Changelog
+
+## [1.2.0] - 2026-07-26
+
+### Added
+- Project Workspace متعددة التبويبات.
+- Executive Brief بقواعد قرار تشغيلية.
+- Architecture phase tracker.
+- Project Kanban, timeline, finance summary, and activity stream.
+
+### Changed
+- Updated product version and workspace presentation to v1.2.0.
+
+
+## [1.1.1] - 2026-07-26
+### Added
+- Four-step professional project creation wizard.
+- Architectural project type and design phase fields.
+- Project number, location, description, budget, currency, color and icon.
+- Supabase migration and release test checklist.
+
+### Changed
+- Project workspace now exposes richer execution and commercial context.
+
+## [1.1.0] - 2026-07-26
+
+### Added
+- Project Workspace Foundation with live operational and financial context.
+- Project detail KPIs, task stream, client and delivery overview.
+- Direct project edit and task creation actions.
+
+## [1.0.1] - 2026-07-26
+
+### Fixed
+- Added a preflight health check for the Supabase Auth endpoint before requesting a magic link.
+- Added timeout, offline, network-blocking, configuration, and HTTP-status diagnostics.
+- Replaced generic `Failed to fetch` feedback with actionable Arabic error messages and diagnostic codes.
+- Added accessible live status messaging to the login screen.
+
 ## 1.0.0 — Stable
 
 - Published the first stable production release.
@@ -181,3 +233,12 @@
 - Upgraded the English and Arabic README files for the public GitHub launch.
 - Added the GitHub release body and official launch checklist.
 - Added pull request, bug report, and feature request templates.
+
+## [1.5.0] - 2026-07-26
+### Added
+- Supabase mobile authentication with persisted sessions.
+- Live mobile executive dashboard.
+- Live projects directory and notification center.
+- Mobile workspace service and modular screen architecture.
+### Changed
+- Product version updated to Mobile Live Foundation.

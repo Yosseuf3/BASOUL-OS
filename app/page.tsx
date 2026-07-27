@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import type { Client, ClientInput, ClientStatus, ContentItem, ContentInput, ContentPlatform, ContentStatus, ActivityEvent, Notification, FinanceTransaction, FinanceTransactionInput, KnowledgeInput, KnowledgeItem, KnowledgeType, PriorityLevel, Project, ProjectInput, ProjectStatus, Task, TaskInput, TaskStatus } from "@/lib/types";
+import type { Client, ClientInput, ClientStatus, ContentItem, ContentInput, ContentPlatform, ContentStatus, ActivityEvent, Notification, FinanceTransaction, FinanceTransactionInput, KnowledgeInput, KnowledgeItem, KnowledgeType, PriorityLevel, Project, ProjectInput, ProjectStatus, ProjectType, DesignPhase, Task, TaskInput, TaskStatus } from "@/lib/types";
 import { deleteRow, saveRow } from "@/lib/data/os-repository";
 import { loadWorkspaceData } from "@/lib/data/workspace-service";
 import { FinanceModal, FinanceView } from "@/features/finance/finance-view";
@@ -52,6 +52,7 @@ const contentFilters: ContentFilter[] = ["All", "Idea", "Draft", "Recording", "E
 const platformFilters: PlatformFilter[] = ["All", "TikTok", "Instagram", "YouTube", "Facebook", "LinkedIn", "X"];
 const knowledgeTypeLabels: Record<KnowledgeType, string> = { Note: "ملاحظة", Idea: "فكرة", Reference: "مرجع", Template: "قالب" };
 const knowledgeFilters: KnowledgeFilter[] = ["All", "Note", "Idea", "Reference", "Template"];
+const phaseLabels: Record<DesignPhase, string> = { Concept: "التصميم المفاهيمي", Schematic: "التصميم المبدئي", "Design Development": "تطوير التصميم", "Construction Documents": "مستندات التنفيذ", "Site Supervision": "الإشراف الموقعي", Handover: "التسليم" };
 
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null);
@@ -82,6 +83,7 @@ export default function Home() {
   const [knowledgeFilter, setKnowledgeFilter] = useState<KnowledgeFilter>("All");
   const [favoriteKnowledgeOnly, setFavoriteKnowledgeOnly] = useState(false);
   const [projectModal, setProjectModal] = useState<ProjectModalState>(null);
+  const [projectDetail, setProjectDetail] = useState<Project | null>(null);
   const [taskModal, setTaskModal] = useState<TaskModalState>(null);
   const [clientModal, setClientModal] = useState<ClientModalState>(null);
   const [contentModal, setContentModal] = useState<ContentModalState>(null);
@@ -328,7 +330,7 @@ export default function Home() {
     {sidebarOpen && <button className="sidebar-overlay" onClick={() => setSidebarOpen(false)} aria-label="إغلاق القائمة" />}
     <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
       <button className="sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="إغلاق القائمة"><X size={19} /></button>
-      <div className="logo"><div className="logo-mark"><Brain size={25} /></div><div><strong>YOSSEUF OS</strong><span>v1.0.0 · Stable</span></div></div>
+      <div className="logo"><div className="logo-mark"><Brain size={25} /></div><div><strong>YOSSEUF OS</strong><span>v1.5.0 · Mobile Live Foundation</span></div></div>
       <WorkspaceSwitcher value={workspace} onChange={(next) => { setWorkspace(next); if (next === "executive") navigate("dashboard"); else if (next === "operations") navigate("projects"); else if (next === "knowledge") navigate("knowledge"); }} />
       <nav>
         <button className={view === "dashboard" ? "active" : ""} onClick={() => navigate("dashboard")}><LayoutDashboard size={18}/> لوحة القيادة</button>
@@ -351,7 +353,7 @@ export default function Home() {
       {view === "dashboard" && loading && !lastSyncedAt ? <DashboardSkeleton /> : view === "dashboard" && <DashboardView projects={projects} tasks={tasks} clients={clients} financeItems={financeItems} activityEvents={activityEvents} notifications={notifications} userName="Yosseuf" onNavigate={navigate} onQuickAction={(action) => action === "project" ? setProjectModal({ mode: "create", project: null }) : action === "task" ? requestCreateTask() : action === "client" ? setClientModal({ mode: "create", client: null }) : action === "finance" ? setFinanceModal("create") : action === "knowledge" ? setKnowledgeModal({ mode: "create", item: null }) : setContentModal({ mode: "create", item: null })} />}
       {view === "activity" && <ActivityView events={activityEvents} onNavigate={navigate} onClear={() => void clearActivity()} />}
       {view === "notifications" && <NotificationsView notifications={notifications} onNavigate={navigate} onToggleRead={(n)=>void toggleNotificationRead(n)} onMarkAll={()=>void markAllRead()} onDelete={(n)=>void removeNotification(n)} />}
-      {view === "projects" && <ProjectsView projects={filteredProjects} totalCount={projects.length} query={projectQuery} filter={projectFilter} onQuery={setProjectQuery} onFilter={setProjectFilter} onCreate={() => setProjectModal({ mode: "create", project: null })} onEdit={(project) => setProjectModal({ mode: "edit", project })} onDelete={setDeleteProjectTarget} />}
+      {view === "projects" && <ProjectsView projects={filteredProjects} totalCount={projects.length} query={projectQuery} filter={projectFilter} onQuery={setProjectQuery} onFilter={setProjectFilter} onCreate={() => setProjectModal({ mode: "create", project: null })} onOpen={setProjectDetail} onEdit={(project) => setProjectModal({ mode: "edit", project })} onDelete={setDeleteProjectTarget} />}
       {view === "tasks" && <TasksView tasks={filteredTasks} allTasks={tasks} projects={projects} query={taskQuery} filter={taskFilter} projectFilter={taskProjectFilter} onQuery={setTaskQuery} onFilter={setTaskFilter} onProjectFilter={setTaskProjectFilter} onCreate={requestCreateTask} onEdit={(task) => setTaskModal({ mode: "edit", task })} onDelete={setDeleteTaskTarget} />}
       {view === "clients" && <ClientsView clients={filteredClients} allClients={clients} projects={projects} query={clientQuery} filter={clientFilter} onQuery={setClientQuery} onFilter={setClientFilter} onCreate={() => setClientModal({ mode: "create", client: null })} onEdit={(client) => setClientModal({ mode: "edit", client })} onDelete={setDeleteClientTarget} />}
       {view === "finance" && <FinanceView items={financeItems} projects={projects} clients={clients} onCreate={() => setFinanceModal("create")} onEdit={setFinanceModal} onDelete={setDeleteFinanceTarget} />}
@@ -359,6 +361,7 @@ export default function Home() {
       {view === "content" && <ContentView items={filteredContent} allItems={contentItems} projects={projects} clients={clients} query={contentQuery} filter={contentFilter} platformFilter={platformFilter} onQuery={setContentQuery} onFilter={setContentFilter} onPlatformFilter={setPlatformFilter} onCreate={() => setContentModal({ mode: "create", item: null })} onEdit={(item) => setContentModal({ mode: "edit", item })} onDelete={setDeleteContentTarget} />}
     </main>
 
+    {projectDetail && <ProjectWorkspace project={projectDetail} tasks={tasks.filter(t=>t.project_id===projectDetail.id)} financeItems={financeItems.filter(i=>i.project_id===projectDetail.id)} activityEvents={activityEvents.filter(e=>e.entity_id===projectDetail.id || (e.module==="tasks" && tasks.some(t=>t.project_id===projectDetail.id && t.id===e.entity_id)))} client={clients.find(c=>c.id===projectDetail.client_id)} onClose={()=>setProjectDetail(null)} onEdit={()=>{setProjectDetail(null);setProjectModal({mode:"edit",project:projectDetail});}} onCreateTask={()=>{setProjectDetail(null);setTaskModal({mode:"create",task:null});}} />}
     {financeModal && <FinanceModal item={financeModal === "create" ? null : financeModal} projects={projects} clients={clients} onClose={() => setFinanceModal(null)} onSave={async (input, item) => { const ok = await saveFinance(input, item); if (ok) setFinanceModal(null); return ok; }} />}
     {projectModal && <ProjectModal state={projectModal} clients={clients} onClose={() => setProjectModal(null)} onSave={async (input, project) => { const ok = await saveProject(input, project); if (ok) setProjectModal(null); return ok; }} />}
     {knowledgeModal && <KnowledgeModal state={knowledgeModal} onClose={() => setKnowledgeModal(null)} onSave={async (input, item) => { const ok = await saveKnowledge(input, item); if (ok) setKnowledgeModal(null); return ok; }} />}
@@ -379,8 +382,8 @@ export default function Home() {
 
 function DashboardSkeleton(){return <div className="dashboard-skeleton" aria-label="جارٍ تحميل لوحة القيادة"><div className="skeleton hero"/><div className="skeleton-grid"><div className="skeleton block"/><div className="skeleton block"/></div><div className="skeleton-kpis">{Array.from({length:4}).map((_,i)=><div className="skeleton kpi" key={i}/>)}</div><div className="skeleton-grid"><div className="skeleton block small"/><div className="skeleton block small"/></div></div>}
 
-function ProjectsView({ projects, totalCount, query, filter, onQuery, onFilter, onCreate, onEdit, onDelete }: { projects: Project[]; totalCount: number; query: string; filter: ProjectFilter; onQuery: (v:string)=>void; onFilter:(v:ProjectFilter)=>void; onCreate:()=>void; onEdit:(p:Project)=>void; onDelete:(p:Project)=>void }) {
-  return <section className="panel projects-panel"><Toolbar title="كل المشاريع" count={totalCount} query={query} placeholder="ابحث بالاسم أو العميل…" onQuery={onQuery} onCreate={onCreate}/><div className="filter-tabs">{projectFilters.map((f)=><button key={f} className={filter===f?"active":""} onClick={()=>onFilter(f)}>{f==="All"?"الكل":projectStatusLabels[f]}</button>)}</div>{projects.length?<div className="project-grid">{projects.map((p)=><ProjectCard key={p.id} project={p} onEdit={()=>onEdit(p)} onDelete={()=>onDelete(p)}/>)}</div>:<EmptyState onCreate={onCreate}/>}</section>;
+function ProjectsView({ projects, totalCount, query, filter, onQuery, onFilter, onCreate, onOpen, onEdit, onDelete }: { projects: Project[]; totalCount: number; query: string; filter: ProjectFilter; onQuery: (v:string)=>void; onFilter:(v:ProjectFilter)=>void; onCreate:()=>void; onOpen:(p:Project)=>void; onEdit:(p:Project)=>void; onDelete:(p:Project)=>void }) {
+  return <section className="panel projects-panel"><Toolbar title="كل المشاريع" count={totalCount} query={query} placeholder="ابحث بالاسم أو العميل…" onQuery={onQuery} onCreate={onCreate}/><div className="filter-tabs">{projectFilters.map((f)=><button key={f} className={filter===f?"active":""} onClick={()=>onFilter(f)}>{f==="All"?"الكل":projectStatusLabels[f]}</button>)}</div>{projects.length?<div className="project-grid">{projects.map((p)=><ProjectCard key={p.id} project={p} onOpen={()=>onOpen(p)} onEdit={()=>onEdit(p)} onDelete={()=>onDelete(p)}/>)}</div>:<EmptyState onCreate={onCreate}/>}</section>;
 }
 
 function TasksView({ tasks, allTasks, projects, query, filter, projectFilter, onQuery, onFilter, onProjectFilter, onCreate, onEdit, onDelete }: { tasks:Task[]; allTasks:Task[]; projects:Project[]; query:string; filter:TaskFilter; projectFilter:string; onQuery:(v:string)=>void; onFilter:(v:TaskFilter)=>void; onProjectFilter:(v:string)=>void; onCreate:()=>void; onEdit:(t:Task)=>void; onDelete:(t:Task)=>void }) {
@@ -416,7 +419,7 @@ function KanbanBoard({tasks,projects,onEdit,onDelete}:{tasks:Task[];projects:Pro
 
 function Toolbar({ title, count, query, placeholder, onQuery, onCreate }: { title:string; count:number; query:string; placeholder:string; onQuery:(v:string)=>void; onCreate:()=>void }) { return <div className="projects-toolbar"><div><span className="section-kicker">DIRECTORY</span><h2>{title} <small>{count}</small></h2></div><div className="toolbar-actions"><label className="search-box"><Search size={17}/><input value={query} onChange={(e)=>onQuery(e.target.value)} placeholder={placeholder}/></label><button className="primary compact" onClick={onCreate}><Plus size={17}/> إضافة</button></div></div>; }
 
-function ProjectCard({ project, onEdit, onDelete }: { project:Project; onEdit:()=>void; onDelete:()=>void }) { const [open,setOpen]=useState(false); return <article className="project-card"><div className="project-card-top"><span className={`status-pill ${projectStatusClass(project.status)}`}>{projectStatusLabels[project.status]}</span><CardMenu open={open} setOpen={setOpen} onEdit={onEdit} onDelete={onDelete}/></div><button className="project-card-body" onClick={onEdit}><span className="project-icon"><FolderKanban size={21}/></span><h3>{project.name}</h3><p>{project.notes||project.client_name||project.area||"مشروع جديد"}</p></button><div className="project-meta"><span><b>الأولوية</b><i className={`priority ${project.priority.toLowerCase()}`}>{priorityLabels[project.priority]}</i></span><span><b>موعد التسليم</b>{formatDate(project.due_date)}</span></div><div className="card-progress-head"><span>التقدم</span><b>{project.progress}%</b></div><div className="progress"><i style={{width:`${project.progress}%`}}/></div></article>; }
+function ProjectCard({ project, onOpen, onEdit, onDelete }: { project:Project; onOpen:()=>void; onEdit:()=>void; onDelete:()=>void }) { const [open,setOpen]=useState(false); return <article className="project-card"><div className="project-card-top"><span className={`status-pill ${projectStatusClass(project.status)}`}>{projectStatusLabels[project.status]}</span><CardMenu open={open} setOpen={setOpen} onEdit={onEdit} onDelete={onDelete}/></div><button className="project-card-body" onClick={onOpen}><span className="project-icon"><FolderKanban size={21}/></span><h3>{project.name}</h3><p>{project.notes||project.client_name||project.area||"مشروع جديد"}</p></button><div className="project-meta"><span><b>الأولوية</b><i className={`priority ${project.priority.toLowerCase()}`}>{priorityLabels[project.priority]}</i></span><span><b>موعد التسليم</b>{formatDate(project.due_date)}</span></div><div className="card-progress-head"><span>التقدم</span><b>{project.progress}%</b></div><div className="progress"><i style={{width:`${project.progress}%`}}/></div></article>; }
 
 function TaskCard({ task, project, onEdit, onDelete }: { task:Task; project?:Project; onEdit:()=>void; onDelete:()=>void }) { const [open,setOpen]=useState(false); return <article className="task-card"><div className="project-card-top"><span className={`status-pill ${taskStatusClass(task.status)}`}>{taskStatusLabels[task.status]}</span><CardMenu open={open} setOpen={setOpen} onEdit={onEdit} onDelete={onDelete}/></div><button className="task-card-body" onClick={onEdit}><div className="task-code">TSK-{task.id.slice(0,4).toUpperCase()}</div><h3>{task.title}</h3><p>{task.description||"بدون وصف"}</p></button><div className="task-project"><FolderKanban size={14}/>{project?.name||"مشروع غير متاح"}</div><div className="project-meta"><span><b>الأولوية</b><i className={`priority ${task.priority.toLowerCase()}`}>{priorityLabels[task.priority]}</i></span><span><b>الاستحقاق</b>{formatDate(task.due_date)}</span></div><div className="card-progress-head"><span>التقدم</span><b>{task.progress}%</b></div><div className="progress"><i style={{width:`${task.progress}%`}}/></div></article>; }
 
@@ -464,8 +467,127 @@ function ContentModal({state,projects,clients,onClose,onSave}:{state:Exclude<Con
   return <Modal title={state.mode==="create"?"إنشاء محتوى جديد":"تعديل المحتوى"} kicker="CONTENT STUDIO" onClose={onClose}><form className="project-form" onSubmit={submit}><Field name="title" label="عنوان المحتوى *" defaultValue={item?.title} required full maxLength={180}/><Select name="status" label="مرحلة الإنتاج" defaultValue={item?.status||"Idea"} options={contentStatusLabels}/><Select name="platform" label="المنصة" defaultValue={item?.platform||"TikTok"} options={platformLabels}/><label><span>المشروع المرتبط</span><select name="project_id" defaultValue={item?.project_id??""}><option value="">بدون مشروع</option>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label><span>العميل المرتبط</span><select name="client_id" defaultValue={item?.client_id??""}><option value="">بدون عميل</option>{clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><Field name="publish_date" label="موعد النشر" type="date" defaultValue={item?.publish_date}/><label className="full"><span>Hook</span><textarea name="hook" rows={2} defaultValue={item?.hook??""}/></label><label className="full"><span>Script</span><textarea name="script" rows={8} defaultValue={item?.script??""}/></label><Field name="cta" label="CTA" defaultValue={item?.cta} full/><Field name="hashtags" label="Hashtags" defaultValue={item?.hashtags} full/><label className="full"><span>ملاحظات الإنتاج</span><textarea name="notes" rows={4} defaultValue={item?.notes??""}/></label><Actions saving={saving} onClose={onClose}/></form></Modal>;
 }
 
-function ProjectModal({ state, clients, onClose, onSave }: { state:Exclude<ProjectModalState,null>; clients:Client[]; onClose:()=>void; onSave:(i:ProjectInput,p?:Project)=>Promise<boolean> }) { const p=state.project; const [saving,setSaving]=useState(false); async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setSaving(true);const f=new FormData(e.currentTarget);const input:ProjectInput={name:String(f.get("name")||"").trim(),status:String(f.get("status")) as ProjectStatus,priority:String(f.get("priority")) as PriorityLevel,progress:clamp(Number(f.get("progress")||0)),client_name:nullableText(f.get("client_name")),area:nullableText(f.get("area")),start_date:dateValue(f.get("start_date")),due_date:dateValue(f.get("due_date")),notes:nullableText(f.get("notes")),client_id:nullableText(f.get("client_id"))};if(!await onSave(input,p??undefined))setSaving(false);} return <Modal title={state.mode==="create"?"إنشاء مشروع جديد":"تعديل المشروع"} kicker="PROJECT" onClose={onClose}><form className="project-form" onSubmit={submit}><Field name="name" label="اسم المشروع *" defaultValue={p?.name} required full/><Select name="status" label="الحالة" defaultValue={p?.status||"Planning"} options={projectStatusLabels}/><Select name="priority" label="الأولوية" defaultValue={p?.priority||"Medium"} options={priorityLabels}/><label><span>العميل المرتبط</span><select name="client_id" defaultValue={p?.client_id??""}><option value="">بدون عميل</option>{clients.map(c=><option key={c.id} value={c.id}>{c.name}{c.company?` — ${c.company}`:""}</option>)}</select></label><Field name="client_name" label="اسم عميل يدوي (اختياري)" defaultValue={p?.client_name}/><Field name="area" label="المجال" defaultValue={p?.area}/><Field name="progress" label="نسبة التقدم" type="number" defaultValue={p?.progress??0} min={0} max={100}/><Field name="start_date" label="تاريخ البداية" type="date" defaultValue={p?.start_date}/><Field name="due_date" label="موعد التسليم" type="date" defaultValue={p?.due_date}/><label className="full"><span>الملاحظات</span><textarea name="notes" rows={4} defaultValue={p?.notes??""}/></label><Actions saving={saving} onClose={onClose}/></form></Modal>; }
+function ProjectModal({ state, clients, onClose, onSave }: { state:Exclude<ProjectModalState,null>; clients:Client[]; onClose:()=>void; onSave:(i:ProjectInput,p?:Project)=>Promise<boolean> }) {
+  const p=state.project;
+  const [saving,setSaving]=useState(false);
+  const [step,setStep]=useState(0);
+  const [form,setForm]=useState({
+    name:p?.name??"", project_number:p?.project_number??"", project_type:p?.project_type??"Villa", location:p?.location??"",
+    description:p?.description??p?.notes??"", client_id:p?.client_id??"", client_name:p?.client_name??"", area:p?.area??"",
+    status:p?.status??"Planning", priority:p?.priority??"Medium", design_phase:p?.design_phase??"Concept",
+    start_date:p?.start_date??"", due_date:p?.due_date??"", progress:String(p?.progress??0), budget:p?.budget==null?"":String(p.budget),
+    currency:p?.currency??"SAR", color:p?.color??"#C9A24A", icon:p?.icon??"building"
+  });
+  const steps=["المعلومات الأساسية","الجدول والتنفيذ","الميزانية والهوية","المراجعة"];
+  const projectTypeLabels:Record<ProjectType,string>={Villa:"فيلا","Residential Building":"مبنى سكني",Commercial:"تجاري",Office:"مكتب",Interior:"تصميم داخلي",Other:"أخرى"};
+  const update=(key:string,value:string)=>setForm(current=>({...current,[key]:value}));
+  const canContinue=step!==0||form.name.trim().length>0;
+  async function submit(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    if(step<steps.length-1){ if(canContinue)setStep(v=>v+1); return; }
+    setSaving(true);
+    const selectedClient=clients.find(c=>c.id===form.client_id);
+    const input:ProjectInput={
+      name:form.name.trim(), project_number:nullableText(form.project_number), project_type:form.project_type as ProjectType,
+      location:nullableText(form.location), description:nullableText(form.description), status:form.status as ProjectStatus,
+      priority:form.priority as PriorityLevel, design_phase:form.design_phase as DesignPhase, progress:clamp(Number(form.progress||0)),
+      client_id:nullableText(form.client_id), client_name:selectedClient?.name??nullableText(form.client_name), area:nullableText(form.area),
+      start_date:dateValue(form.start_date), due_date:dateValue(form.due_date), budget:form.budget===""?null:Math.max(0,Number(form.budget)),
+      currency:form.currency||"SAR", color:nullableText(form.color), icon:nullableText(form.icon), notes:nullableText(form.description)
+    };
+    if(!await onSave(input,p??undefined))setSaving(false);
+  }
+  return <Modal title={state.mode==="create"?"إنشاء مشروع جديد":"تعديل المشروع"} kicker="PROJECT WIZARD · v1.1.1" onClose={onClose}>
+    <div className="wizard-progress">{steps.map((label,index)=><button type="button" key={label} className={index===step?"active":index<step?"done":""} onClick={()=>index<=step&&setStep(index)}><b>{index+1}</b><span>{label}</span></button>)}</div>
+    <form className="project-form wizard-form" onSubmit={submit}>
+      {step===0&&<>
+        <label className="full"><span>اسم المشروع *</span><input value={form.name} onChange={e=>update("name",e.target.value)} required maxLength={120}/></label>
+        <label><span>رقم المشروع</span><input value={form.project_number} onChange={e=>update("project_number",e.target.value)} placeholder="YR-2026-001"/></label>
+        <label><span>نوع المشروع</span><select value={form.project_type} onChange={e=>update("project_type",e.target.value)}>{Object.entries(projectTypeLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
+        <label><span>العميل المرتبط</span><select value={form.client_id} onChange={e=>update("client_id",e.target.value)}><option value="">بدون عميل</option>{clients.map(c=><option key={c.id} value={c.id}>{c.name}{c.company?` — ${c.company}`:""}</option>)}</select></label>
+        {!form.client_id&&<label><span>اسم عميل يدوي</span><input value={form.client_name} onChange={e=>update("client_name",e.target.value)}/></label>}
+        <label><span>الموقع / المدينة</span><input value={form.location} onChange={e=>update("location",e.target.value)} placeholder="جدة، المملكة العربية السعودية"/></label>
+        <label><span>المساحة أو المجال</span><input value={form.area} onChange={e=>update("area",e.target.value)} placeholder="450 م²"/></label>
+        <label className="full"><span>وصف المشروع</span><textarea rows={5} value={form.description} onChange={e=>update("description",e.target.value)}/></label>
+      </>}
+      {step===1&&<>
+        <label><span>الحالة</span><select value={form.status} onChange={e=>update("status",e.target.value)}>{Object.entries(projectStatusLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
+        <label><span>الأولوية</span><select value={form.priority} onChange={e=>update("priority",e.target.value)}>{Object.entries(priorityLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
+        <label className="full"><span>المرحلة التصميمية</span><select value={form.design_phase} onChange={e=>update("design_phase",e.target.value)}>{Object.entries(phaseLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
+        <label><span>تاريخ البداية</span><input type="date" value={form.start_date} onChange={e=>update("start_date",e.target.value)}/></label>
+        <label><span>موعد التسليم</span><input type="date" min={form.start_date||undefined} value={form.due_date} onChange={e=>update("due_date",e.target.value)}/></label>
+        <label className="full"><span>نسبة التقدم: {form.progress}%</span><input type="range" min="0" max="100" value={form.progress} onChange={e=>update("progress",e.target.value)}/></label>
+      </>}
+      {step===2&&<>
+        <label><span>الميزانية</span><input type="number" min="0" step="0.01" value={form.budget} onChange={e=>update("budget",e.target.value)} placeholder="0.00"/></label>
+        <label><span>العملة</span><select value={form.currency} onChange={e=>update("currency",e.target.value)}><option value="SAR">SAR</option><option value="USD">USD</option><option value="EGP">EGP</option><option value="AED">AED</option></select></label>
+        <label><span>لون المشروع</span><input type="color" value={form.color} onChange={e=>update("color",e.target.value)}/></label>
+        <label><span>أيقونة المشروع</span><select value={form.icon} onChange={e=>update("icon",e.target.value)}><option value="building">مبنى</option><option value="home">منزل</option><option value="briefcase">أعمال</option><option value="palette">تصميم</option></select></label>
+        <div className="project-identity-preview full" style={{borderInlineStartColor:form.color}}><span>معاينة بطاقة المشروع</span><b>{form.name||"اسم المشروع"}</b><small>{projectTypeLabels[form.project_type as ProjectType]} · {form.currency} {form.budget||"0"}</small></div>
+      </>}
+      {step===3&&<div className="project-review full">
+        <div><span>المشروع</span><b>{form.name}</b><small>{form.project_number||"سيتم العمل بدون رقم مشروع"}</small></div>
+        <div><span>العميل</span><b>{clients.find(c=>c.id===form.client_id)?.name||form.client_name||"غير محدد"}</b><small>{form.location||"الموقع غير محدد"}</small></div>
+        <div><span>التنفيذ</span><b>{phaseLabels[form.design_phase as DesignPhase]}</b><small>{projectStatusLabels[form.status as ProjectStatus]} · {priorityLabels[form.priority as PriorityLevel]}</small></div>
+        <div><span>الجدول</span><b>{formatDate(form.start_date)} ← {formatDate(form.due_date)}</b><small>التقدم المبدئي {form.progress}%</small></div>
+        <div><span>الميزانية</span><b>{form.currency} {form.budget||"0"}</b><small>يمكن تعديلها لاحقًا من مساحة المشروع</small></div>
+      </div>}
+      <div className="form-actions full wizard-actions"><button type="button" onClick={step===0?onClose:()=>setStep(v=>v-1)}>{step===0?"إلغاء":"السابق"}</button><button className="primary" disabled={saving||!canContinue}>{saving?"جارٍ الحفظ…":step===steps.length-1?(state.mode==="create"?"إنشاء المشروع":"حفظ التعديلات"):"التالي"}</button></div>
+    </form>
+  </Modal>;
+}
 
+function ProjectWorkspace({project,tasks,financeItems,activityEvents,client,onClose,onEdit,onCreateTask}:{project:Project;tasks:Task[];financeItems:FinanceTransaction[];activityEvents:ActivityEvent[];client?:Client;onClose:()=>void;onEdit:()=>void;onCreateTask:()=>void}){
+  type WorkspaceTab="overview"|"tasks"|"files"|"notes"|"timeline"|"finance"|"activity";
+  const [tab,setTab]=useState<WorkspaceTab>("overview");
+  const completed=tasks.filter(t=>t.status==="Done").length;
+  const overdue=tasks.filter(t=>t.status!=="Done"&&t.due_date&&t.due_date<new Date().toISOString().slice(0,10)).length;
+  const income=financeItems.filter(i=>i.type==="Income"&&i.status!=="Cancelled").reduce((sum,i)=>sum+i.amount,0);
+  const expenses=financeItems.filter(i=>i.type==="Expense"&&i.status!=="Cancelled").reduce((sum,i)=>sum+i.amount,0);
+  const taskProgress=tasks.length?Math.round(tasks.reduce((sum,t)=>sum+t.progress,0)/tasks.length):project.progress;
+  const daysUntilDue=project.due_date?Math.ceil((new Date(`${project.due_date}T23:59:59`).getTime()-Date.now())/86400000):null;
+  const brief=overdue>0
+    ? `يحتاج المشروع إلى تدخل الآن: توجد ${overdue} ${overdue===1?"مهمة متأخرة":"مهام متأخرة"}. ابدأ بإعادة ترتيب الأولويات قبل متابعة الأعمال الجديدة.`
+    : daysUntilDue!==null&&daysUntilDue>=0&&daysUntilDue<=7&&completed<tasks.length
+      ? `موعد التسليم خلال ${daysUntilDue} ${daysUntilDue===1?"يوم":"أيام"}. راجع المهام المفتوحة وثبّت مسؤولية كل خطوة.`
+      : tasks.length===0
+        ? "المشروع جاهز للبدء، لكنه لا يحتوي على مهام بعد. أنشئ أول مهمة لتحويل الخطة إلى تنفيذ قابل للقياس."
+        : `المشروع مستقر حاليًا، والتقدم المحسوب من المهام ${taskProgress}%. الأولوية التالية هي الحفاظ على تحديث التنفيذ يوميًا.`;
+  const tabs:{id:WorkspaceTab;label:string;icon:ReactNode;count?:number}[]=[
+    {id:"overview",label:"نظرة عامة",icon:<LayoutDashboard size={16}/>},
+    {id:"tasks",label:"المهام",icon:<ClipboardList size={16}/>,count:tasks.length},
+    {id:"files",label:"الملفات",icon:<FileText size={16}/>},
+    {id:"notes",label:"الملاحظات",icon:<BookOpen size={16}/>},
+    {id:"timeline",label:"الخط الزمني",icon:<CalendarDays size={16}/>},
+    {id:"finance",label:"المالية",icon:<Wallet size={16}/>,count:financeItems.length},
+    {id:"activity",label:"النشاط",icon:<Activity size={16}/>,count:activityEvents.length},
+  ];
+  const phases:DesignPhase[]=["Concept","Schematic","Design Development","Construction Documents","Site Supervision","Handover"];
+  const currentPhase=Math.max(0,phases.indexOf(project.design_phase||"Concept"));
+  const taskColumns:TaskStatus[]=["To Do","In Progress","Review","Done"];
+  return <div className="modal-backdrop project-workspace-backdrop" onMouseDown={onClose}><section className="project-workspace project-workspace-v2" onMouseDown={e=>e.stopPropagation()}>
+    <header className="project-workspace-head"><div><span className="section-kicker">PROJECT WORKSPACE · v1.5.0</span><div className="workspace-title-row"><span className={`status-dot ${projectStatusClass(project.status)}`}/><h2>{project.name}</h2><span className="workspace-status">{projectStatusLabels[project.status]}</span></div><p>{project.description||project.notes||project.location||project.area||"مساحة تنفيذ موحدة للمشروع."}</p></div><div className="project-workspace-actions"><button onClick={onEdit}><Pencil size={16}/> تعديل</button><button className="primary compact" onClick={onCreateTask}><Plus size={16}/> مهمة جديدة</button><button className="icon-button" onClick={onClose}><X size={20}/></button></div></header>
+    <div className="executive-brief"><div className="executive-brief-icon"><Brain size={22}/></div><div><span className="section-kicker">EXECUTIVE BRIEF</span><strong>{brief}</strong></div><button onClick={()=>setTab("tasks")}>فتح التنفيذ <ChevronLeft size={16}/></button></div>
+    <div className="project-workspace-kpis"><Metric icon={<FolderKanban/>} label="حالة المشروع" value={projectStatusLabels[project.status]} detail={priorityLabels[project.priority]}/><Metric icon={<ClipboardList/>} label="المهام" value={`${completed}/${tasks.length}`} detail={overdue?`${overdue} متأخرة`:"لا توجد مهام متأخرة"} danger={overdue>0}/><Metric icon={<Activity/>} label="تقدم التنفيذ" value={`${taskProgress}%`} detail={tasks.length?"محسوب من المهام":"التقدم المسجل"}/><Metric icon={<Wallet/>} label="صافي المشروع" value={new Intl.NumberFormat("en-US",{maximumFractionDigits:0}).format(income-expenses)} detail={financeItems[0]?.currency||project.currency||"SAR"}/></div>
+    <nav className="project-workspace-tabs" aria-label="أقسام مساحة المشروع">{tabs.map(item=><button key={item.id} className={tab===item.id?"active":""} onClick={()=>setTab(item.id)}>{item.icon}<span>{item.label}</span>{item.count!==undefined&&item.count>0?<em>{item.count}</em>:null}</button>)}</nav>
+
+    {tab==="overview"&&<div className="project-workspace-grid workspace-overview-v2">
+      <article className="project-overview-card"><span className="section-kicker">PROJECT PROFILE</span><h3>بيانات المشروع</h3><dl><div><dt>العميل</dt><dd>{client?.name||project.client_name||"غير محدد"}</dd></div><div><dt>رقم المشروع</dt><dd>{project.project_number||"غير محدد"}</dd></div><div><dt>النوع</dt><dd>{project.project_type||"غير محدد"}</dd></div><div><dt>الموقع</dt><dd>{project.location||"غير محدد"}</dd></div><div><dt>المساحة / المجال</dt><dd>{project.area||"غير محدد"}</dd></div><div><dt>المرحلة الحالية</dt><dd>{project.design_phase||"غير محدد"}</dd></div><div><dt>الميزانية</dt><dd>{project.budget==null?"غير محددة":`${project.currency} ${new Intl.NumberFormat("en-US").format(project.budget)}`}</dd></div><div><dt>التسليم</dt><dd>{formatDate(project.due_date)}</dd></div></dl><div className="card-progress-head"><span>التقدم التنفيذي</span><b>{taskProgress}%</b></div><div className="progress"><i style={{width:`${taskProgress}%`}}/></div></article>
+      <article className="project-overview-card architecture-phase-card"><span className="section-kicker">ARCHITECTURE MODE</span><h3>مراحل المشروع المعماري</h3><div className="phase-track">{phases.map((phase,index)=><div key={phase} className={`${index<currentPhase?"done":""} ${index===currentPhase?"current":""}`}><i>{index<currentPhase?<CheckCircle2 size={17}/>:index===currentPhase?<Clock3 size={17}/>:<span>{index+1}</span>}</i><div><b>{phaseLabels[phase]}</b><small>{index<currentPhase?"مكتملة":index===currentPhase?"المرحلة الحالية":"قادمة"}</small></div></div>)}</div></article>
+      <article className="project-overview-card workspace-recent-card"><span className="section-kicker">NEXT ACTIONS</span><h3>الخطوات التالية</h3>{tasks.filter(t=>t.status!=="Done").length?<div className="workspace-task-list">{tasks.filter(t=>t.status!=="Done").sort((a,b)=>(a.due_date||"9999").localeCompare(b.due_date||"9999")).slice(0,5).map(t=><div key={t.id}><span className={`status-dot ${taskStatusClass(t.status)}`}/><div><b>{t.title}</b><small>{taskStatusLabels[t.status]} · {formatDate(t.due_date)}</small></div><strong>{priorityLabels[t.priority]}</strong></div>)}</div>:<EmptyState compact text="لا توجد خطوات مفتوحة." onCreate={onCreateTask}/>}</article>
+    </div>}
+
+    {tab==="tasks"&&<section className="workspace-tab-panel"><div className="workspace-panel-head"><div><span className="section-kicker">TASK BOARD</span><h3>لوحة تنفيذ المشروع</h3></div><button className="primary compact" onClick={onCreateTask}><Plus size={16}/> مهمة جديدة</button></div><div className="project-kanban">{taskColumns.map(status=><div className="project-kanban-column" key={status}><header><span>{taskStatusLabels[status]}</span><em>{tasks.filter(t=>t.status===status).length}</em></header>{tasks.filter(t=>t.status===status).map(t=><article key={t.id}><div className="kanban-priority"><span className={`priority-badge ${t.priority.toLowerCase()}`}>{priorityLabels[t.priority]}</span><b>{t.progress}%</b></div><h4>{t.title}</h4>{t.description&&<p>{t.description}</p>}<footer><span><CalendarDays size={14}/>{formatDate(t.due_date)}</span><div className="mini-progress"><i style={{width:`${t.progress}%`}}/></div></footer></article>)}{tasks.filter(t=>t.status===status).length===0&&<div className="kanban-empty">لا توجد مهام</div>}</div>)}</div></section>}
+
+    {tab==="timeline"&&<section className="workspace-tab-panel"><div className="workspace-panel-head"><div><span className="section-kicker">PROJECT TIMELINE</span><h3>المحطات الرئيسية</h3></div></div><div className="workspace-timeline"><div className="done"><i><CheckCircle2 size={18}/></i><div><b>إنشاء المشروع</b><small>{formatDate(project.created_at)}</small></div></div>{phases.map((phase,index)=><div key={phase} className={index<currentPhase?"done":index===currentPhase?"current":""}><i>{index<currentPhase?<CheckCircle2 size={18}/>:<span/>}</i><div><b>{phaseLabels[phase]}</b><small>{index<currentPhase?"مرحلة مكتملة":index===currentPhase?"قيد التنفيذ":"بانتظار البدء"}</small></div></div>)}<div className={project.status==="Completed"?"done":""}><i>{project.status==="Completed"?<CheckCircle2 size={18}/>:<span/>}</i><div><b>التسليم النهائي</b><small>{formatDate(project.due_date)}</small></div></div></div></section>}
+
+    {tab==="finance"&&<section className="workspace-tab-panel"><div className="workspace-panel-head"><div><span className="section-kicker">PROJECT FINANCE</span><h3>الملخص المالي</h3></div></div><div className="workspace-finance-summary"><Metric icon={<ArrowUpDown/>} label="الدخل" value={new Intl.NumberFormat("en-US").format(income)} detail={project.currency}/><Metric icon={<Wallet/>} label="المصروفات" value={new Intl.NumberFormat("en-US").format(expenses)} detail={project.currency}/><Metric icon={<Activity/>} label="الصافي" value={new Intl.NumberFormat("en-US").format(income-expenses)} detail={project.currency}/></div>{financeItems.length?<div className="workspace-finance-list">{financeItems.map(item=><div key={item.id}><span className={item.type==="Income"?"finance-in":"finance-out"}>{item.type==="Income"?"دخل":"مصروف"}</span><div><b>{item.description}</b><small>{formatDate(item.transaction_date)} · {item.status}</small></div><strong>{item.currency} {new Intl.NumberFormat("en-US").format(item.amount)}</strong></div>)}</div>:<EmptyState text="لا توجد معاملات مالية مرتبطة بهذا المشروع."/>}</section>}
+
+    {tab==="activity"&&<section className="workspace-tab-panel"><div className="workspace-panel-head"><div><span className="section-kicker">ACTIVITY STREAM</span><h3>آخر نشاطات المشروع</h3></div></div>{activityEvents.length?<div className="workspace-activity-list">{activityEvents.slice(0,20).map(event=><div key={event.id}><i><Activity size={16}/></i><div><b>{event.title}</b><small>{event.description||event.module} · {new Intl.DateTimeFormat("ar-SA",{dateStyle:"medium",timeStyle:"short"}).format(new Date(event.created_at))}</small></div></div>)}</div>:<EmptyState text="لا يوجد نشاط مسجل للمشروع بعد."/>}</section>}
+
+    {(tab==="files"||tab==="notes")&&<section className="workspace-tab-panel workspace-coming-panel"><div className="coming-icon">{tab==="files"?<FileText size={30}/>:<BookOpen size={30}/>}</div><span className="section-kicker">{tab==="files"?"DOCUMENT CONTROL":"PROJECT NOTES"}</span><h3>{tab==="files"?"مركز ملفات المشروع":"ملاحظات المشروع"}</h3><p>{tab==="files"?"الواجهة أصبحت جزءًا من مساحة المشروع، وسيتم ربط الرفع والتخزين في مرحلة Document Control التالية.":"الواجهة جاهزة لإضافة سجل ملاحظات مرتبط بالمشروع في المرحلة التالية."}</p><div className="coming-capabilities"><span>{tab==="files"?"PDF · DWG · IFC · Images":"قرارات · اجتماعات · مراجعات"}</span><em>قريبًا</em></div></section>}
+  </section></div>;
+}
 function TaskModal({ state, projects, onClose, onSave }: { state:Exclude<TaskModalState,null>; projects:Project[]; onClose:()=>void; onSave:(i:TaskInput,t?:Task)=>Promise<boolean> }) { const t=state.task; const [saving,setSaving]=useState(false); async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setSaving(true);const f=new FormData(e.currentTarget);const status=String(f.get("status")) as TaskStatus;const input:TaskInput={project_id:String(f.get("project_id")),title:String(f.get("title")||"").trim(),description:nullableText(f.get("description")),status,priority:String(f.get("priority")) as PriorityLevel,progress:status==="Done"?100:clamp(Number(f.get("progress")||0)),due_date:dateValue(f.get("due_date"))};if(!await onSave(input,t??undefined))setSaving(false);} return <Modal title={state.mode==="create"?"إنشاء مهمة جديدة":"تعديل المهمة"} kicker="TASK ENGINE" onClose={onClose}><form className="project-form" onSubmit={submit}><label className="full"><span>المشروع *</span><select name="project_id" defaultValue={t?.project_id||projects[0]?.id} required>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><Field name="title" label="عنوان المهمة *" defaultValue={t?.title} required full maxLength={160}/><Select name="status" label="الحالة" defaultValue={t?.status||"To Do"} options={taskStatusLabels}/><Select name="priority" label="الأولوية" defaultValue={t?.priority||"Medium"} options={priorityLabels}/><Field name="progress" label="نسبة التقدم" type="number" defaultValue={t?.progress??0} min={0} max={100}/><Field name="due_date" label="موعد الاستحقاق" type="date" defaultValue={t?.due_date}/><label className="full"><span>الوصف</span><textarea name="description" rows={5} defaultValue={t?.description??""}/></label><Actions saving={saving} onClose={onClose}/></form></Modal>; }
 
 function Modal({ title, kicker, onClose, children }: { title:string; kicker:string; onClose:()=>void; children:ReactNode }) { return <div className="modal-backdrop" onMouseDown={onClose}><div className="modal" onMouseDown={(e)=>e.stopPropagation()}><div className="modal-head"><div><span className="section-kicker">{kicker}</span><h2>{title}</h2></div><button className="icon-button" onClick={onClose}><X size={20}/></button></div>{children}</div></div>; }
@@ -477,7 +599,69 @@ function ConfirmDelete({ title,text,onCancel,onConfirm }: { title:string;text:st
 function Metric({ icon,label,value,detail,danger }: { icon:ReactNode;label:string;value:string|number;detail:string;danger?:boolean }) { return <div className={`metric-card ${danger?"danger":""}`}><span>{icon}</span><div><small>{label}</small><strong>{value}</strong><em>{detail}</em></div></div>; }
 function EmptyState({ text="لا توجد بيانات بعد.",compact,onCreate }: { text?:string;compact?:boolean;onCreate?:()=>void }) { return <div className={`empty-state ${compact?"compact":""}`}><span><ClipboardList/></span><h3>{text}</h3>{onCreate&&<button className="primary compact" onClick={onCreate}><Plus size={16}/> إضافة الآن</button>}</div>; }
 
-function Auth(){const[email,setEmail]=useState("");const[message,setMessage]=useState("");const[busy,setBusy]=useState(false);async function submit(e:FormEvent){e.preventDefault();setBusy(true);const{error}=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.origin}});setMessage(error?error.message:"تم إرسال رابط الدخول الآمن إلى بريدك.");setBusy(false);}return <div className="auth-page"><div className="auth-card"><div className="logo-mark auth-logo"><Brain/></div><span className="section-kicker">PERSONAL OPERATING SYSTEM</span><h1>YOSSEUF OS</h1><p>سجّل الدخول للوصول إلى مشاريعك ومهامك.</p><form onSubmit={submit}><label><span>البريد الإلكتروني</span><input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required/></label><button className="primary" disabled={busy}>{busy?"جارٍ الإرسال…":"إرسال رابط الدخول"}</button></form>{message&&<div className="auth-message">{message}</div>}</div></div>}
+function Auth(){
+  const[email,setEmail]=useState("");
+  const[message,setMessage]=useState("");
+  const[messageTone,setMessageTone]=useState<"success"|"error"|"info">("info");
+  const[busy,setBusy]=useState(false);
+
+  async function verifyAuthEndpoint(){
+    const baseUrl=process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if(!baseUrl||!anonKey) throw new Error("AUTH_CONFIG_MISSING");
+    if(!navigator.onLine) throw new Error("BROWSER_OFFLINE");
+
+    const controller=new AbortController();
+    const timeout=window.setTimeout(()=>controller.abort(),8000);
+    try{
+      const response=await fetch(`${baseUrl.replace(/\/$/,"")}/auth/v1/health`,{
+        method:"GET",
+        headers:{apikey:anonKey},
+        signal:controller.signal,
+        cache:"no-store"
+      });
+      if(!response.ok) throw new Error(`AUTH_HEALTH_${response.status}`);
+    }finally{
+      window.clearTimeout(timeout);
+    }
+  }
+
+  async function submit(e:FormEvent){
+    e.preventDefault();
+    setBusy(true);
+    setMessageTone("info");
+    setMessage("جارٍ التحقق من اتصال المصادقة…");
+    try{
+      await verifyAuthEndpoint();
+      const{error}=await supabase.auth.signInWithOtp({
+        email:email.trim(),
+        options:{emailRedirectTo:window.location.origin}
+      });
+      if(error) throw error;
+      setMessageTone("success");
+      setMessage("تم إرسال رابط الدخول الآمن إلى بريدك. تحقق من صندوق الوارد والرسائل غير المرغوب فيها.");
+    }catch(error){
+      console.error("YOSSEUF OS authentication diagnostics",{
+        error,
+        online:navigator.onLine,
+        origin:window.location.origin,
+        supabaseHost:(()=>{try{return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL||"").host}catch{return "invalid"}})()
+      });
+      const raw=error instanceof Error?error.message:String(error);
+      setMessageTone("error");
+      if(raw==="AUTH_CONFIG_MISSING") setMessage("إعدادات Supabase غير مكتملة في بيئة النشر. راجع متغيرات Vercel ثم أعد النشر.");
+      else if(raw==="BROWSER_OFFLINE") setMessage("الجهاز غير متصل بالإنترنت. تحقق من الاتصال ثم أعد المحاولة.");
+      else if(error instanceof DOMException&&error.name==="AbortError") setMessage("انتهت مهلة الاتصال بخدمة المصادقة. جرّب شبكة أخرى أو تحقق من حظر نطاق supabase.co.");
+      else if(error instanceof TypeError||raw.toLowerCase().includes("failed to fetch")) setMessage("تعذر الوصول إلى خدمة Supabase من هذه الشبكة. جرّب شبكة الهاتف أو اسمح للنطاق *.supabase.co في الجدار الناري. [AUTH-NETWORK]");
+      else if(raw.startsWith("AUTH_HEALTH_")) setMessage(`خدمة المصادقة أعادت حالة غير متوقعة (${raw.replace("AUTH_HEALTH_","")}). [AUTH-HEALTH]`);
+      else setMessage(`${raw} [AUTH-OTP]`);
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  return <div className="auth-page"><div className="auth-card"><div className="logo-mark auth-logo"><Brain/></div><span className="section-kicker">PERSONAL OPERATING SYSTEM</span><h1>YOSSEUF OS</h1><p>سجّل الدخول للوصول إلى مشاريعك ومهامك.</p><form onSubmit={submit}><label><span>البريد الإلكتروني</span><input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required autoComplete="email" inputMode="email"/></label><button className="primary" disabled={busy}>{busy?"جارٍ التحقق والإرسال…":"إرسال رابط الدخول"}</button></form>{message&&<div className={`auth-message ${messageTone}`} role="status" aria-live="polite">{message}</div>}<small className="auth-diagnostic-note">v1.0.1 · Auth Diagnostics Hotfix</small></div></div>
+}
 function LoadingScreen(){return <div className="center-screen"><div className="loader"><Brain size={38}/><span>جارٍ تشغيل YOSSEUF OS…</span></div></div>}
 
 const clamp=(n:number)=>Math.max(0,Math.min(100,Number.isFinite(n)?n:0));

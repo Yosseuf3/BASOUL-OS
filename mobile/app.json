@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "YOSSEUF OS",
+    "slug": "yosseuf-os",
+    "version": "1.5.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "yosseufos",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yosseufradwan.os",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.yosseufradwan.os",
+      "versionCode": 1
+    },
+    "extra": {
+      "product": "YOSSEUF OS Mobile Live Foundation",
+      "release": "v1.5.1 Cross Platform Stabilization",
+      "eas": {
+        "projectId": "6f770730-8c8e-49b0-81b9-f9773faf567a"
+      }
+    },
+    "description": "Decision-first executive operating system for projects and architectural work."
+  }
+}

@@ -1,6 +1,6 @@
 # YOSSEUF OS
 
-![Version](https://img.shields.io/badge/version-v1.0.0-d4af37)
+![Version](https://img.shields.io/badge/version-v1.1.1-d4af37)
 ![Status](https://img.shields.io/badge/status-stable-2ea44f)
 ![Node](https://img.shields.io/badge/node-22.x-43853d)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -89,12 +89,14 @@ The quality command runs linting, TypeScript validation, and the production buil
 - [Architecture](docs/WORKSPACE_ARCHITECTURE.md)
 - [Product principles](docs/PRODUCT_PRINCIPLES.md)
 - [AI roadmap](docs/AI_ROADMAP.md)
+- [v1.1.1 hotfix release notes](RELEASE_NOTES_v1.1.1.md)
 - [v1.0.0 release notes](RELEASE_NOTES_v1.0.0.md)
+- [v1.1.1 hotfix test checklist](TEST_CHECKLIST_v1.1.1.md)
 - [v1.0.0 test checklist](TEST_CHECKLIST_v1.0.0.md)
 
 ## Release status
 
-**v1.0.0 Stable** is the first official production release. The stable branch should remain protected; new work should pass the Quality Gate and functional smoke tests before merging.
+**v1.1.1** is the authentication diagnostics hotfix built on the first official v1.0.0 Stable release. The stable branch should remain protected; new work should pass the Quality Gate and functional smoke tests before merging.
 
 ## Roadmap
 
