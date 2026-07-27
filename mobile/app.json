@@ -9,18 +9,18 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yosseufradwan.os",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.yosseufradwan.os",
-      "versionCode": 7
+      "versionCode": 8
     },
     "extra": {
       "product": "YOSSEUF OS Executive Operating System",
-      "release": "v3.0.0-alpha.1 Project Phoenix",
+      "release": "v3.0.0-alpha.2 Project Phoenix",
       "eas": {
         "projectId": "6f770730-8c8e-49b0-81b9-f9773faf567a"
       }

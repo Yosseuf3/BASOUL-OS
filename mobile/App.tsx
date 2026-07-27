@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { StatusBar } from "expo-status-bar";
@@ -15,6 +15,8 @@ import { GlobalSearchScreen } from "./src/features/search/GlobalSearchScreen";
 import { isMobileConfigured, supabase } from "./src/config/supabase";
 import { advanceMobileTask, createMobileTask, loadMobileWorkspace, markMobileNotificationRead } from "./src/services/workspace";
 import { tokens } from "./src/theme/tokens";
+import { APP_INFO } from "./src/config/app-info";
+import { mobileExecutiveOrchestrator } from "./src/executive/executiveOrchestrator";
 import type { MobileWorkspaceData, Task } from "./src/types/domain";
 
 const emptyData: MobileWorkspaceData = { projects: [], tasks: [], notifications: [] };
@@ -48,6 +50,8 @@ export default function App() {
 
   useEffect(() => { if (session) void refresh(); }, [session, refresh]);
 
+  const executiveReport = useMemo(() => mobileExecutiveOrchestrator.analyze(data), [data]);
+
   async function readNotification(id: string) { try { await markMobileNotificationRead(id); setData((current) => ({ ...current, notifications: current.notifications.map((item) => item.id === id ? { ...item, is_read: true } : item) })); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحديث الإشعار."); } }
   async function createTask(input: NewTaskInput) { if (!session) return; await createMobileTask(session.user.id, input); await refresh(); setScreen("tasks"); }
   async function advanceTask(task: Task) { try { await advanceMobileTask(task); await refresh(); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحديث المهمة."); } }
@@ -58,7 +62,7 @@ export default function App() {
   return <View style={styles.app}>
     <StatusBar style="light" />
     {error ? <View style={styles.errorBar}><Text style={styles.errorText}>{error}</Text><TouchableOpacity onPress={() => setError(null)}><Text style={styles.dismiss}>×</Text></TouchableOpacity></View> : null}
-    {screen === "dashboard" ? <DashboardScreen data={data} onNavigate={setScreen} onRefresh={refresh} refreshing={loading} /> : null}
+    {screen === "dashboard" ? <DashboardScreen data={data} report={executiveReport} onNavigate={setScreen} onRefresh={refresh} refreshing={loading} /> : null}
     {screen === "projects" ? <ProjectsScreen projects={data.projects} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "tasks" ? <TasksScreen tasks={data.tasks} projects={data.projects} onBack={() => setScreen("dashboard")} onCreate={() => setScreen("createTask")} onAdvance={(task) => void advanceTask(task)} /> : null}
     {screen === "notifications" ? <NotificationsScreen notifications={data.notifications} onBack={() => setScreen("dashboard")} onRead={readNotification} /> : null}
@@ -66,7 +70,7 @@ export default function App() {
     {screen === "createTask" ? <CreateTaskScreen projects={data.projects} onCancel={() => setScreen("dashboard")} onSubmit={createTask} /> : null}
     {screen === "timeline" ? <TimelineScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "search" ? <GlobalSearchScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
-    <View style={styles.footer}><Text style={styles.version}>v2.1.0 · Executive Productivity</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
+    <View style={styles.footer}><Text style={styles.version}>{APP_INFO.fullLabel}</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
   </View>;
 }
 
