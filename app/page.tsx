@@ -31,6 +31,15 @@ import {
   uploadProjectFile,
   type ProjectFile,
 } from "@/lib/projects/project-file-service";
+import {
+  convertProjectNoteToTask,
+  createProjectNote,
+  deleteProjectNote,
+  listProjectNotes,
+  setProjectNoteStatus,
+  type ProjectNote,
+  type ProjectNoteType,
+} from "@/lib/projects/project-note-service";
 
 type View = "dashboard" | "projects" | "tasks" | "clients" | "content" | "knowledge" | "finance" | "activity" | "notifications" | "architecture";
 type ProjectFilter = "All" | ProjectStatus;
@@ -591,8 +600,88 @@ function ProjectWorkspace({project,tasks,financeItems,activityEvents,client,onCl
     {tab==="activity"&&<section className="workspace-tab-panel"><div className="workspace-panel-head"><div><span className="section-kicker">ACTIVITY STREAM</span><h3>آخر نشاطات المشروع</h3></div></div>{activityEvents.length?<div className="workspace-activity-list">{activityEvents.slice(0,20).map(event=><div key={event.id}><i><Activity size={16}/></i><div><b>{event.title}</b><small>{event.description||event.module} · {new Intl.DateTimeFormat("ar-SA",{dateStyle:"medium",timeStyle:"short"}).format(new Date(event.created_at))}</small></div></div>)}</div>:<EmptyState text="لا يوجد نشاط مسجل للمشروع بعد."/>}</section>}
 
     {tab==="files"&&<ProjectFilesPanel projectId={project.id}/>}
-    {tab==="notes"&&<section className="workspace-tab-panel workspace-coming-panel"><div className="coming-icon"><BookOpen size={30}/></div><span className="section-kicker">PROJECT NOTES</span><h3>ملاحظات المشروع</h3><p>الواجهة جاهزة لإضافة سجل ملاحظات مرتبط بالمشروع في المرحلة التالية.</p><div className="coming-capabilities"><span>قرارات · اجتماعات · مراجعات</span><em>قريبًا</em></div></section>}
+    {tab==="notes"&&<ProjectNotesPanel projectId={project.id}/>}
   </section></div>;
+}
+
+function ProjectNotesPanel({projectId}:{projectId:string}) {
+  const [notes,setNotes]=useState<ProjectNote[]>([]);
+  const [files,setFiles]=useState<ProjectFile[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [creating,setCreating]=useState(false);
+  const [message,setMessage]=useState("");
+  const refresh=useCallback(async()=>{
+    setLoading(true);
+    try {
+      const [noteRows,fileRows]=await Promise.all([listProjectNotes(projectId),listProjectFiles(projectId)]);
+      setNotes(noteRows);setFiles(fileRows);setMessage("");
+    } catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر تحميل سجل المشروع."); }
+    finally { setLoading(false); }
+  },[projectId]);
+  useEffect(()=>{void refresh();},[refresh]);
+
+  async function submit(event:React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();setSaving(true);setMessage("");
+    const form=new FormData(event.currentTarget);
+    try {
+      await createProjectNote({
+        project_id:projectId,
+        project_file_id:String(form.get("project_file_id")||"")||null,
+        type:String(form.get("type")) as ProjectNoteType,
+        title:String(form.get("title")||"").trim(),
+        content:String(form.get("content")||"").trim()||null,
+        assigned_to:String(form.get("assigned_to")||"").trim()||null,
+        follow_up_date:String(form.get("follow_up_date")||"")||null,
+      });
+      setCreating(false);await refresh();
+    } catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر حفظ الملاحظة."); }
+    finally { setSaving(false); }
+  }
+  async function changeStatus(note:ProjectNote,status:"open"|"done"|"archived") {
+    try { await setProjectNoteStatus(note,status);await refresh(); }
+    catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر تحديث الحالة."); }
+  }
+  async function convert(note:ProjectNote) {
+    try { await convertProjectNoteToTask(note);await refresh(); }
+    catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر تحويل الملاحظة إلى مهمة."); }
+  }
+  async function remove(note:ProjectNote) {
+    if(!window.confirm(`حذف «${note.title}»؟`))return;
+    try { await deleteProjectNote(note);await refresh(); }
+    catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر حذف الملاحظة."); }
+  }
+  const typeLabels:Record<ProjectNoteType,string>={decision:"قرار",meeting:"اجتماع",review:"مراجعة",general:"ملاحظة"};
+  const fileName=(id:string|null)=>files.find(file=>file.id===id)?.name;
+  return <section className="workspace-tab-panel project-notes-panel">
+    <div className="workspace-panel-head">
+      <div><span className="section-kicker">DECISION LOG</span><h3>ملاحظات وقرارات المشروع</h3><p>سجل القرارات والاجتماعات والمراجعات، ثم حوّلها إلى مهام قابلة للتنفيذ.</p></div>
+      <button className="primary compact" onClick={()=>setCreating(value=>!value)}><Plus size={16}/>{creating?"إغلاق":"إضافة سجل"}</button>
+    </div>
+    {creating&&<form className="project-note-form" onSubmit={submit}>
+      <label><span>النوع</span><select name="type" defaultValue="general"><option value="decision">قرار</option><option value="meeting">اجتماع</option><option value="review">مراجعة</option><option value="general">ملاحظة</option></select></label>
+      <label className="note-title"><span>العنوان *</span><input name="title" required maxLength={180}/></label>
+      <label><span>المسؤول</span><input name="assigned_to"/></label>
+      <label><span>تاريخ المتابعة</span><input name="follow_up_date" type="date"/></label>
+      <label className="note-file"><span>ملف مرتبط</span><select name="project_file_id"><option value="">بدون ملف</option>{files.map(file=><option key={file.id} value={file.id}>{file.name}</option>)}</select></label>
+      <label className="note-content"><span>التفاصيل</span><textarea name="content" rows={4}/></label>
+      <div className="form-actions note-actions"><button type="button" onClick={()=>setCreating(false)}>إلغاء</button><button className="primary" disabled={saving}>{saving?"جارٍ الحفظ…":"حفظ السجل"}</button></div>
+    </form>}
+    {message&&<div className="project-files-message">{message}</div>}
+    {loading?<div className="project-files-loading">جارٍ تحميل السجل…</div>:notes.length===0
+      ?<div className="project-files-empty"><BookOpen size={34}/><h4>لا توجد ملاحظات أو قرارات</h4><p>أضف أول قرار أو اجتماع أو مراجعة للمشروع.</p></div>
+      :<div className="project-note-list">{notes.map(note=><article key={note.id} className={`note-${note.status}`}>
+        <header><span className={`note-type ${note.type}`}>{typeLabels[note.type]}</span><em>{note.status==="open"?"مفتوح":note.status==="done"?"منفذ":"مؤرشف"}</em></header>
+        <h4>{note.title}</h4>{note.content&&<p>{note.content}</p>}
+        <footer><span>{note.assigned_to||"دون مسؤول"}</span><span>{note.follow_up_date?formatDate(note.follow_up_date):"دون موعد"}</span>{fileName(note.project_file_id)&&<span>📎 {fileName(note.project_file_id)}</span>}</footer>
+        <div className="project-note-buttons">
+          {note.status==="open"&&<><button onClick={()=>void convert(note)}>تحويل إلى مهمة</button><button onClick={()=>void changeStatus(note,"done")}>تعليم كمنفذ</button></>}
+          {note.status==="done"&&<button onClick={()=>void changeStatus(note,"open")}>إعادة فتح</button>}
+          <button onClick={()=>void changeStatus(note,"archived")}>أرشفة</button>
+          <button className="delete" aria-label={`حذف ${note.title}`} onClick={()=>void remove(note)}><Trash2 size={15}/></button>
+        </div>
+      </article>)}</div>}
+  </section>;
 }
 
 function ProjectFilesPanel({projectId}:{projectId:string}) {
