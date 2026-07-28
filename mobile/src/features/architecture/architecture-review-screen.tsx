@@ -148,6 +148,11 @@ export function ArchitectureReviewScreen({
             {drawingNames.get(element.drawing_id) || "مخطط معماري"} · {planElementTypeLabels[element.element_type]}
           </Text>
           {element.value ? <Text selectable style={styles.elementValue}>{element.value}{element.unit ? ` ${element.unit}` : ""}</Text> : null}
+          {element.geometry?.start && element.geometry?.end ? (
+            <Text selectable style={styles.elementGeometry}>
+              ({element.geometry.start.x}, {element.geometry.start.y}) ← ({element.geometry.end.x}, {element.geometry.end.y})
+            </Text>
+          ) : null}
           <Text selectable style={styles.elementEvidence}>
             المصدر: {element.source === "manual" ? "إدخال بشري" : "اكتشاف آلي"} · الثقة {element.confidence_score}%
           </Text>
@@ -264,6 +269,7 @@ const styles = StyleSheet.create({
   elementTitle: { color: tokens.colors.text, flex: 1, fontSize: 16, fontWeight: "900", textAlign: "right" },
   elementStatus: { color: tokens.colors.gold, fontSize: 10, fontWeight: "800" },
   elementValue: { color: tokens.colors.text, fontSize: 18, fontWeight: "900", textAlign: "right", marginTop: 8 },
+  elementGeometry: { color: tokens.colors.gold, fontSize: 10, textAlign: "right", marginTop: 6, fontVariant: ["tabular-nums"] },
   elementEvidence: { color: tokens.colors.muted, fontSize: 11, textAlign: "right", marginTop: 7 },
   sectionTitle: { color: tokens.colors.text, fontSize: 20, fontWeight: "900", textAlign: "right", marginTop: tokens.space.xl, marginBottom: tokens.space.md },
   empty: { backgroundColor: tokens.colors.surface, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.lg, padding: tokens.space.lg },

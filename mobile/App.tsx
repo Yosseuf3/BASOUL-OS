@@ -128,7 +128,7 @@ export default function App() {
     {screen === "createTask" ? <CreateTaskScreen projects={data.projects} onCancel={() => setScreen("dashboard")} onSubmit={createTask} /> : null}
     {screen === "timeline" ? <TimelineScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "search" ? <GlobalSearchScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
-    <View style={styles.footer}><Text style={styles.version}>v3.0.0-alpha.12 · Automatic Plan Extraction</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
+    <View style={styles.footer}><Text style={styles.version}>v3.0.0-alpha.13 · Vector Wall Candidates</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
   </View>;
 }
 

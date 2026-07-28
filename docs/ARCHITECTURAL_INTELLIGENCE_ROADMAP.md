@@ -12,7 +12,8 @@
 - [x] confidence and source tracking
 - [x] human correction, confirmation, and rejection workflow
 - [x] conservative PDF text-layer extraction for labels, room keywords, and dimensions
-- [ ] geometric extraction of walls and openings from vector paths
+- [x] low-confidence axis-aligned wall candidates with PDF coordinates
+- [ ] paired-line wall inference and opening detection
 
 ## Phase 3 — Design Reasoning
 - circulation, privacy, adjacency, daylight, furnishing, and area efficiency
