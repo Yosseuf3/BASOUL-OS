@@ -59,6 +59,13 @@ type VisionElement = {
   height: number;
   notes: string;
 };
+type VisionFailureCode =
+  | "quota_exceeded"
+  | "rate_limited"
+  | "authentication_failed"
+  | "file_too_large"
+  | "provider_unavailable"
+  | "vision_failed";
 
 const count = (text: string, pattern: RegExp) => (text.match(pattern) ?? []).length;
 
@@ -90,6 +97,67 @@ function responseOutputText(payload: Record<string, unknown>) {
     }
   }
   return "";
+}
+
+function classifyVisionFailure(message: string): {
+  code: VisionFailureCode;
+  title: string;
+  description: string;
+  recommendation: string;
+} {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("quota") || normalized.includes("billing") || normalized.includes("insufficient_quota")) {
+    return {
+      code: "quota_exceeded",
+      title: "رصيد خدمة الرؤية غير متاح",
+      description: "حُفظ المخطط، لكن مزود الرؤية رفض التحليل لعدم توفر رصيد API.",
+      recommendation: "فعّل رصيد OpenAI API ثم أعد التحليل من سجل المخططات دون رفع الملف مرة أخرى.",
+    };
+  }
+  if (normalized.includes("rate limit") || normalized.includes("429")) {
+    return {
+      code: "rate_limited",
+      title: "خدمة الرؤية مشغولة مؤقتًا",
+      description: "حُفظ المخطط، لكن المزود أجّل التحليل بسبب حد الطلبات المؤقت.",
+      recommendation: "انتظر قليلًا ثم أعد التحليل من سجل المخططات.",
+    };
+  }
+  if (normalized.includes("api key") || normalized.includes("authentication") || normalized.includes("401")) {
+    return {
+      code: "authentication_failed",
+      title: "تعذر توثيق خدمة الرؤية",
+      description: "حُفظ المخطط، لكن إعدادات مزود الرؤية تحتاج إلى مراجعة.",
+      recommendation: "تحقق من مفتاح OpenAI المحفوظ في أسرار Supabase ثم أعد التحليل.",
+    };
+  }
+  if (normalized.includes("20 mb") || normalized.includes("too large")) {
+    return {
+      code: "file_too_large",
+      title: "الملف أكبر من حد التحليل البصري",
+      description: "حُفظ المخطط، لكن حجمه يتجاوز الحد المسموح لمسار الرؤية.",
+      recommendation: "اضغط الملف أو قسّمه إلى صفحات أصغر ثم ارفعه كإصدار جديد.",
+    };
+  }
+  if (
+    normalized.includes("temporarily") ||
+    normalized.includes("unavailable") ||
+    normalized.includes("server error") ||
+    normalized.includes("502") ||
+    normalized.includes("503")
+  ) {
+    return {
+      code: "provider_unavailable",
+      title: "خدمة الرؤية غير متاحة مؤقتًا",
+      description: "حُفظ المخطط، لكن المزود لم يكمل الطلب في الوقت الحالي.",
+      recommendation: "أعد التحليل لاحقًا من سجل المخططات.",
+    };
+  }
+  return {
+    code: "vision_failed",
+    title: "تعذر إكمال التحليل البصري",
+    description: "حُفظ المخطط، لكن مسار الرؤية لم يُكمل قراءة الملف.",
+    recommendation: "أعد التحليل من سجل المخططات، أو استخدم PDF متجهيًا صادرًا مباشرة من AutoCAD أو Revit.",
+  };
 }
 
 async function analyzeWithVision(
@@ -548,7 +616,7 @@ Deno.serve(async (req: Request) => {
 
   let runId: string | null = null;
   try {
-    const { drawingId } = await req.json();
+    const { drawingId, retry = false } = await req.json();
     if (typeof drawingId !== "string" || !drawingId) {
       return respond({ error: "drawingId is required." }, 400);
     }
@@ -566,7 +634,8 @@ Deno.serve(async (req: Request) => {
         drawing_id: drawing.id,
         project_id: drawing.project_id,
         status: "processing",
-        engine_version: "raster-pdf-vision-v1",
+        engine_version: "raster-pdf-vision-v2",
+        extracted_metadata: { retry: Boolean(retry) },
         started_at: new Date().toISOString(),
       })
       .select("id")
@@ -590,6 +659,7 @@ Deno.serve(async (req: Request) => {
       ? extractPdfPlanElements(bytes)
       : [];
     const findings: Finding[] = [];
+    let visionFailureCode: VisionFailureCode | null = null;
     let qualityScore = metadata.validHeader ? 88 : 35;
     const shouldUseVision = metadata.validHeader && planElements.length === 0 &&
       (metadata.kind === "image" || !metadata.vectorLikely);
@@ -618,15 +688,17 @@ Deno.serve(async (req: Request) => {
         });
       } catch (visionError) {
         const message = visionError instanceof Error ? visionError.message : "Vision fallback failed.";
+        const failure = classifyVisionFailure(message);
+        visionFailureCode = failure.code;
         findings.push({
-          code: "VISION_FALLBACK_FAILED",
-          title: "تعذر إكمال التحليل البصري",
-          description: "حُفظ الملف، لكن مسار الرؤية لم يُكمل قراءة المخطط.",
-          recommendation: "أعد المحاولة، أو استخدم PDF متجهيًا صادرًا مباشرة من AutoCAD أو Revit.",
+          code: `VISION_${failure.code.toUpperCase()}`,
+          title: failure.title,
+          description: failure.description,
+          recommendation: failure.recommendation,
           category: "constructability",
           severity: "warning",
           confidence_score: 98,
-          evidence: [{ source: "vision_fallback", observation: "failure", value: message.slice(0, 240) }],
+          evidence: [{ source: "vision_fallback", observation: "provider_status", value: failure.code }],
         });
       }
     }
@@ -754,7 +826,7 @@ Deno.serve(async (req: Request) => {
         status: planElements.length ? "completed" : "failed",
         review_id: review.id,
         input_fingerprint: await fingerprint(bytes),
-        extracted_metadata: metadata,
+        extracted_metadata: { ...metadata, retry: Boolean(retry), visionFailureCode },
         quality_score: qualityScore,
         error_message: planElements.length
           ? null
@@ -767,6 +839,8 @@ Deno.serve(async (req: Request) => {
       runId,
       metadata,
       analysisStatus: planElements.length ? "completed" : "needs_better_source",
+      failureCode: visionFailureCode,
+      retryable: Boolean(visionFailureCode),
       planElements: savedPlanElements,
       review: { ...review, architectural_review_findings: savedFindings ?? [] },
     });
@@ -782,4 +856,3 @@ Deno.serve(async (req: Request) => {
     return respond({ error: message }, 400);
   }
 });
-
