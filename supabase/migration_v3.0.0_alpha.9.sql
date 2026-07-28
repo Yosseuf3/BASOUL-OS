@@ -1,4 +1,4 @@
--- YOSSEUF OS v3.0.0-alpha.9 ? explainable architectural analysis pipeline
+-- YOSSEUF OS v3.0.0-alpha.9 — explainable architectural analysis pipeline
 
 create table if not exists public.architectural_analysis_runs (
   id uuid primary key default gen_random_uuid(),
