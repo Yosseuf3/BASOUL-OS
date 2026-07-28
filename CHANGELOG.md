@@ -1,3 +1,13 @@
+# 3.0.0-alpha.12 · Automatic Plan Extraction
+
+- Added conservative extraction of literal text from vector PDF drawing layers.
+- Automatically classifies explicit room keywords, dimensions, and general labels.
+- Every extracted element is stored as `detected` with its confidence and evidence note.
+- Human confirmation, correction, or rejection remains mandatory.
+- Analysis responses now include the generated plan elements.
+- Advanced the analysis engine to `plan-extraction-v1`.
+- Advanced iOS build number and Android version code to 13.
+
 # 3.0.0-alpha.11 · Plan Understanding Foundation
 
 - Added persistent structured plan elements for walls, openings, rooms, labels, and dimensions.
