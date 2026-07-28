@@ -119,6 +119,15 @@
 
 # Changelog
 
+## v3.0.0-alpha.17 — Vision Retry Workflow
+
+- إعادة تحليل المخطط المحفوظ دون رفع نسخة جديدة.
+- تصنيف أخطاء مزود الرؤية إلى حالات قابلة للتنفيذ بدل عرض الرسالة الخام.
+- توضيح حالات نفاد الرصيد، حد الطلبات، التوثيق، حجم الملف، وتعطل المزود.
+- إضافة إعادة التحليل إلى الويب وتطبيق Expo.
+- الحفاظ على المخطط وسجل المراجعة عند فشل مزود الرؤية.
+- تحديث محرك التحليل إلى `raster-pdf-vision-v2`.
+
 ## v1.4.0.1 ? PWA Manifest Build Hotfix
 
 - Fixed the Web App Manifest icon `purpose` value to use the valid Next.js metadata literal `maskable`.
@@ -378,4 +387,3 @@
 - Fixed stale v1.5.0 sidebar release label.
 - Synchronized web, mobile, Expo, Android, and iOS release metadata.
 - Added automated release consistency validation.
-
