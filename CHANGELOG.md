@@ -1,3 +1,12 @@
+# 3.0.0-alpha.20 · Interactive Drawing Review
+
+- Added an in-canvas decision card for the selected plan element.
+- Engineers can confirm or reject detected elements without leaving the drawing.
+- Correction opens the existing human-review form with the selected element loaded.
+- Added keyboard selection support and accessible decision state feedback.
+- Keeps the selected marker highlighted while its decision card is open.
+- Advanced iOS build number and Android version code to 21.
+
 # 3.0.0-alpha.19 · Visual Plan Overlay
 
 - Added an authenticated preview URL for drawings stored in Supabase.

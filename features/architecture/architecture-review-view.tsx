@@ -332,7 +332,9 @@ export function ArchitectureReviewView({ projects }: Props) {
         elements={visiblePlanElements}
         page={overlayPage}
         onPageChange={(page) => { setOverlayPage(page); setElementPage(page); }}
-        onSelectElement={inspectPlanElement}
+        onEditElement={inspectPlanElement}
+        onDecideElement={(element, status) => void decidePlanElement(element, status)}
+        busyElementId={savingElementId}
       />
       <div className="plan-inspector-summary">
         <span><b>{planElements.length}</b> مكتشف</span>

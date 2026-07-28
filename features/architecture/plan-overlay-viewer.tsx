@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Eye, EyeOff, Focus } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Eye, EyeOff, Focus, Pencil, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { CloudDrawing } from "@/lib/architecture/drawing-service";
 import { createDrawingPreviewUrl } from "@/lib/architecture/drawing-service";
@@ -15,7 +15,9 @@ type Props = {
   elements: CloudPlanElement[];
   page: number;
   onPageChange: (page: number) => void;
-  onSelectElement: (element: CloudPlanElement) => void;
+  onEditElement: (element: CloudPlanElement) => void;
+  onDecideElement: (element: CloudPlanElement, status: "confirmed" | "rejected") => void;
+  busyElementId: string;
 };
 
 type Point = { x: number; y: number };
@@ -89,7 +91,7 @@ function markerGeometry(element: CloudPlanElement, scale: number) {
   return null;
 }
 
-export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onSelectElement }: Props) {
+export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onEditElement, onDecideElement, busyElementId }: Props) {
   const [previewUrl, setPreviewUrl] = useState("");
   const [previewError, setPreviewError] = useState("");
   const [overlayVisible, setOverlayVisible] = useState(true);
@@ -102,6 +104,7 @@ export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onSel
     }),
     [drawing?.id, elements, page],
   );
+  const activeElement = pageElements.find((element) => element.id === activeElementId) ?? null;
   const scale = useMemo(() => {
     if (pageElements.some((element) => getPlanElementLocation(element).coordinateSystem === "normalized_0_1000")) {
       return 10;
@@ -163,11 +166,11 @@ export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onSel
             role="button"
             tabIndex={0}
             aria-label={element.label}
-            onClick={() => { setActiveElementId(element.id); onSelectElement(element); }}
+            onClick={() => setActiveElementId(element.id)}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
                 setActiveElementId(element.id);
-                onSelectElement(element);
+                setActiveElementId(element.id);
               }
             }}
           >
@@ -178,10 +181,21 @@ export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onSel
           </g>;
         })}
       </svg>}
+      {activeElement && <aside className="plan-overlay-selection" aria-live="polite">
+        <button className="plan-overlay-selection-close" aria-label="إغلاق بطاقة العنصر" onClick={() => setActiveElementId("")}>×</button>
+        <span style={{ color: elementColors[activeElement.element_type] }}>{elementTypeLabels[activeElement.element_type]}</span>
+        <b>{activeElement.label}</b>
+        <small>{[activeElement.value, activeElement.unit].filter(Boolean).join(" ") || "لا توجد قيمة رقمية"} · {activeElement.confidence_score}% ثقة</small>
+        <div>
+          <button onClick={() => onEditElement(activeElement)}><Pencil size={14}/>تصحيح</button>
+          {activeElement.status === "detected" && <button disabled={busyElementId === activeElement.id} onClick={() => onDecideElement(activeElement, "confirmed")}><CheckCircle2 size={14}/>تأكيد</button>}
+          <button disabled={busyElementId === activeElement.id} onClick={() => onDecideElement(activeElement, "rejected")}><XCircle size={14}/>استبعاد</button>
+        </div>
+      </aside>}
     </div>
     <div className="plan-overlay-legend">
       {(Object.keys(elementColors) as PlanElementType[]).map((type) => <span key={type}><i style={{ background: elementColors[type] }}/>{elementTypeLabels[type]}</span>)}
-      <em>اضغط على العنصر لفتح بياناته في المفتش</em>
+      <em>اضغط على العنصر لاتخاذ القرار مباشرة</em>
     </div>
   </div>;
 }
