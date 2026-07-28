@@ -17,6 +17,9 @@ export type CloudReviewFinding = {
   evidence: Array<{ source: string; observation: string; value?: string | number | boolean | null }>;
   analysis_run_id: string | null;
   task_id: string | null;
+  plan_element_id: string | null;
+  geometry: Record<string, unknown>;
+  page_number: number | null;
   created_at: string;
 };
 
@@ -153,6 +156,30 @@ export async function updateFindingDecision(
   if (!updatedFinding) throw new Error("تعذر تحديث الملاحظة.");
 
   await syncReviewCompletion(finding.review_id, user.id);
+}
+
+export async function linkFindingToPlanElement(
+  finding: Pick<CloudReviewFinding, "id" | "drawing_id">,
+  element: { id: string; drawing_id: string; geometry: Record<string, unknown> } | null,
+): Promise<void> {
+  const user = await requireUser();
+  if (element && element.drawing_id !== finding.drawing_id) {
+    throw new Error("لا يمكن ربط الملاحظة بعنصر من مخطط مختلف.");
+  }
+  const page = element && typeof element.geometry.page === "number" ? element.geometry.page : null;
+  const { data, error } = await supabase
+    .from("architectural_review_findings")
+    .update({
+      plan_element_id: element?.id ?? null,
+      geometry: element?.geometry ?? {},
+      page_number: page,
+    })
+    .eq("id", finding.id)
+    .eq("user_id", user.id)
+    .select("id")
+    .single();
+  if (error) throw error;
+  if (!data) throw new Error("تعذر ربط الملاحظة بموضع المخطط.");
 }
 
 export async function convertFindingToTask(
