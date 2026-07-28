@@ -24,6 +24,13 @@ import { QuickCreate } from "@/components/commands/quick-create";
 import type { QuickCreateTarget, WorkspaceId } from "@/packages/types/src";
 import { DEFAULT_WORKSPACE } from "@/packages/core/src";
 import { APP_INFO } from "@/lib/config/app-info";
+import {
+  createProjectFileDownloadUrl,
+  deleteProjectFile,
+  listProjectFiles,
+  uploadProjectFile,
+  type ProjectFile,
+} from "@/lib/projects/project-file-service";
 
 type View = "dashboard" | "projects" | "tasks" | "clients" | "content" | "knowledge" | "finance" | "activity" | "notifications" | "architecture";
 type ProjectFilter = "All" | ProjectStatus;
@@ -583,8 +590,68 @@ function ProjectWorkspace({project,tasks,financeItems,activityEvents,client,onCl
 
     {tab==="activity"&&<section className="workspace-tab-panel"><div className="workspace-panel-head"><div><span className="section-kicker">ACTIVITY STREAM</span><h3>آخر نشاطات المشروع</h3></div></div>{activityEvents.length?<div className="workspace-activity-list">{activityEvents.slice(0,20).map(event=><div key={event.id}><i><Activity size={16}/></i><div><b>{event.title}</b><small>{event.description||event.module} · {new Intl.DateTimeFormat("ar-SA",{dateStyle:"medium",timeStyle:"short"}).format(new Date(event.created_at))}</small></div></div>)}</div>:<EmptyState text="لا يوجد نشاط مسجل للمشروع بعد."/>}</section>}
 
-    {(tab==="files"||tab==="notes")&&<section className="workspace-tab-panel workspace-coming-panel"><div className="coming-icon">{tab==="files"?<FileText size={30}/>:<BookOpen size={30}/>}</div><span className="section-kicker">{tab==="files"?"DOCUMENT CONTROL":"PROJECT NOTES"}</span><h3>{tab==="files"?"مركز ملفات المشروع":"ملاحظات المشروع"}</h3><p>{tab==="files"?"الواجهة أصبحت جزءًا من مساحة المشروع، وسيتم ربط الرفع والتخزين في مرحلة Document Control التالية.":"الواجهة جاهزة لإضافة سجل ملاحظات مرتبط بالمشروع في المرحلة التالية."}</p><div className="coming-capabilities"><span>{tab==="files"?"PDF · DWG · IFC · Images":"قرارات · اجتماعات · مراجعات"}</span><em>قريبًا</em></div></section>}
+    {tab==="files"&&<ProjectFilesPanel projectId={project.id}/>}
+    {tab==="notes"&&<section className="workspace-tab-panel workspace-coming-panel"><div className="coming-icon"><BookOpen size={30}/></div><span className="section-kicker">PROJECT NOTES</span><h3>ملاحظات المشروع</h3><p>الواجهة جاهزة لإضافة سجل ملاحظات مرتبط بالمشروع في المرحلة التالية.</p><div className="coming-capabilities"><span>قرارات · اجتماعات · مراجعات</span><em>قريبًا</em></div></section>}
   </section></div>;
+}
+
+function ProjectFilesPanel({projectId}:{projectId:string}) {
+  const [files,setFiles]=useState<ProjectFile[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [uploading,setUploading]=useState(false);
+  const [message,setMessage]=useState("");
+
+  const refreshFiles=useCallback(async()=>{
+    setLoading(true);
+    try { setFiles(await listProjectFiles(projectId)); setMessage(""); }
+    catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر تحميل ملفات المشروع."); }
+    finally { setLoading(false); }
+  },[projectId]);
+
+  useEffect(()=>{ void refreshFiles(); },[refreshFiles]);
+
+  async function onUpload(event:React.ChangeEvent<HTMLInputElement>) {
+    const selected=event.target.files?.[0];
+    event.target.value="";
+    if(!selected)return;
+    setUploading(true);setMessage("");
+    try { await uploadProjectFile(projectId,selected); await refreshFiles(); }
+    catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر رفع الملف."); }
+    finally { setUploading(false); }
+  }
+  async function onDownload(file:ProjectFile) {
+    try { window.location.assign(await createProjectFileDownloadUrl(file)); }
+    catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر تنزيل الملف."); }
+  }
+  async function onDelete(file:ProjectFile) {
+    if(!window.confirm(`حذف الملف «${file.name}» نهائيًا؟`))return;
+    try { await deleteProjectFile(file); await refreshFiles(); }
+    catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر حذف الملف."); }
+  }
+  const categoryLabels:Record<ProjectFile["category"],string>={
+    drawing:"مخطط",document:"مستند",image:"صورة",model:"نموذج",other:"ملف",
+  };
+  const formatSize=(bytes:number)=>bytes>=1048576?`${(bytes/1048576).toFixed(1)} MB`:`${Math.max(1,Math.round(bytes/1024))} KB`;
+
+  return <section className="workspace-tab-panel project-files-panel">
+    <div className="workspace-panel-head">
+      <div><span className="section-kicker">DOCUMENT CONTROL</span><h3>مركز ملفات المشروع</h3><p>ارفع المستندات والمخططات والنماذج واحفظها داخل المشروع.</p></div>
+      <label className={`project-file-upload primary compact ${uploading?"disabled":""}`}>
+        <Plus size={16}/>{uploading?"جارٍ الرفع…":"رفع ملف"}
+        <input type="file" disabled={uploading} onChange={(event)=>void onUpload(event)} accept=".pdf,.dwg,.dxf,.ifc,.rvt,.nwd,.nwc,.doc,.docx,.xls,.xlsx,.ppt,.pptx,image/*"/>
+      </label>
+    </div>
+    <div className="project-files-meta"><span>PDF · DWG · IFC · Office · Images</span><em>الحد الأقصى 100 MB للملف</em></div>
+    {message&&<div className="project-files-message">{message}</div>}
+    {loading?<div className="project-files-loading">جارٍ تحميل الملفات…</div>:files.length===0
+      ?<div className="project-files-empty"><FileText size={34}/><h4>لا توجد ملفات في المشروع</h4><p>استخدم زر «رفع ملف» لإضافة أول مستند.</p></div>
+      :<div className="project-files-list">{files.map(file=><article key={file.id}>
+        <span className="project-file-icon"><FileText size={20}/></span>
+        <div><strong>{file.name}</strong><small>{categoryLabels[file.category]} · {formatSize(file.file_size)} · {new Intl.DateTimeFormat("ar-SA",{dateStyle:"medium"}).format(new Date(file.created_at))}</small></div>
+        <button onClick={()=>void onDownload(file)}>تنزيل</button>
+        <button className="delete" aria-label={`حذف ${file.name}`} onClick={()=>void onDelete(file)}><Trash2 size={16}/></button>
+      </article>)}</div>}
+  </section>;
 }
 function TaskModal({ state, projects, onClose, onSave }: { state:Exclude<TaskModalState,null>; projects:Project[]; onClose:()=>void; onSave:(i:TaskInput,t?:Task)=>Promise<boolean> }) { const t=state.task; const [saving,setSaving]=useState(false); async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setSaving(true);const f=new FormData(e.currentTarget);const status=String(f.get("status")) as TaskStatus;const input:TaskInput={project_id:String(f.get("project_id")),title:String(f.get("title")||"").trim(),description:nullableText(f.get("description")),status,priority:String(f.get("priority")) as PriorityLevel,progress:status==="Done"?100:clamp(Number(f.get("progress")||0)),due_date:dateValue(f.get("due_date"))};if(!await onSave(input,t??undefined))setSaving(false);} return <Modal title={state.mode==="create"?"إنشاء مهمة جديدة":"تعديل المهمة"} kicker="TASK ENGINE" onClose={onClose}><form className="project-form" onSubmit={submit}><label className="full"><span>المشروع *</span><select name="project_id" defaultValue={t?.project_id||projects[0]?.id} required>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><Field name="title" label="عنوان المهمة *" defaultValue={t?.title} required full maxLength={160}/><Select name="status" label="الحالة" defaultValue={t?.status||"To Do"} options={taskStatusLabels}/><Select name="priority" label="الأولوية" defaultValue={t?.priority||"Medium"} options={priorityLabels}/><Field name="progress" label="نسبة التقدم" type="number" defaultValue={t?.progress??0} min={0} max={100}/><Field name="due_date" label="موعد الاستحقاق" type="date" defaultValue={t?.due_date}/><label className="full"><span>الوصف</span><textarea name="description" rows={5} defaultValue={t?.description??""}/></label><Actions saving={saving} onClose={onClose}/></form></Modal>; }
 
