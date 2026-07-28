@@ -23,7 +23,7 @@ type Finding = {
   evidence: Evidence[];
 };
 type PlanElementDraft = {
-  element_type: "wall" | "room" | "label" | "dimension";
+  element_type: "wall" | "opening" | "room" | "label" | "dimension";
   label: string;
   value: string | null;
   unit: string | null;
@@ -36,6 +36,15 @@ type VectorSegment = {
   end: { x: number; y: number };
   length: number;
   orientation: "horizontal" | "vertical";
+};
+type PairedWallAxis = {
+  orientation: "horizontal" | "vertical";
+  thickness: number;
+  confidence: number;
+  centerline: {
+    start: { x: number; y: number };
+    end: { x: number; y: number };
+  };
 };
 
 const count = (text: string, pattern: RegExp) => (text.match(pattern) ?? []).length;
@@ -169,6 +178,7 @@ function extractPdfPlanElements(bytes: Uint8Array): PlanElementDraft[] {
 
   const usedSegments = new Set<number>();
   const pairedWalls: PlanElementDraft[] = [];
+  const pairedWallAxes: PairedWallAxis[] = [];
   for (const pair of pairCandidates.sort((a, b) => b.score - a.score)) {
     if (usedSegments.has(pair.firstIndex) || usedSegments.has(pair.secondIndex)) continue;
     const first = segments[pair.firstIndex];
@@ -185,12 +195,13 @@ function extractPdfPlanElements(bytes: Uint8Array): PlanElementDraft[] {
         y: Number(((first.end.y + second.end.y) / 2).toFixed(2)),
       },
     };
+    const confidence = Math.min(82, Math.round(52 + pair.score * 30));
     pairedWalls.push({
       element_type: "wall",
       label: `مرشح جدار مزدوج ${pairedWalls.length + 1}`,
       value: pair.thickness.toFixed(2),
       unit: "pt",
-      confidence_score: Math.min(82, Math.round(52 + pair.score * 30)),
+      confidence_score: confidence,
       geometry: {
         kind: "paired_lines",
         coordinateSystem: "pdf_points",
@@ -203,7 +214,84 @@ function extractPdfPlanElements(bytes: Uint8Array): PlanElementDraft[] {
       },
       notes: "Two parallel overlapping PDF vector segments inferred as a wall candidate; engineer confirmation is mandatory.",
     });
+    pairedWallAxes.push({
+      orientation: first.orientation,
+      thickness: pair.thickness,
+      confidence,
+      centerline,
+    });
     if (pairedWalls.length >= 40) break;
+  }
+
+  const openingCandidates: PlanElementDraft[] = [];
+  const seenOpenings = new Set<string>();
+  for (let firstIndex = 0; firstIndex < pairedWallAxes.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < pairedWallAxes.length; secondIndex += 1) {
+      const first = pairedWallAxes[firstIndex];
+      const second = pairedWallAxes[secondIndex];
+      if (first.orientation !== second.orientation) continue;
+      const horizontal = first.orientation === "horizontal";
+      const firstAxis = horizontal
+        ? (first.centerline.start.y + first.centerline.end.y) / 2
+        : (first.centerline.start.x + first.centerline.end.x) / 2;
+      const secondAxis = horizontal
+        ? (second.centerline.start.y + second.centerline.end.y) / 2
+        : (second.centerline.start.x + second.centerline.end.x) / 2;
+      const averageThickness = (first.thickness + second.thickness) / 2;
+      const axisTolerance = Math.max(3, averageThickness * 0.35);
+      const thicknessSimilarity = Math.min(first.thickness, second.thickness) /
+        Math.max(first.thickness, second.thickness);
+      if (Math.abs(firstAxis - secondAxis) > axisTolerance || thicknessSimilarity < 0.65) continue;
+
+      const firstStart = horizontal ? first.centerline.start.x : first.centerline.start.y;
+      const firstEnd = horizontal ? first.centerline.end.x : first.centerline.end.y;
+      const secondStart = horizontal ? second.centerline.start.x : second.centerline.start.y;
+      const secondEnd = horizontal ? second.centerline.end.x : second.centerline.end.y;
+      const firstMin = Math.min(firstStart, firstEnd);
+      const firstMax = Math.max(firstStart, firstEnd);
+      const secondMin = Math.min(secondStart, secondEnd);
+      const secondMax = Math.max(secondStart, secondEnd);
+      const gapStart = firstMax <= secondMin ? firstMax : secondMax <= firstMin ? secondMax : null;
+      const gapEnd = firstMax <= secondMin ? secondMin : secondMax <= firstMin ? firstMin : null;
+      if (gapStart === null || gapEnd === null) continue;
+      const width = gapEnd - gapStart;
+      if (width < 12 || width > 180) continue;
+      const axis = Number(((firstAxis + secondAxis) / 2).toFixed(2));
+      const start = horizontal
+        ? { x: Number(gapStart.toFixed(2)), y: axis }
+        : { x: axis, y: Number(gapStart.toFixed(2)) };
+      const end = horizontal
+        ? { x: Number(gapEnd.toFixed(2)), y: axis }
+        : { x: axis, y: Number(gapEnd.toFixed(2)) };
+      const key = `${first.orientation}:${start.x}:${start.y}:${end.x}:${end.y}`;
+      if (seenOpenings.has(key)) continue;
+      seenOpenings.add(key);
+      const alignmentScore = Math.max(0, 1 - Math.abs(firstAxis - secondAxis) / axisTolerance);
+      const confidence = Math.min(74, Math.round(
+        44 + alignmentScore * 12 + thicknessSimilarity * 10 +
+        Math.min(first.confidence, second.confidence) * 0.08,
+      ));
+      openingCandidates.push({
+        element_type: "opening",
+        label: `مرشح فتحة ${openingCandidates.length + 1}`,
+        value: width.toFixed(2),
+        unit: "pt",
+        confidence_score: confidence,
+        geometry: {
+          kind: "wall_gap",
+          coordinateSystem: "pdf_points",
+          orientation: first.orientation,
+          start,
+          end,
+          width: Number(width.toFixed(2)),
+          hostWallCandidateIndexes: [firstIndex, secondIndex],
+          averageWallThickness: Number(averageThickness.toFixed(2)),
+        },
+        notes: "Gap between aligned paired-wall candidates; classify as door, window, or false positive only after engineer review.",
+      });
+      if (openingCandidates.length >= 20) break;
+    }
+    if (openingCandidates.length >= 20) break;
   }
 
   const singleWalls = segments
@@ -226,7 +314,7 @@ function extractPdfPlanElements(bytes: Uint8Array): PlanElementDraft[] {
       notes: "Unpaired axis-aligned PDF vector segment; it is not a confirmed wall until reviewed.",
     }));
 
-  return [...textElements, ...pairedWalls, ...singleWalls];
+  return [...textElements, ...pairedWalls, ...openingCandidates, ...singleWalls];
 }
 
 function inspectImage(bytes: Uint8Array, mimeType: string) {
@@ -307,7 +395,7 @@ Deno.serve(async (req: Request) => {
         drawing_id: drawing.id,
         project_id: drawing.project_id,
         status: "processing",
-        engine_version: "paired-wall-inference-v1",
+        engine_version: "opening-candidates-v1",
         started_at: new Date().toISOString(),
       })
       .select("id")

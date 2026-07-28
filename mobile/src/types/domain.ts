@@ -84,6 +84,9 @@ export type ArchitecturalPlanElement = {
     coordinateSystem?: string;
     orientation?: "horizontal" | "vertical";
     thickness?: number;
+    width?: number;
+    averageWallThickness?: number;
+    hostWallCandidateIndexes?: number[];
     overlapRatio?: number;
     start?: { x: number; y: number };
     end?: { x: number; y: number };

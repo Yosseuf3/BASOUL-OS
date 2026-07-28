@@ -14,7 +14,8 @@
 - [x] conservative PDF text-layer extraction for labels, room keywords, and dimensions
 - [x] low-confidence axis-aligned wall candidates with PDF coordinates
 - [x] paired-line wall inference with centerline and thickness evidence
-- [ ] opening detection
+- [x] conservative opening candidates from aligned wall gaps
+- [ ] door/window classification and swing-symbol recognition
 
 ## Phase 3 — Design Reasoning
 - circulation, privacy, adjacency, daylight, furnishing, and area efficiency
