@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, CloudUpload, FileSearch, FileUp, ListChecks, PencilRuler, ShieldCheck, Sparkles, Trash2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CloudUpload, FileSearch, FileUp, ListChecks, PencilRuler, RotateCcw, ShieldCheck, Sparkles, Trash2, XCircle } from "lucide-react";
 import { ChangeEvent, useCallback, useEffect, useState } from "react";
 import { createArchitecturalReview, type ArchitecturalReviewReport, type DrawingAsset, type FindingDraft } from "@yosseuf/architectural-intelligence";
 import type { Project } from "@/lib/types";
@@ -105,6 +105,7 @@ export function ArchitectureReviewView({ projects }: Props) {
   const [savingElementId, setSavingElementId] = useState("");
   const [convertingFindingId, setConvertingFindingId] = useState("");
   const [decidingFindingId, setDecidingFindingId] = useState("");
+  const [retryingDrawingId, setRetryingDrawingId] = useState("");
   const [cloudState, setCloudState] = useState<"idle" | "loading" | "saving" | "error">("loading");
   const [cloudMessage, setCloudMessage] = useState("");
   const loadDrawings = useCallback(async () => {
@@ -140,11 +141,17 @@ export function ArchitectureReviewView({ projects }: Props) {
     setCloudState("saving"); setCloudMessage("");
     try {
       const drawing = await uploadProjectDrawing({ projectId, file, revision, pageCount: pages });
-      const { review } = await analyzeProjectDrawing(drawing.id);
+      const result = await analyzeProjectDrawing(drawing.id);
+      const { review } = result;
       setSavedReview(review);
       setReport(cloudReviewToReport(review));
-      setCloudMessage("تم رفع المخطط وتحليله وإنشاء جلسة مراجعة.");
+      const completionMessage = result.analysisStatus === "completed"
+        ? `تم تحليل المخطط واستخراج ${result.planElements.length} عنصرًا للمراجعة.`
+        : result.failureCode === "quota_exceeded"
+          ? "تم حفظ المخطط. فعّل رصيد OpenAI API ثم استخدم «إعادة التحليل» دون رفع الملف مجددًا."
+          : "تم حفظ المخطط وإنشاء جلسة مراجعة، لكن المصدر يحتاج معالجة أوضح.";
       await loadDrawings();
+      setCloudMessage(completionMessage);
     } catch (uploadError) {
       setCloudState("error");
       setCloudMessage(uploadError instanceof Error ? uploadError.message : "تعذر رفع المخطط.");
@@ -172,6 +179,29 @@ export function ArchitectureReviewView({ projects }: Props) {
       setCloudMessage(taskError instanceof Error ? taskError.message : "تعذر إنشاء المهمة.");
     } finally {
       setConvertingFindingId("");
+    }
+  };
+  const retryDrawingAnalysis = async (drawing: CloudDrawing) => {
+    setRetryingDrawingId(drawing.id);
+    setCloudState("saving");
+    setCloudMessage("");
+    try {
+      const result = await analyzeProjectDrawing(drawing.id, { retry: true });
+      setSavedReview(result.review);
+      setReport(cloudReviewToReport(result.review));
+      setElementDrawingId(drawing.id);
+      const completionMessage = result.analysisStatus === "completed"
+        ? `اكتمل التحليل واكتُشف ${result.planElements.length} عنصرًا يحتاج تحققًا بشريًا.`
+        : result.failureCode === "quota_exceeded"
+          ? "لا يزال رصيد OpenAI API غير متاح. لم يُرفع الملف مرة أخرى ويمكن إعادة المحاولة لاحقًا."
+          : "اكتملت المحاولة، لكن لم تُكتشف عناصر موثوقة بعد.";
+      await loadDrawings();
+      setCloudMessage(completionMessage);
+    } catch (retryError) {
+      setCloudState("error");
+      setCloudMessage(retryError instanceof Error ? retryError.message : "تعذرت إعادة تحليل المخطط.");
+    } finally {
+      setRetryingDrawingId("");
     }
   };
   const decideFinding = async (finding: CloudReviewFinding, status: FindingDecision) => {
@@ -283,7 +313,7 @@ export function ArchitectureReviewView({ projects }: Props) {
       {planElements.length ? <div className="plan-element-list">{planElements.map((element) => <article key={element.id} className={`plan-element status-${element.status}`}><PencilRuler size={18}/><div><div className="plan-element-heading"><b>{element.label}</b><span>{planElementTypeLabels[element.element_type]}</span></div><small>{[element.value, element.unit].filter(Boolean).join(" " ) || "بلا قيمة رقمية"} · {element.source === "manual" ? "إدخال بشري" : `${element.confidence_score}% ثقة`}</small><em>{planElementStatusLabels[element.status]}</em></div><div className="plan-element-actions"><button disabled={savingElementId === element.id} onClick={() => editPlanElement(element)}>تصحيح</button>{element.status === "detected" && <button disabled={savingElementId === element.id} onClick={() => void decidePlanElement(element, "confirmed")}>تأكيد</button>}{element.status !== "rejected" && <button disabled={savingElementId === element.id} onClick={() => void decidePlanElement(element, "rejected")}>استبعاد</button>}</div></article>)}</div> : <div className="architecture-empty compact"><PencilRuler size={24}/><p>لا توجد عناصر مسجلة. ابدأ بإضافة غرفة أو بُعد مؤكد.</p></div>}
     </section>
     <section className="panel drawing-history"><div className="panel-head"><div><span className="section-kicker">04 · الإصدارات</span><h2>سجل المخططات المحفوظة</h2></div><span>{drawings.length} ملف</span></div>
-      {cloudState === "loading" ? <div className="architecture-empty compact"><FileSearch size={24}/><p>جارٍ تحميل السجل</p></div> : drawings.length ? <div className="drawing-history-list">{drawings.map((drawing) => <article key={drawing.id}><FileSearch size={18}/><div><b>{drawing.name}</b><small>الإصدار {drawing.revision} · {formatBytes(drawing.file_size)} · {drawing.page_count ? `${drawing.page_count} صفحة` : drawing.format.toUpperCase()}</small></div><time>{new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium" }).format(new Date(drawing.created_at))}</time><button aria-label="حذف المخطط" onClick={() => void removeDrawing(drawing)}><Trash2 size={15}/></button></article>)}</div> : <div className="architecture-empty compact"><FileSearch size={24}/><p>لا توجد مخططات محفوظة لهذا المشروع.</p></div>}
+      {cloudState === "loading" ? <div className="architecture-empty compact"><FileSearch size={24}/><p>جارٍ تحميل السجل</p></div> : drawings.length ? <div className="drawing-history-list">{drawings.map((drawing) => <article key={drawing.id}><FileSearch size={18}/><div><b>{drawing.name}</b><small>الإصدار {drawing.revision} · {formatBytes(drawing.file_size)} · {drawing.page_count ? `${drawing.page_count} صفحة` : drawing.format.toUpperCase()}</small></div><time>{new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium" }).format(new Date(drawing.created_at))}</time><button aria-label={`إعادة تحليل ${drawing.name}`} disabled={Boolean(retryingDrawingId)} onClick={() => void retryDrawingAnalysis(drawing)}><RotateCcw size={15}/>{retryingDrawingId === drawing.id ? "جارٍ التحليل" : "إعادة التحليل"}</button><button aria-label="حذف المخطط" disabled={Boolean(retryingDrawingId)} onClick={() => void removeDrawing(drawing)}><Trash2 size={15}/></button></article>)}</div> : <div className="architecture-empty compact"><FileSearch size={24}/><p>لا توجد مخططات محفوظة لهذا المشروع.</p></div>}
     </section>
     <section className="panel review-history"><div className="panel-head"><div><span className="section-kicker">05 · القرارات</span><h2>سجل المراجعات</h2></div><span>{reviews.length} جلسة</span></div>
       {reviews.length ? <div className="review-history-list">{reviews.map((item) => <article key={item.id}><div className="review-score"><strong>{item.plan_health}%</strong><small>صحة المخطط</small></div><div><b>مراجعة قابلة للتنفيذ</b><small>{item.architectural_review_findings.filter((finding) => finding.status === "open" || finding.status === "accepted").length} قيد المتابعة · {item.architectural_review_findings.filter((finding) => finding.status === "converted_to_task").length} مهمة منشأة</small></div><span className={`review-status ${item.status}`}>{item.status === "completed" ? "مكتملة" : "جاهزة"}</span><time>{new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium" }).format(new Date(item.created_at))}</time></article>)}</div> : <div className="architecture-empty compact"><ListChecks size={24}/><p>ارفع مخططًا لإنشاء أول جلسة مراجعة.</p></div>}
