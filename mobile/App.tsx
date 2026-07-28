@@ -20,6 +20,7 @@ import {
   createMobileTask,
   loadMobileWorkspace,
   markMobileNotificationRead,
+  retryMobileDrawingAnalysis,
   updateMobileFindingDecision,
   updateMobilePlanElementStatus,
   uploadMobileDrawing,
@@ -42,6 +43,7 @@ export default function App() {
   const [decidingFindingId, setDecidingFindingId] = useState("");
   const [updatingPlanElementId, setUpdatingPlanElementId] = useState("");
   const [uploadingDrawing, setUploadingDrawing] = useState(false);
+  const [retryingDrawingId, setRetryingDrawingId] = useState("");
 
   const refresh = useCallback(async () => {
     if (!session?.user.id) return;
@@ -103,7 +105,7 @@ export default function App() {
     }
   }
   async function uploadDrawing(input: { projectId: string; revision: string; uri: string; name: string; mimeType: string; size: number }) {
-    if (!session) return { analysisStatus: "needs_better_source" as const, detectedElements: 0 };
+    if (!session) return { drawingId: "", analysisStatus: "needs_better_source" as const, detectedElements: 0, failureCode: null, retryable: false };
     setUploadingDrawing(true);
     try {
       const result = await uploadMobileDrawing(session.user.id, input.projectId, input.revision, input);
@@ -111,6 +113,16 @@ export default function App() {
       return result;
     } finally {
       setUploadingDrawing(false);
+    }
+  }
+  async function retryDrawing(drawingId: string) {
+    setRetryingDrawingId(drawingId);
+    try {
+      const result = await retryMobileDrawingAnalysis(drawingId);
+      await refresh();
+      return result;
+    } finally {
+      setRetryingDrawingId("");
     }
   }
 
@@ -125,13 +137,12 @@ export default function App() {
     {screen === "tasks" ? <TasksScreen tasks={data.tasks} projects={data.projects} onBack={() => setScreen("dashboard")} onCreate={() => setScreen("createTask")} onAdvance={(task) => void advanceTask(task)} /> : null}
     {screen === "notifications" ? <NotificationsScreen notifications={data.notifications} onBack={() => setScreen("dashboard")} onRead={readNotification} /> : null}
     {screen === "intelligence" ? <CommandCenterScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
-    {screen === "architecture" ? <ArchitectureReviewScreen data={data} onBack={() => setScreen("dashboard")} onConvertFinding={(finding, projectId) => void convertFinding(finding, projectId)} convertingFindingId={convertingFindingId} onDecideFinding={(finding, status) => void decideFinding(finding, status)} decidingFindingId={decidingFindingId} onDecidePlanElement={(elementId, status) => void decidePlanElement(elementId, status)} updatingPlanElementId={updatingPlanElementId} onUploadDrawing={uploadDrawing} uploadingDrawing={uploadingDrawing} /> : null}
+    {screen === "architecture" ? <ArchitectureReviewScreen data={data} onBack={() => setScreen("dashboard")} onConvertFinding={(finding, projectId) => void convertFinding(finding, projectId)} convertingFindingId={convertingFindingId} onDecideFinding={(finding, status) => void decideFinding(finding, status)} decidingFindingId={decidingFindingId} onDecidePlanElement={(elementId, status) => void decidePlanElement(elementId, status)} updatingPlanElementId={updatingPlanElementId} onUploadDrawing={uploadDrawing} uploadingDrawing={uploadingDrawing} onRetryDrawing={retryDrawing} retryingDrawingId={retryingDrawingId} /> : null}
     {screen === "createTask" ? <CreateTaskScreen projects={data.projects} onCancel={() => setScreen("dashboard")} onSubmit={createTask} /> : null}
     {screen === "timeline" ? <TimelineScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "search" ? <GlobalSearchScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
-    <View style={styles.footer}><Text style={styles.version}>v3.0.0-alpha.13 · Vector Wall Candidates</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
+    <View style={styles.footer}><Text style={styles.version}>v3.0.0-alpha.17 · Vision Retry Workflow</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
   </View>;
 }
 
 const styles = StyleSheet.create({ app: { flex: 1, backgroundColor: tokens.colors.background }, center: { flex: 1, backgroundColor: tokens.colors.background, alignItems: "center", justifyContent: "center" }, errorBar: { backgroundColor: "#4a2020", paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center" }, errorText: { color: "#ffdada", flex: 1, textAlign: "right" }, dismiss: { color: "#ffdada", fontSize: 24, marginLeft: 12 }, footer: { borderTopWidth: 1, borderTopColor: tokens.colors.border, paddingHorizontal: 18, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", backgroundColor: tokens.colors.surface }, version: { color: tokens.colors.muted, fontSize: 11 }, logout: { color: "#df8d8d", fontWeight: "800" } });
-
