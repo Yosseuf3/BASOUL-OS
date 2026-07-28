@@ -46,8 +46,179 @@ type PairedWallAxis = {
     end: { x: number; y: number };
   };
 };
+type VisionElement = {
+  element_type: PlanElementDraft["element_type"];
+  label: string;
+  value: string | null;
+  unit: string | null;
+  confidence_score: number;
+  page: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  notes: string;
+};
 
 const count = (text: string, pattern: RegExp) => (text.match(pattern) ?? []).length;
+
+function toBase64(bytes: Uint8Array) {
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function responseOutputText(payload: Record<string, unknown>) {
+  const output = Array.isArray(payload.output) ? payload.output : [];
+  for (const item of output) {
+    if (!item || typeof item !== "object") continue;
+    const content = Array.isArray((item as { content?: unknown[] }).content)
+      ? (item as { content: unknown[] }).content
+      : [];
+    for (const part of content) {
+      if (
+        part &&
+        typeof part === "object" &&
+        (part as { type?: unknown }).type === "output_text" &&
+        typeof (part as { text?: unknown }).text === "string"
+      ) {
+        return (part as { text: string }).text;
+      }
+    }
+  }
+  return "";
+}
+
+async function analyzeWithVision(
+  bytes: Uint8Array,
+  mimeType: string,
+  filename: string,
+): Promise<PlanElementDraft[]> {
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
+  if (bytes.byteLength > 20 * 1024 * 1024) {
+    throw new Error("Vision fallback supports files up to 20 MB.");
+  }
+
+  const fileData = toBase64(bytes);
+  const fileInput = mimeType === "application/pdf"
+    ? {
+      type: "input_file",
+      filename: filename || "drawing.pdf",
+      file_data: `data:application/pdf;base64,${fileData}`,
+    }
+    : {
+      type: "input_image",
+      detail: "high",
+      image_url: `data:${mimeType};base64,${fileData}`,
+    };
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: Deno.env.get("OPENAI_VISION_MODEL") ?? "gpt-4.1-mini",
+      store: false,
+      input: [{
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: [
+              "حلّل الملف كمخطط معماري فقط.",
+              "استخرج العناصر المرئية بوضوح: الغرف، التسميات، الأبعاد، الجدران والفتحات.",
+              "لا تخمّن عنصرًا غير ظاهر ولا تصنّف الفتحة كباب أو نافذة دون رمز أو تسمية واضحة.",
+              "استخدم إحداثيات نسبية من 0 إلى 1000 لكل صفحة.",
+              "اجعل درجة الثقة محافظة؛ جميع النتائج ستخضع لمراجعة مهندس.",
+              "أعد العناصر فقط وفق مخطط JSON المحدد.",
+            ].join("\n"),
+          },
+          fileInput,
+        ],
+      }],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "architectural_vision_elements",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              elements: {
+                type: "array",
+                maxItems: 40,
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    element_type: { type: "string", enum: ["wall", "opening", "room", "label", "dimension"] },
+                    label: { type: "string", minLength: 1, maxLength: 160 },
+                    value: { type: ["string", "null"] },
+                    unit: { type: ["string", "null"] },
+                    confidence_score: { type: "integer", minimum: 0, maximum: 100 },
+                    page: { type: "integer", minimum: 1 },
+                    x: { type: "number", minimum: 0, maximum: 1000 },
+                    y: { type: "number", minimum: 0, maximum: 1000 },
+                    width: { type: "number", minimum: 0, maximum: 1000 },
+                    height: { type: "number", minimum: 0, maximum: 1000 },
+                    notes: { type: "string", maxLength: 500 },
+                  },
+                  required: [
+                    "element_type",
+                    "label",
+                    "value",
+                    "unit",
+                    "confidence_score",
+                    "page",
+                    "x",
+                    "y",
+                    "width",
+                    "height",
+                    "notes",
+                  ],
+                },
+              },
+            },
+            required: ["elements"],
+          },
+        },
+      },
+    }),
+  });
+  const payload = await response.json() as Record<string, unknown>;
+  if (!response.ok) {
+    const error = payload.error && typeof payload.error === "object"
+      ? (payload.error as { message?: unknown }).message
+      : null;
+    throw new Error(typeof error === "string" ? error : `Vision request failed (${response.status}).`);
+  }
+  const outputText = responseOutputText(payload);
+  if (!outputText) throw new Error("Vision response did not contain structured output.");
+  const parsed = JSON.parse(outputText) as { elements?: VisionElement[] };
+  return (parsed.elements ?? []).slice(0, 40).map((element) => ({
+    element_type: element.element_type,
+    label: element.label.trim().slice(0, 160),
+    value: element.value,
+    unit: element.unit?.slice(0, 24) ?? null,
+    confidence_score: Math.min(78, Math.max(20, Math.round(element.confidence_score))),
+    geometry: {
+      kind: "vision_bbox",
+      coordinateSystem: "normalized_0_1000",
+      page: element.page,
+      x: element.x,
+      y: element.y,
+      width: element.width,
+      height: element.height,
+    },
+    notes: `Vision fallback; engineer confirmation is mandatory. ${element.notes}`.slice(0, 1000),
+  }));
+}
 
 function inspectPdf(bytes: Uint8Array) {
   const text = new TextDecoder("latin1").decode(bytes);
@@ -395,7 +566,7 @@ Deno.serve(async (req: Request) => {
         drawing_id: drawing.id,
         project_id: drawing.project_id,
         status: "processing",
-        engine_version: "opening-candidates-v1",
+        engine_version: "raster-pdf-vision-v1",
         started_at: new Date().toISOString(),
       })
       .select("id")
@@ -415,11 +586,50 @@ Deno.serve(async (req: Request) => {
     const metadata = drawing.mime_type === "application/pdf"
       ? inspectPdf(bytes)
       : inspectImage(bytes, drawing.mime_type);
-    const planElements = drawing.mime_type === "application/pdf"
+    let planElements = drawing.mime_type === "application/pdf"
       ? extractPdfPlanElements(bytes)
       : [];
     const findings: Finding[] = [];
     let qualityScore = metadata.validHeader ? 88 : 35;
+    const shouldUseVision = metadata.validHeader && planElements.length === 0 &&
+      (metadata.kind === "image" || !metadata.vectorLikely);
+    if (shouldUseVision) {
+      try {
+        const visionElements = await analyzeWithVision(bytes, drawing.mime_type, drawing.name);
+        planElements = visionElements;
+        findings.push({
+          code: visionElements.length ? "VISION_FALLBACK_USED" : "VISION_NO_ELEMENTS_DETECTED",
+          title: visionElements.length
+            ? "تم تحليل المخطط بصريًا"
+            : "لم يكتشف التحليل البصري عناصر مؤكدة",
+          description: visionElements.length
+            ? `استُخدم مسار الرؤية لاستخراج ${visionElements.length} عنصرًا مرئيًا من الملف غير المتجهي.`
+            : "اكتمل فحص الملف بصريًا دون العثور على عناصر يمكن تسجيلها بثقة كافية.",
+          recommendation: visionElements.length
+            ? "راجع العناصر المكتشفة واعتمد الصحيح منها أو ارفضه قبل استخدامه في القرارات الهندسية."
+            : "استخدم نسخة أوضح أو صدّر PDF متجهيًا من برنامج التصميم.",
+          category: "constructability",
+          severity: visionElements.length ? "info" : "warning",
+          confidence_score: visionElements.length ? 92 : 76,
+          evidence: [
+            { source: "vision_fallback", observation: "detected_elements", value: visionElements.length },
+            { source: "vision_fallback", observation: "model", value: Deno.env.get("OPENAI_VISION_MODEL") ?? "gpt-4.1-mini" },
+          ],
+        });
+      } catch (visionError) {
+        const message = visionError instanceof Error ? visionError.message : "Vision fallback failed.";
+        findings.push({
+          code: "VISION_FALLBACK_FAILED",
+          title: "تعذر إكمال التحليل البصري",
+          description: "حُفظ الملف، لكن مسار الرؤية لم يُكمل قراءة المخطط.",
+          recommendation: "أعد المحاولة، أو استخدم PDF متجهيًا صادرًا مباشرة من AutoCAD أو Revit.",
+          category: "constructability",
+          severity: "warning",
+          confidence_score: 98,
+          evidence: [{ source: "vision_fallback", observation: "failure", value: message.slice(0, 240) }],
+        });
+      }
+    }
 
     if (!metadata.validHeader) {
       findings.push({
@@ -541,11 +751,14 @@ Deno.serve(async (req: Request) => {
         page_count: metadata.kind === "pdf" ? metadata.pages : null,
       }).eq("id", drawing.id),
       supabase.from("architectural_analysis_runs").update({
-        status: "completed",
+        status: planElements.length ? "completed" : "failed",
         review_id: review.id,
         input_fingerprint: await fingerprint(bytes),
         extracted_metadata: metadata,
         quality_score: qualityScore,
+        error_message: planElements.length
+          ? null
+          : "No architectural elements were detected; review findings for remediation.",
         completed_at: finishedAt,
       }).eq("id", runId),
     ]);
@@ -553,6 +766,7 @@ Deno.serve(async (req: Request) => {
     return respond({
       runId,
       metadata,
+      analysisStatus: planElements.length ? "completed" : "needs_better_source",
       planElements: savedPlanElements,
       review: { ...review, architectural_review_findings: savedFindings ?? [] },
     });
@@ -568,3 +782,4 @@ Deno.serve(async (req: Request) => {
     return respond({ error: message }, 400);
   }
 });
+
