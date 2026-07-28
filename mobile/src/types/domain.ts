@@ -82,6 +82,10 @@ export type ArchitecturalPlanElement = {
   geometry: {
     kind?: string;
     coordinateSystem?: string;
+    page?: number;
+    x?: number;
+    y?: number;
+    height?: number;
     orientation?: "horizontal" | "vertical";
     thickness?: number;
     width?: number;

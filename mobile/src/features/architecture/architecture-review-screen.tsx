@@ -37,6 +37,7 @@ export function ArchitectureReviewScreen({
   const [revision, setRevision] = useState("A");
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [message, setMessage] = useState("");
+  const [elementFilter, setElementFilter] = useState<ArchitecturalPlanElement["element_type"] | "all">("all");
   const projectNames = new Map(data.projects.map((project) => [project.id, project.name]));
   const drawingNames = new Map(data.drawings.map((drawing) => [drawing.id, `${drawing.name} · ${drawing.revision}`]));
   const openFindings = data.reviews.flatMap((review) =>
@@ -52,6 +53,8 @@ export function ArchitectureReviewScreen({
     (total, review) => total + review.architectural_review_findings.filter((finding) => ["rejected", "resolved", "converted_to_task"].includes(finding.status)).length,
     0,
   );
+  const visiblePlanElements = data.planElements.filter((element) => elementFilter === "all" || element.element_type === elementFilter);
+  const confirmedElementCount = data.planElements.filter((element) => element.status === "confirmed" || element.status === "corrected").length;
 
   async function chooseDrawing() {
     setMessage("");
@@ -174,12 +177,25 @@ export function ArchitectureReviewScreen({
       ))}
 
       <Text style={styles.sectionTitle}>فهم عناصر المخطط</Text>
+      <View style={styles.elementSummary}>
+        <Metric value={String(data.planElements.length)} label="مكتشف" />
+        <Metric value={String(confirmedElementCount)} label="مؤكد" />
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.elementFilters}>
+        {(["all", "room", "dimension", "wall", "opening", "label"] as const).map((filter) => (
+          <TouchableOpacity key={filter} onPress={() => setElementFilter(filter)} style={[styles.elementFilter, elementFilter === filter && styles.elementFilterActive]}>
+            <Text style={[styles.elementFilterText, elementFilter === filter && styles.elementFilterTextActive]}>{filter === "all" ? "الكل" : planElementTypeLabels[filter]}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
       {data.planElements.length === 0 ? (
         <View style={styles.empty}>
           <Text selectable style={styles.emptyTitle}>لا توجد عناصر مخطط منظمة بعد</Text>
           <Text selectable style={styles.emptyText}>أضف العناصر أو صححها من الويب، ثم اعتمد النتائج هنا أثناء المراجعة الميدانية.</Text>
         </View>
-      ) : data.planElements.map((element) => (
+      ) : visiblePlanElements.length === 0 ? (
+        <View style={styles.empty}><Text selectable style={styles.emptyTitle}>لا توجد نتائج مطابقة</Text><Text selectable style={styles.emptyText}>غيّر نوع العنصر لعرض بقية النتائج.</Text></View>
+      ) : visiblePlanElements.map((element) => (
         <View key={element.id} style={styles.elementCard}>
           <View style={styles.elementTop}>
             <Text style={styles.elementStatus}>{planElementStatusLabels[element.status]}</Text>
@@ -189,6 +205,11 @@ export function ArchitectureReviewScreen({
             {drawingNames.get(element.drawing_id) || "مخطط معماري"} · {planElementTypeLabels[element.element_type]}
           </Text>
           {element.value ? <Text selectable style={styles.elementValue}>{element.value}{element.unit ? ` ${element.unit}` : ""}</Text> : null}
+          {element.geometry?.page ? <Text selectable style={styles.elementLocation}>
+            الصفحة {element.geometry.page}
+            {typeof element.geometry.x === "number" && typeof element.geometry.y === "number" ? ` · موضع ${Math.round(element.geometry.x)}, ${Math.round(element.geometry.y)}` : ""}
+            {typeof element.geometry.width === "number" && typeof element.geometry.height === "number" ? ` · حجم ${Math.round(element.geometry.width)}×${Math.round(element.geometry.height)}` : ""}
+          </Text> : null}
           {element.geometry?.kind !== "wall_gap" && element.geometry?.start && element.geometry?.end ? (
             <Text selectable style={styles.elementGeometry}>
               ({element.geometry.start.x}, {element.geometry.start.y}) ← ({element.geometry.end.x}, {element.geometry.end.y})
@@ -317,6 +338,13 @@ const styles = StyleSheet.create({
   uploadButtonDisabled: { opacity: .45 },
   uploadButtonText: { color: tokens.colors.background, fontWeight: "900" },
   uploadMessage: { color: tokens.colors.success, lineHeight: 20, textAlign: "right" },
+  elementSummary: { flexDirection: "row", gap: 8, marginBottom: 10 },
+  elementFilters: { flexDirection: "row-reverse", gap: 7, paddingBottom: 10 },
+  elementFilter: { borderWidth: 1, borderColor: tokens.colors.border, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
+  elementFilterActive: { borderColor: tokens.colors.gold, backgroundColor: "#2d2717" },
+  elementFilterText: { color: tokens.colors.muted, fontSize: 11, fontWeight: "800" },
+  elementFilterTextActive: { color: tokens.colors.gold },
+  elementLocation: { color: tokens.colors.gold, fontSize: 11, textAlign: "right", marginTop: 7 },
   drawingCard: { backgroundColor: tokens.colors.surface, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.md, padding: 13, marginBottom: 9, flexDirection: "row", alignItems: "center", gap: 10 },
   retryButton: { borderWidth: 1, borderColor: tokens.colors.gold, borderRadius: tokens.radius.sm, paddingHorizontal: 12, paddingVertical: 9 },
   retryButtonText: { color: tokens.colors.gold, fontWeight: "900", fontSize: 11 },

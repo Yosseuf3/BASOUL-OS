@@ -119,6 +119,15 @@
 
 # Changelog
 
+## v3.0.0-alpha.18 — Plan Element Inspector
+
+- Added structured plan-element summaries for detected, pending, confirmed, and page-organized results.
+- Added element-type and page filtering to the web architectural review.
+- Added page and normalized bounding-box location details to detected elements.
+- Added mobile element summaries, type filters, and page-location metadata.
+- Preserved the engineer confirmation, correction, and rejection workflow.
+- No database migration is required.
+
 ## v3.0.0-alpha.17 — Vision Retry Workflow
 
 - إعادة تحليل المخطط المحفوظ دون رفع نسخة جديدة.
