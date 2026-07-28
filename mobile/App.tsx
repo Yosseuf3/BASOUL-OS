@@ -21,13 +21,14 @@ import {
   loadMobileWorkspace,
   markMobileNotificationRead,
   updateMobileFindingDecision,
+  updateMobilePlanElementStatus,
   uploadMobileDrawing,
   type MobileFindingDecision,
 } from "./src/services/workspace";
 import { tokens } from "./src/theme/tokens";
 import type { ArchitecturalFinding, MobileWorkspaceData, Task } from "./src/types/domain";
 
-const emptyData: MobileWorkspaceData = { projects: [], tasks: [], notifications: [], drawings: [], reviews: [] };
+const emptyData: MobileWorkspaceData = { projects: [], tasks: [], notifications: [], drawings: [], reviews: [], planElements: [] };
 type ScreenName = "dashboard" | "projects" | "tasks" | "notifications" | "intelligence" | "architecture" | "createTask" | "timeline" | "search";
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [convertingFindingId, setConvertingFindingId] = useState("");
   const [decidingFindingId, setDecidingFindingId] = useState("");
+  const [updatingPlanElementId, setUpdatingPlanElementId] = useState("");
   const [uploadingDrawing, setUploadingDrawing] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -88,6 +90,18 @@ export default function App() {
       setDecidingFindingId("");
     }
   }
+  async function decidePlanElement(elementId: string, status: "confirmed" | "rejected") {
+    if (!session) return;
+    setUpdatingPlanElementId(elementId);
+    try {
+      await updateMobilePlanElementStatus(session.user.id, elementId, status);
+      await refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر حفظ قرار عنصر المخطط.");
+    } finally {
+      setUpdatingPlanElementId("");
+    }
+  }
   async function uploadDrawing(input: { projectId: string; revision: string; uri: string; name: string; mimeType: string; size: number }) {
     if (!session) return;
     setUploadingDrawing(true);
@@ -110,11 +124,11 @@ export default function App() {
     {screen === "tasks" ? <TasksScreen tasks={data.tasks} projects={data.projects} onBack={() => setScreen("dashboard")} onCreate={() => setScreen("createTask")} onAdvance={(task) => void advanceTask(task)} /> : null}
     {screen === "notifications" ? <NotificationsScreen notifications={data.notifications} onBack={() => setScreen("dashboard")} onRead={readNotification} /> : null}
     {screen === "intelligence" ? <CommandCenterScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
-    {screen === "architecture" ? <ArchitectureReviewScreen data={data} onBack={() => setScreen("dashboard")} onConvertFinding={(finding, projectId) => void convertFinding(finding, projectId)} convertingFindingId={convertingFindingId} onDecideFinding={(finding, status) => void decideFinding(finding, status)} decidingFindingId={decidingFindingId} onUploadDrawing={uploadDrawing} uploadingDrawing={uploadingDrawing} /> : null}
+    {screen === "architecture" ? <ArchitectureReviewScreen data={data} onBack={() => setScreen("dashboard")} onConvertFinding={(finding, projectId) => void convertFinding(finding, projectId)} convertingFindingId={convertingFindingId} onDecideFinding={(finding, status) => void decideFinding(finding, status)} decidingFindingId={decidingFindingId} onDecidePlanElement={(elementId, status) => void decidePlanElement(elementId, status)} updatingPlanElementId={updatingPlanElementId} onUploadDrawing={uploadDrawing} uploadingDrawing={uploadingDrawing} /> : null}
     {screen === "createTask" ? <CreateTaskScreen projects={data.projects} onCancel={() => setScreen("dashboard")} onSubmit={createTask} /> : null}
     {screen === "timeline" ? <TimelineScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "search" ? <GlobalSearchScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
-    <View style={styles.footer}><Text style={styles.version}>v3.0.0-alpha.10 · Actionable Review Decisions</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
+    <View style={styles.footer}><Text style={styles.version}>v3.0.0-alpha.11 · Plan Understanding Foundation</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
   </View>;
 }
 

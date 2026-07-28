@@ -1,6 +1,6 @@
 import { fetch } from "expo/fetch";
 import { supabase } from "../config/supabase";
-import type { ArchitecturalDrawing, ArchitecturalFinding, ArchitecturalReview, MobileWorkspaceData, Notification, Project, Task } from "../types/domain";
+import type { ArchitecturalDrawing, ArchitecturalFinding, ArchitecturalPlanElement, ArchitecturalReview, MobileWorkspaceData, Notification, Project, Task } from "../types/domain";
 
 const ARCHITECTURAL_DRAWINGS_BUCKET = "architectural-drawings";
 
@@ -41,7 +41,7 @@ async function syncMobileReviewCompletion(reviewId: string, userId: string): Pro
 export async function loadMobileWorkspace(userId: string): Promise<MobileWorkspaceData> {
   if (!supabase) throw new Error("Supabase is not configured.");
 
-  const [projectsResult, tasksResult, notificationsResult, drawingsResult, reviewsResult] = await Promise.all([
+  const [projectsResult, tasksResult, notificationsResult, drawingsResult, reviewsResult, planElementsResult] = await Promise.all([
     supabase
       .from("projects")
       .select("id,name,status,priority,progress,client_name,project_number,location,design_phase,due_date,updated_at")
@@ -70,9 +70,15 @@ export async function loadMobileWorkspace(userId: string): Promise<MobileWorkspa
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(20),
+    supabase
+      .from("architectural_plan_elements")
+      .select("id,project_id,drawing_id,element_type,label,value,unit,confidence_score,source,status,notes,created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(100),
   ]);
 
-  const firstError = projectsResult.error ?? tasksResult.error ?? notificationsResult.error ?? drawingsResult.error ?? reviewsResult.error;
+  const firstError = projectsResult.error ?? tasksResult.error ?? notificationsResult.error ?? drawingsResult.error ?? reviewsResult.error ?? planElementsResult.error;
   if (firstError) throw firstError;
 
   return {
@@ -81,7 +87,22 @@ export async function loadMobileWorkspace(userId: string): Promise<MobileWorkspa
     notifications: (notificationsResult.data ?? []) as Notification[],
     drawings: (drawingsResult.data ?? []) as ArchitecturalDrawing[],
     reviews: (reviewsResult.data ?? []) as ArchitecturalReview[],
+    planElements: (planElementsResult.data ?? []) as ArchitecturalPlanElement[],
   };
+}
+
+export async function updateMobilePlanElementStatus(
+  userId: string,
+  elementId: string,
+  status: "confirmed" | "rejected",
+): Promise<void> {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase
+    .from("architectural_plan_elements")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", elementId)
+    .eq("user_id", userId);
+  if (error) throw error;
 }
 
 export async function convertMobileFindingToTask(

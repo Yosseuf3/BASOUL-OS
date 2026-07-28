@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, CloudUpload, FileSearch, FileUp, ListChecks, ShieldCheck, Sparkles, Trash2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CloudUpload, FileSearch, FileUp, ListChecks, PencilRuler, ShieldCheck, Sparkles, Trash2, XCircle } from "lucide-react";
 import { ChangeEvent, useCallback, useEffect, useState } from "react";
 import { createArchitecturalReview, type ArchitecturalReviewReport, type DrawingAsset, type FindingDraft } from "@yosseuf/architectural-intelligence";
 import type { Project } from "@/lib/types";
@@ -14,6 +14,14 @@ import {
   type CloudReviewFinding,
   type FindingDecision,
 } from "@/lib/architecture/review-service";
+import {
+  correctPlanElement,
+  createPlanElement,
+  listPlanElements,
+  updatePlanElementStatus,
+  type CloudPlanElement,
+  type PlanElementType,
+} from "@/lib/architecture/plan-understanding-service";
 
 type Props = { projects: Project[] };
 type AnalysisState = "idle" | "reading" | "ready" | "error";
@@ -86,6 +94,15 @@ export function ArchitectureReviewView({ projects }: Props) {
   const [drawings, setDrawings] = useState<CloudDrawing[]>([]);
   const [reviews, setReviews] = useState<CloudReview[]>([]);
   const [savedReview, setSavedReview] = useState<CloudReview | null>(null);
+  const [planElements, setPlanElements] = useState<CloudPlanElement[]>([]);
+  const [editingElement, setEditingElement] = useState<CloudPlanElement | null>(null);
+  const [elementDrawingId, setElementDrawingId] = useState("");
+  const [elementType, setElementType] = useState<PlanElementType>("room");
+  const [elementLabel, setElementLabel] = useState("");
+  const [elementValue, setElementValue] = useState("");
+  const [elementUnit, setElementUnit] = useState("");
+  const [elementNotes, setElementNotes] = useState("");
+  const [savingElementId, setSavingElementId] = useState("");
   const [convertingFindingId, setConvertingFindingId] = useState("");
   const [decidingFindingId, setDecidingFindingId] = useState("");
   const [cloudState, setCloudState] = useState<"idle" | "loading" | "saving" | "error">("loading");
@@ -93,12 +110,15 @@ export function ArchitectureReviewView({ projects }: Props) {
   const loadDrawings = useCallback(async () => {
     setCloudState("loading");
     try {
-      const [drawingRows, reviewRows] = await Promise.all([
+      const [drawingRows, reviewRows, elementRows] = await Promise.all([
         listProjectDrawings(projectId || undefined),
         listProjectReviews(projectId || undefined),
+        listPlanElements(projectId || undefined),
       ]);
       setDrawings(drawingRows);
       setReviews(reviewRows);
+      setPlanElements(elementRows);
+      setElementDrawingId((current) => drawingRows.some((drawing) => drawing.id === current) ? current : drawingRows[0]?.id ?? "");
       setCloudState("idle");
       setCloudMessage("");
     }
@@ -173,6 +193,61 @@ export function ArchitectureReviewView({ projects }: Props) {
       setDecidingFindingId("");
     }
   };
+  const resetElementForm = () => {
+    setEditingElement(null);
+    setElementType("room");
+    setElementLabel("");
+    setElementValue("");
+    setElementUnit("");
+    setElementNotes("");
+  };
+  const editPlanElement = (element: CloudPlanElement) => {
+    setEditingElement(element);
+    setElementDrawingId(element.drawing_id);
+    setElementType(element.element_type);
+    setElementLabel(element.label);
+    setElementValue(element.value ?? "");
+    setElementUnit(element.unit ?? "");
+    setElementNotes(element.notes ?? "");
+  };
+  const savePlanElement = async () => {
+    if (!projectId || !elementDrawingId || !elementLabel.trim()) {
+      setCloudState("error");
+      setCloudMessage("اختر المخطط واكتب اسم العنصر.");
+      return;
+    }
+    setSavingElementId(editingElement?.id ?? "new");
+    setCloudMessage("");
+    try {
+      const input = { projectId, drawingId: elementDrawingId, elementType, label: elementLabel, value: elementValue, unit: elementUnit, notes: elementNotes };
+      if (editingElement) await correctPlanElement(editingElement, input);
+      else await createPlanElement(input);
+      resetElementForm();
+      setPlanElements(await listPlanElements(projectId));
+      setCloudState("idle");
+      setCloudMessage(editingElement ? "تم حفظ التصحيح البشري." : "تمت إضافة عنصر مخطط مؤكد.");
+    } catch (elementError) {
+      setCloudState("error");
+      setCloudMessage(elementError instanceof Error ? elementError.message : "تعذر حفظ عنصر المخطط.");
+    } finally {
+      setSavingElementId("");
+    }
+  };
+  const decidePlanElement = async (element: CloudPlanElement, status: "confirmed" | "rejected") => {
+    setSavingElementId(element.id);
+    setCloudMessage("");
+    try {
+      await updatePlanElementStatus(element.id, status);
+      setPlanElements(await listPlanElements(projectId));
+      setCloudState("idle");
+      setCloudMessage(status === "confirmed" ? "تم تأكيد العنصر." : "تم استبعاد العنصر من فهم المخطط.");
+    } catch (elementError) {
+      setCloudState("error");
+      setCloudMessage(elementError instanceof Error ? elementError.message : "تعذر تحديث العنصر.");
+    } finally {
+      setSavingElementId("");
+    }
+  };
   return <div className="architecture-review">
     <section className="panel architecture-intro"><div><span className="section-kicker"><Sparkles size={14}/> YOSSEUF Architectural Intelligence</span><h2>المراجعة المعمارية الذكية</h2><p>حوّل تحليل المخطط إلى قرارات موثقة، ثم إلى مهام قابلة للتنفيذ.</p></div><span className="alpha-badge">ALPHA · DECISION WORKFLOW</span></section>
     <section className="architecture-grid">
@@ -194,10 +269,23 @@ export function ArchitectureReviewView({ projects }: Props) {
         })}</div><p className="review-disclaimer">{report.disclaimer}</p></>}
       </article>
     </section>
-    <section className="panel drawing-history"><div className="panel-head"><div><span className="section-kicker">03 · الإصدارات</span><h2>سجل المخططات المحفوظة</h2></div><span>{drawings.length} ملف</span></div>
+    <section className="panel plan-understanding"><div className="panel-head"><div><span className="section-kicker">03 · فهم المخطط</span><h2>العناصر والتصحيح البشري</h2></div><span>{planElements.filter((element) => element.status !== "rejected").length} عنصر</span></div>
+      <p className="plan-understanding-intro">سجّل الغرف والتسميات والأبعاد الآن، وراجع نتائج الاستخراج الآلي مستقبلًا داخل المسار نفسه.</p>
+      <div className="plan-element-form">
+        <label className="field"><span>المخطط</span><select value={elementDrawingId} onChange={(event) => setElementDrawingId(event.target.value)}><option value="">اختر المخطط</option>{drawings.map((drawing) => <option key={drawing.id} value={drawing.id}>{drawing.name} · {drawing.revision}</option>)}</select></label>
+        <label className="field"><span>نوع العنصر</span><select value={elementType} onChange={(event) => setElementType(event.target.value as PlanElementType)}>{Object.entries(planElementTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label className="field"><span>الاسم</span><input value={elementLabel} onChange={(event) => setElementLabel(event.target.value)} placeholder="غرفة المعيشة" maxLength={160}/></label>
+        <label className="field"><span>القيمة</span><input value={elementValue} onChange={(event) => setElementValue(event.target.value)} placeholder="4.20 × 5.10"/></label>
+        <label className="field"><span>الوحدة</span><input value={elementUnit} onChange={(event) => setElementUnit(event.target.value)} placeholder="م" maxLength={24}/></label>
+        <button className="primary plan-element-save" disabled={Boolean(savingElementId)} onClick={() => void savePlanElement()}><PencilRuler size={16}/>{editingElement ? "حفظ التصحيح" : "إضافة عنصر"}</button>
+        {editingElement && <button className="plan-element-cancel" onClick={resetElementForm}>إلغاء</button>}
+      </div>
+      {planElements.length ? <div className="plan-element-list">{planElements.map((element) => <article key={element.id} className={`plan-element status-${element.status}`}><PencilRuler size={18}/><div><div className="plan-element-heading"><b>{element.label}</b><span>{planElementTypeLabels[element.element_type]}</span></div><small>{[element.value, element.unit].filter(Boolean).join(" " ) || "بلا قيمة رقمية"} · {element.source === "manual" ? "إدخال بشري" : `${element.confidence_score}% ثقة`}</small><em>{planElementStatusLabels[element.status]}</em></div><div className="plan-element-actions"><button disabled={savingElementId === element.id} onClick={() => editPlanElement(element)}>تصحيح</button>{element.status === "detected" && <button disabled={savingElementId === element.id} onClick={() => void decidePlanElement(element, "confirmed")}>تأكيد</button>}{element.status !== "rejected" && <button disabled={savingElementId === element.id} onClick={() => void decidePlanElement(element, "rejected")}>استبعاد</button>}</div></article>)}</div> : <div className="architecture-empty compact"><PencilRuler size={24}/><p>لا توجد عناصر مسجلة. ابدأ بإضافة غرفة أو بُعد مؤكد.</p></div>}
+    </section>
+    <section className="panel drawing-history"><div className="panel-head"><div><span className="section-kicker">04 · الإصدارات</span><h2>سجل المخططات المحفوظة</h2></div><span>{drawings.length} ملف</span></div>
       {cloudState === "loading" ? <div className="architecture-empty compact"><FileSearch size={24}/><p>جارٍ تحميل السجل</p></div> : drawings.length ? <div className="drawing-history-list">{drawings.map((drawing) => <article key={drawing.id}><FileSearch size={18}/><div><b>{drawing.name}</b><small>الإصدار {drawing.revision} · {formatBytes(drawing.file_size)} · {drawing.page_count ? `${drawing.page_count} صفحة` : drawing.format.toUpperCase()}</small></div><time>{new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium" }).format(new Date(drawing.created_at))}</time><button aria-label="حذف المخطط" onClick={() => void removeDrawing(drawing)}><Trash2 size={15}/></button></article>)}</div> : <div className="architecture-empty compact"><FileSearch size={24}/><p>لا توجد مخططات محفوظة لهذا المشروع.</p></div>}
     </section>
-    <section className="panel review-history"><div className="panel-head"><div><span className="section-kicker">04 · القرارات</span><h2>سجل المراجعات</h2></div><span>{reviews.length} جلسة</span></div>
+    <section className="panel review-history"><div className="panel-head"><div><span className="section-kicker">05 · القرارات</span><h2>سجل المراجعات</h2></div><span>{reviews.length} جلسة</span></div>
       {reviews.length ? <div className="review-history-list">{reviews.map((item) => <article key={item.id}><div className="review-score"><strong>{item.plan_health}%</strong><small>صحة المخطط</small></div><div><b>مراجعة قابلة للتنفيذ</b><small>{item.architectural_review_findings.filter((finding) => finding.status === "open" || finding.status === "accepted").length} قيد المتابعة · {item.architectural_review_findings.filter((finding) => finding.status === "converted_to_task").length} مهمة منشأة</small></div><span className={`review-status ${item.status}`}>{item.status === "completed" ? "مكتملة" : "جاهزة"}</span><time>{new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium" }).format(new Date(item.created_at))}</time></article>)}</div> : <div className="architecture-empty compact"><ListChecks size={24}/><p>ارفع مخططًا لإنشاء أول جلسة مراجعة.</p></div>}
     </section>
   </div>;
@@ -209,4 +297,19 @@ const findingStatusLabels: Record<ArchitecturalReviewReport["findings"][number][
   rejected: "مرفوضة",
   resolved: "تمت المعالجة",
   converted_to_task: "تحولت إلى مهمة",
+};
+
+const planElementTypeLabels: Record<PlanElementType, string> = {
+  wall: "جدار",
+  opening: "فتحة",
+  room: "غرفة",
+  label: "تسمية",
+  dimension: "بُعد",
+};
+
+const planElementStatusLabels: Record<CloudPlanElement["status"], string> = {
+  detected: "بانتظار التحقق",
+  confirmed: "مؤكد",
+  corrected: "مصحح بشريًا",
+  rejected: "مستبعد",
 };
