@@ -1,3 +1,12 @@
+# 3.0.0-alpha.11 · Plan Understanding Foundation
+
+- Added persistent structured plan elements for walls, openings, rooms, labels, and dimensions.
+- Added confidence, source, geometry, unit, and verification status to every plan element.
+- Added a web workflow for human entry, correction, confirmation, and rejection.
+- Added mobile review and confirmation of detected plan elements.
+- Protected plan elements with ownership checks, RLS policies, indexes, and explicit authenticated grants.
+- Advanced iOS build number and Android version code to 12.
+
 # 3.0.0-alpha.10 · Actionable Review Decisions
 
 - أضيفت دورة قرار كاملة للملاحظات: اعتماد، رفض، معالجة، وتحويل إلى مهمة.

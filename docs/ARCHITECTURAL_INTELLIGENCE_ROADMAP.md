@@ -8,9 +8,10 @@
 - finding acceptance, rejection, resolution, and task conversion
 
 ## Phase 2 — Plan Understanding
-- walls, openings, rooms, labels, and dimensions
-- confidence-aware extraction
-- human correction workflow
+- [x] persistent walls, openings, rooms, labels, and dimensions
+- [x] confidence and source tracking
+- [x] human correction, confirmation, and rejection workflow
+- [ ] automatic geometric extraction from drawing content
 
 ## Phase 3 — Design Reasoning
 - circulation, privacy, adjacency, daylight, furnishing, and area efficiency
