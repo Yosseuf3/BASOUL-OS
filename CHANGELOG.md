@@ -1,3 +1,9 @@
+# 3.0.1 · Android Build Hotfix
+
+- تثبيت صورة EAS Android على `sdk-57`.
+- اعتماد Java 17 بدل اختيار Java 11 التلقائي الذي عطّل Gradle.
+- تحديث إصدار الويب والجوال وبيانات بناء المتاجر.
+
 # 3.0.0 · Official Launch
 
 - اعتماد أول إصدار رسمي مستقر من YOSSEUF OS.
