@@ -153,6 +153,12 @@ export function ArchitectureReviewScreen({
               ({element.geometry.start.x}, {element.geometry.start.y}) ← ({element.geometry.end.x}, {element.geometry.end.y})
             </Text>
           ) : null}
+          {element.geometry?.kind === "paired_lines" && element.geometry.centerline ? (
+            <Text selectable style={styles.elementGeometry}>
+              محور الجدار: ({element.geometry.centerline.start.x}, {element.geometry.centerline.start.y}) ← ({element.geometry.centerline.end.x}, {element.geometry.centerline.end.y})
+              {"\n"}السماكة المرشحة: {element.geometry.thickness} pt · التداخل {Math.round((element.geometry.overlapRatio ?? 0) * 100)}%
+            </Text>
+          ) : null}
           <Text selectable style={styles.elementEvidence}>
             المصدر: {element.source === "manual" ? "إدخال بشري" : "اكتشاف آلي"} · الثقة {element.confidence_score}%
           </Text>

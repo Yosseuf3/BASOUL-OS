@@ -1,3 +1,14 @@
+# 3.0.0-alpha.14 · Paired Wall Inference
+
+- Added conservative pairing of parallel, overlapping PDF vector segments.
+- Calculates a candidate wall centerline, thickness, orientation, and overlap ratio.
+- Ranks competing pairs and prevents one vector segment from belonging to multiple wall candidates.
+- Keeps unmatched axis-aligned segments as lower-confidence line candidates.
+- Mobile review now displays candidate centerlines, thickness, and overlap evidence.
+- Every inferred wall remains `detected` until explicitly confirmed or corrected by an engineer.
+- Advanced the analysis engine to `paired-wall-inference-v1`.
+- Advanced iOS build number and Android version code to 15.
+
 # 3.0.0-alpha.13 · Vector Wall Candidates
 
 - Added extraction of axis-aligned PDF vector line segments as reviewable wall candidates.
