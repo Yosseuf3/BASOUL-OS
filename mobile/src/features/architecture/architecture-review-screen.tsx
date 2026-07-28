@@ -3,7 +3,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Screen } from "../../components/Screen";
 import { tokens } from "../../theme/tokens";
-import type { ArchitecturalFinding, MobileWorkspaceData } from "../../types/domain";
+import type { ArchitecturalFinding, ArchitecturalPlanElement, MobileWorkspaceData } from "../../types/domain";
 import type { MobileFindingDecision } from "../../services/workspace";
 
 export function ArchitectureReviewScreen({
@@ -13,6 +13,8 @@ export function ArchitectureReviewScreen({
   convertingFindingId,
   onDecideFinding,
   decidingFindingId,
+  onDecidePlanElement,
+  updatingPlanElementId,
   onUploadDrawing,
   uploadingDrawing,
 }: {
@@ -22,6 +24,8 @@ export function ArchitectureReviewScreen({
   convertingFindingId: string;
   onDecideFinding: (finding: ArchitecturalFinding, status: MobileFindingDecision) => void;
   decidingFindingId: string;
+  onDecidePlanElement: (elementId: string, status: "confirmed" | "rejected") => void;
+  updatingPlanElementId: string;
   onUploadDrawing: (input: { projectId: string; revision: string; uri: string; name: string; mimeType: string; size: number }) => Promise<void>;
   uploadingDrawing: boolean;
 }) {
@@ -128,6 +132,34 @@ export function ArchitectureReviewScreen({
         {message ? <Text selectable style={styles.uploadMessage}>{message}</Text> : null}
       </View>
 
+      <Text style={styles.sectionTitle}>فهم عناصر المخطط</Text>
+      {data.planElements.length === 0 ? (
+        <View style={styles.empty}>
+          <Text selectable style={styles.emptyTitle}>لا توجد عناصر مخطط منظمة بعد</Text>
+          <Text selectable style={styles.emptyText}>أضف العناصر أو صححها من الويب، ثم اعتمد النتائج هنا أثناء المراجعة الميدانية.</Text>
+        </View>
+      ) : data.planElements.map((element) => (
+        <View key={element.id} style={styles.elementCard}>
+          <View style={styles.elementTop}>
+            <Text style={styles.elementStatus}>{planElementStatusLabels[element.status]}</Text>
+            <Text selectable style={styles.elementTitle}>{element.label || planElementTypeLabels[element.element_type]}</Text>
+          </View>
+          <Text selectable style={styles.meta}>
+            {drawingNames.get(element.drawing_id) || "مخطط معماري"} · {planElementTypeLabels[element.element_type]}
+          </Text>
+          {element.value ? <Text selectable style={styles.elementValue}>{element.value}{element.unit ? ` ${element.unit}` : ""}</Text> : null}
+          <Text selectable style={styles.elementEvidence}>
+            المصدر: {element.source === "manual" ? "إدخال بشري" : "اكتشاف آلي"} · الثقة {element.confidence_score}%
+          </Text>
+          {element.status === "detected" ? (
+            <View style={styles.decisionRow}>
+              <TouchableOpacity disabled={updatingPlanElementId === element.id} style={[styles.decisionButton, styles.acceptButton]} onPress={() => onDecidePlanElement(element.id, "confirmed")}><Text style={styles.decisionText}>تأكيد</Text></TouchableOpacity>
+              <TouchableOpacity disabled={updatingPlanElementId === element.id} style={styles.decisionButton} onPress={() => onDecidePlanElement(element.id, "rejected")}><Text style={styles.decisionText}>رفض</Text></TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
+      ))}
+
       <Text style={styles.sectionTitle}>سجل جلسات المراجعة</Text>
       {data.reviews.length === 0 ? (
         <View style={styles.empty}><Text selectable style={styles.emptyTitle}>لا توجد جلسة مراجعة بعد</Text><Text selectable style={styles.emptyText}>ارفع مخططًا من مشروع نشط لبدء التحليل المعماري.</Text></View>
@@ -181,6 +213,21 @@ const statusLabels: Record<ArchitecturalFinding["status"], string> = {
   converted_to_task: "تحولت إلى مهمة",
 };
 
+const planElementTypeLabels: Record<ArchitecturalPlanElement["element_type"], string> = {
+  wall: "جدار",
+  opening: "فتحة",
+  room: "غرفة",
+  label: "تسمية",
+  dimension: "بُعد",
+};
+
+const planElementStatusLabels: Record<ArchitecturalPlanElement["status"], string> = {
+  detected: "بانتظار التحقق",
+  confirmed: "مؤكد",
+  corrected: "مصحح بشريًا",
+  rejected: "مرفوض",
+};
+
 function Metric({ value, label }: { value: string; label: string }) {
   return <View style={styles.metric}><Text selectable style={styles.metricValue}>{value}</Text><Text style={styles.metricLabel}>{label}</Text></View>;
 }
@@ -212,6 +259,12 @@ const styles = StyleSheet.create({
   uploadButtonDisabled: { opacity: .45 },
   uploadButtonText: { color: tokens.colors.background, fontWeight: "900" },
   uploadMessage: { color: tokens.colors.success, lineHeight: 20, textAlign: "right" },
+  elementCard: { backgroundColor: tokens.colors.surface, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.md, padding: 13, marginBottom: 9 },
+  elementTop: { flexDirection: "row", justifyContent: "space-between", gap: 8, alignItems: "center" },
+  elementTitle: { color: tokens.colors.text, flex: 1, fontSize: 16, fontWeight: "900", textAlign: "right" },
+  elementStatus: { color: tokens.colors.gold, fontSize: 10, fontWeight: "800" },
+  elementValue: { color: tokens.colors.text, fontSize: 18, fontWeight: "900", textAlign: "right", marginTop: 8 },
+  elementEvidence: { color: tokens.colors.muted, fontSize: 11, textAlign: "right", marginTop: 7 },
   sectionTitle: { color: tokens.colors.text, fontSize: 20, fontWeight: "900", textAlign: "right", marginTop: tokens.space.xl, marginBottom: tokens.space.md },
   empty: { backgroundColor: tokens.colors.surface, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.lg, padding: tokens.space.lg },
   emptyTitle: { color: tokens.colors.text, fontSize: 17, fontWeight: "900", textAlign: "right" },

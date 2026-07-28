@@ -4,6 +4,8 @@ export type DrawingFormat = "pdf" | "image" | "dwg" | "dxf" | "ifc" | "rvt";
 export type ReviewCategory = "circulation" | "privacy" | "lighting" | "space_efficiency" | "code" | "identity" | "constructability" | "cost";
 export type ReviewSeverity = "info" | "opportunity" | "warning" | "critical";
 export type ReviewStatus = "open" | "accepted" | "rejected" | "resolved" | "converted_to_task";
+export type PlanElementType = "wall" | "opening" | "room" | "label" | "dimension";
+export type PlanElementStatus = "detected" | "confirmed" | "corrected" | "rejected";
 
 export type DrawingAsset = {
   id: string;
@@ -47,4 +49,22 @@ export type ArchitecturalReviewReport = {
   findings: ArchitecturalFinding[];
   generatedAt: string;
   disclaimer: string;
+};
+
+export type ArchitecturalPlanElement = {
+  id: string;
+  projectId: string;
+  drawingId: string;
+  analysisRunId?: string;
+  type: PlanElementType;
+  label: string;
+  value?: string;
+  unit?: string;
+  geometry: Record<string, unknown>;
+  confidenceScore: number;
+  source: "automatic" | "manual";
+  status: PlanElementStatus;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 };

@@ -71,10 +71,26 @@ export type ArchitecturalReview = {
   architectural_review_findings: ArchitecturalFinding[];
 };
 
+export type ArchitecturalPlanElement = {
+  id: string;
+  project_id: string;
+  drawing_id: string;
+  element_type: "wall" | "opening" | "room" | "label" | "dimension";
+  label: string;
+  value: string | null;
+  unit: string | null;
+  confidence_score: number;
+  source: "automatic" | "manual";
+  status: "detected" | "confirmed" | "corrected" | "rejected";
+  notes: string | null;
+  created_at: string;
+};
+
 export type MobileWorkspaceData = {
   projects: Project[];
   tasks: Task[];
   notifications: Notification[];
   drawings: ArchitecturalDrawing[];
   reviews: ArchitecturalReview[];
+  planElements: ArchitecturalPlanElement[];
 };
