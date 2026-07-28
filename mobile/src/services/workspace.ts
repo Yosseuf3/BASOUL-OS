@@ -156,7 +156,7 @@ export async function uploadMobileDrawing(
   projectId: string,
   revision: string,
   file: MobileDrawingFile,
-): Promise<void> {
+): Promise<{ analysisStatus: "completed" | "needs_better_source"; detectedElements: number }> {
   if (!supabase) throw new Error("Supabase is not configured.");
   const supportedTypes = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);
   if (!supportedTypes.has(file.mimeType)) throw new Error("نوع الملف غير مدعوم.");
@@ -198,7 +198,7 @@ export async function uploadMobileDrawing(
   }
 
   const { data: analysis, error: analysisError } = await supabase.functions.invoke(
-    "architectural-analyze",
+    "architectural-analyze-v2",
     { body: { drawingId: drawing.id } },
   );
   if (analysisError || !analysis?.review) {
@@ -206,6 +206,10 @@ export async function uploadMobileDrawing(
     await supabase.storage.from(ARCHITECTURAL_DRAWINGS_BUCKET).remove([path]);
     throw analysisError ?? new Error(analysis?.error ?? "فشل تحليل المخطط.");
   }
+  return {
+    analysisStatus: analysis.analysisStatus === "needs_better_source" ? "needs_better_source" : "completed",
+    detectedElements: Array.isArray(analysis.planElements) ? analysis.planElements.length : 0,
+  };
 }
 
 export async function markMobileNotificationRead(notificationId: string): Promise<void> {
@@ -242,3 +246,4 @@ export async function advanceMobileTask(task: Task): Promise<void> {
   const { error } = await supabase.from("tasks").update(next[task.status]).eq("id", task.id);
   if (error) throw error;
 }
+

@@ -1,3 +1,17 @@
+# 3.0.0-alpha.16 · Raster PDF Vision
+
+- Added an OpenAI-powered vision fallback for raster-heavy PDFs and uploaded plan images.
+- Sends files directly from the authenticated Edge Function; the API key never reaches web or mobile clients.
+- Uses strict structured output for rooms, labels, dimensions, walls, and visible openings.
+- Caps automatic confidence below 80 and keeps every detected element pending engineer confirmation.
+- Runs vision only when deterministic PDF extraction produces no elements.
+- Limits vision fallback files to 20 MB to control latency, memory, and cost.
+- Records whether vision succeeded, found no reliable elements, or failed, with explainable evidence.
+- Prevents an empty analysis from being reported as a successful architectural reading.
+- Mobile now reports the number of detected elements or requests a better source file.
+- Advanced the analysis engine to `raster-pdf-vision-v1`.
+- Advanced iOS build number and Android version code to 17.
+
 # 3.0.0-alpha.15 · Opening Candidates
 
 - Added conservative opening candidates derived from gaps between aligned paired-wall candidates.
@@ -364,3 +378,4 @@
 - Fixed stale v1.5.0 sidebar release label.
 - Synchronized web, mobile, Expo, Android, and iOS release metadata.
 - Added automated release consistency validation.
+

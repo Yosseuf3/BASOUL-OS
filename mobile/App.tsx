@@ -103,11 +103,12 @@ export default function App() {
     }
   }
   async function uploadDrawing(input: { projectId: string; revision: string; uri: string; name: string; mimeType: string; size: number }) {
-    if (!session) return;
+    if (!session) return { analysisStatus: "needs_better_source" as const, detectedElements: 0 };
     setUploadingDrawing(true);
     try {
-      await uploadMobileDrawing(session.user.id, input.projectId, input.revision, input);
+      const result = await uploadMobileDrawing(session.user.id, input.projectId, input.revision, input);
       await refresh();
+      return result;
     } finally {
       setUploadingDrawing(false);
     }
@@ -133,3 +134,4 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({ app: { flex: 1, backgroundColor: tokens.colors.background }, center: { flex: 1, backgroundColor: tokens.colors.background, alignItems: "center", justifyContent: "center" }, errorBar: { backgroundColor: "#4a2020", paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center" }, errorText: { color: "#ffdada", flex: 1, textAlign: "right" }, dismiss: { color: "#ffdada", fontSize: 24, marginLeft: 12 }, footer: { borderTopWidth: 1, borderTopColor: tokens.colors.border, paddingHorizontal: 18, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", backgroundColor: tokens.colors.surface }, version: { color: tokens.colors.muted, fontSize: 11 }, logout: { color: "#df8d8d", fontWeight: "800" } });
+

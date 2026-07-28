@@ -1,6 +1,6 @@
 {
   "name": "yosseuf-os-mobile",
-  "version": "3.0.0-alpha.15",
+  "version": "3.0.0-alpha.16",
   "private": true,
   "main": "expo/AppEntry.js",
   "scripts": {
@@ -31,3 +31,4 @@
     "typescript": "~6.0.3"
   }
 }
+

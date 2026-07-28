@@ -26,7 +26,10 @@ export function ArchitectureReviewScreen({
   decidingFindingId: string;
   onDecidePlanElement: (elementId: string, status: "confirmed" | "rejected") => void;
   updatingPlanElementId: string;
-  onUploadDrawing: (input: { projectId: string; revision: string; uri: string; name: string; mimeType: string; size: number }) => Promise<void>;
+  onUploadDrawing: (input: { projectId: string; revision: string; uri: string; name: string; mimeType: string; size: number }) => Promise<{
+    analysisStatus: "completed" | "needs_better_source";
+    detectedElements: number;
+  }>;
   uploadingDrawing: boolean;
 }) {
   const [projectId, setProjectId] = useState(data.projects[0]?.id ?? "");
@@ -65,7 +68,7 @@ export function ArchitectureReviewScreen({
       return;
     }
     try {
-      await onUploadDrawing({
+      const result = await onUploadDrawing({
         projectId,
         revision,
         uri: selectedFile.uri,
@@ -74,7 +77,9 @@ export function ArchitectureReviewScreen({
         size: selectedFile.size || 0,
       });
       setSelectedFile(null);
-      setMessage("تم رفع المخطط وتحليله وإنشاء جلسة مراجعة.");
+      setMessage(result.analysisStatus === "completed"
+        ? `تم تحليل المخطط بصريًا واستخراج ${result.detectedElements} عنصرًا للمراجعة.`
+        : "تم حفظ المخطط، لكن لم تُكتشف عناصر موثوقة. استخدم ملفًا أوضح أو PDF متجهيًا.");
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "تعذر رفع المخطط.");
     }
@@ -313,3 +318,4 @@ const styles = StyleSheet.create({
   taskButtonDone: { borderColor: tokens.colors.success, opacity: .7 },
   taskButtonText: { color: tokens.colors.gold, fontWeight: "900", fontSize: 11 },
 });
+

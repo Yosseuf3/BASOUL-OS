@@ -122,7 +122,7 @@ export async function listProjectReviews(projectId?: string): Promise<CloudRevie
 }
 
 export async function analyzeProjectDrawing(drawingId: string): Promise<DrawingAnalysisResult> {
-  const { data, error } = await supabase.functions.invoke("architectural-analyze", {
+  const { data, error } = await supabase.functions.invoke("architectural-analyze-v2", {
     body: { drawingId },
   });
   if (error) throw error;
@@ -178,3 +178,4 @@ export async function convertFindingToTask(
   await syncReviewCompletion(finding.review_id, user.id);
   return task.id as string;
 }
+
