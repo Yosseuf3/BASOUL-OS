@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 
 import { Screen } from "../../components/Screen";
 import { tokens } from "../../theme/tokens";
 import type { ArchitecturalFinding, ArchitecturalPlanElement, MobileWorkspaceData } from "../../types/domain";
-import type { MobileFindingDecision } from "../../services/workspace";
+import type { MobileDrawingAnalysisResult, MobileFindingDecision } from "../../services/workspace";
 
 export function ArchitectureReviewScreen({
   data,
@@ -17,6 +17,8 @@ export function ArchitectureReviewScreen({
   updatingPlanElementId,
   onUploadDrawing,
   uploadingDrawing,
+  onRetryDrawing,
+  retryingDrawingId,
 }: {
   data: MobileWorkspaceData;
   onBack: () => void;
@@ -26,11 +28,10 @@ export function ArchitectureReviewScreen({
   decidingFindingId: string;
   onDecidePlanElement: (elementId: string, status: "confirmed" | "rejected") => void;
   updatingPlanElementId: string;
-  onUploadDrawing: (input: { projectId: string; revision: string; uri: string; name: string; mimeType: string; size: number }) => Promise<{
-    analysisStatus: "completed" | "needs_better_source";
-    detectedElements: number;
-  }>;
+  onUploadDrawing: (input: { projectId: string; revision: string; uri: string; name: string; mimeType: string; size: number }) => Promise<MobileDrawingAnalysisResult>;
   uploadingDrawing: boolean;
+  onRetryDrawing: (drawingId: string) => Promise<MobileDrawingAnalysisResult>;
+  retryingDrawingId: string;
 }) {
   const [projectId, setProjectId] = useState(data.projects[0]?.id ?? "");
   const [revision, setRevision] = useState("A");
@@ -79,9 +80,25 @@ export function ArchitectureReviewScreen({
       setSelectedFile(null);
       setMessage(result.analysisStatus === "completed"
         ? `تم تحليل المخطط بصريًا واستخراج ${result.detectedElements} عنصرًا للمراجعة.`
-        : "تم حفظ المخطط، لكن لم تُكتشف عناصر موثوقة. استخدم ملفًا أوضح أو PDF متجهيًا.");
+        : result.failureCode === "quota_exceeded"
+          ? "تم حفظ المخطط. فعّل رصيد OpenAI API ثم أعد التحليل دون رفع الملف مرة أخرى."
+          : "تم حفظ المخطط، لكن لم تُكتشف عناصر موثوقة. استخدم ملفًا أوضح أو PDF متجهيًا.");
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "تعذر رفع المخطط.");
+    }
+  }
+
+  async function retryDrawing(drawingId: string) {
+    setMessage("");
+    try {
+      const result = await onRetryDrawing(drawingId);
+      setMessage(result.analysisStatus === "completed"
+        ? `اكتمل التحليل واكتُشف ${result.detectedElements} عنصرًا للمراجعة.`
+        : result.failureCode === "quota_exceeded"
+          ? "رصيد OpenAI API غير متاح بعد. يمكنك إعادة المحاولة لاحقًا دون رفع الملف."
+          : "اكتملت المحاولة، لكن لم تُكتشف عناصر موثوقة.");
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : "تعذرت إعادة تحليل المخطط.");
     }
   }
 
@@ -136,6 +153,25 @@ export function ArchitectureReviewScreen({
         </TouchableOpacity>
         {message ? <Text selectable style={styles.uploadMessage}>{message}</Text> : null}
       </View>
+
+      <Text style={styles.sectionTitle}>المخططات المحفوظة</Text>
+      {data.drawings.length === 0 ? (
+        <View style={styles.empty}><Text selectable style={styles.emptyTitle}>لا توجد مخططات محفوظة</Text><Text selectable style={styles.emptyText}>ارفع أول مخطط لتشغيل المراجعة المعمارية.</Text></View>
+      ) : data.drawings.map((drawing) => (
+        <View key={drawing.id} style={styles.drawingCard}>
+          <View style={styles.reviewInfo}>
+            <Text selectable style={styles.reviewTitle}>{drawing.name}</Text>
+            <Text selectable style={styles.meta}>الإصدار {drawing.revision} · {drawing.format.toUpperCase()}</Text>
+          </View>
+          <TouchableOpacity
+            disabled={Boolean(retryingDrawingId)}
+            style={[styles.retryButton, retryingDrawingId === drawing.id && styles.uploadButtonDisabled]}
+            onPress={() => void retryDrawing(drawing.id)}
+          >
+            <Text style={styles.retryButtonText}>{retryingDrawingId === drawing.id ? "جارٍ التحليل" : "إعادة التحليل"}</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
 
       <Text style={styles.sectionTitle}>فهم عناصر المخطط</Text>
       {data.planElements.length === 0 ? (
@@ -281,6 +317,9 @@ const styles = StyleSheet.create({
   uploadButtonDisabled: { opacity: .45 },
   uploadButtonText: { color: tokens.colors.background, fontWeight: "900" },
   uploadMessage: { color: tokens.colors.success, lineHeight: 20, textAlign: "right" },
+  drawingCard: { backgroundColor: tokens.colors.surface, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.md, padding: 13, marginBottom: 9, flexDirection: "row", alignItems: "center", gap: 10 },
+  retryButton: { borderWidth: 1, borderColor: tokens.colors.gold, borderRadius: tokens.radius.sm, paddingHorizontal: 12, paddingVertical: 9 },
+  retryButtonText: { color: tokens.colors.gold, fontWeight: "900", fontSize: 11 },
   elementCard: { backgroundColor: tokens.colors.surface, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.md, padding: 13, marginBottom: 9 },
   elementTop: { flexDirection: "row", justifyContent: "space-between", gap: 8, alignItems: "center" },
   elementTitle: { color: tokens.colors.text, flex: 1, fontSize: 16, fontWeight: "900", textAlign: "right" },
@@ -318,4 +357,3 @@ const styles = StyleSheet.create({
   taskButtonDone: { borderColor: tokens.colors.success, opacity: .7 },
   taskButtonText: { color: tokens.colors.gold, fontWeight: "900", fontSize: 11 },
 });
-
