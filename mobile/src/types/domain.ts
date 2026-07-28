@@ -82,8 +82,14 @@ export type ArchitecturalPlanElement = {
   geometry: {
     kind?: string;
     coordinateSystem?: string;
+    orientation?: "horizontal" | "vertical";
+    thickness?: number;
+    overlapRatio?: number;
     start?: { x: number; y: number };
     end?: { x: number; y: number };
+    firstLine?: { start: { x: number; y: number }; end: { x: number; y: number } };
+    secondLine?: { start: { x: number; y: number }; end: { x: number; y: number } };
+    centerline?: { start: { x: number; y: number }; end: { x: number; y: number } };
   };
   confidence_score: number;
   source: "automatic" | "manual";

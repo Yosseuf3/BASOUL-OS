@@ -31,6 +31,12 @@ type PlanElementDraft = {
   geometry: Record<string, unknown>;
   notes: string;
 };
+type VectorSegment = {
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+  length: number;
+  orientation: "horizontal" | "vertical";
+};
 
 const count = (text: string, pattern: RegExp) => (text.match(pattern) ?? []).length;
 
@@ -107,7 +113,7 @@ function extractPdfPlanElements(bytes: Uint8Array): PlanElementDraft[] {
     };
   }).slice(0, 40);
 
-  const wallCandidates: PlanElementDraft[] = [];
+  const segments: VectorSegment[] = [];
   const seenSegments = new Set<string>();
   const linePattern = /(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+m\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+l\b/g;
   for (const match of text.matchAll(linePattern)) {
@@ -123,24 +129,104 @@ function extractPdfPlanElements(bytes: Uint8Array): PlanElementDraft[] {
     const key = points.flat().join(":");
     if (seenSegments.has(key)) continue;
     seenSegments.add(key);
-    wallCandidates.push({
+    segments.push({
+      start: { x: points[0][0], y: points[0][1] },
+      end: { x: points[1][0], y: points[1][1] },
+      length,
+      orientation: Math.abs(dx) >= Math.abs(dy) ? "horizontal" : "vertical",
+    });
+    if (segments.length >= 100) break;
+  }
+
+  const pairCandidates: Array<{
+    firstIndex: number;
+    secondIndex: number;
+    overlapRatio: number;
+    thickness: number;
+    score: number;
+  }> = [];
+  for (let firstIndex = 0; firstIndex < segments.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < segments.length; secondIndex += 1) {
+      const first = segments[firstIndex];
+      const second = segments[secondIndex];
+      if (first.orientation !== second.orientation) continue;
+      const horizontal = first.orientation === "horizontal";
+      const firstMin = horizontal ? Math.min(first.start.x, first.end.x) : Math.min(first.start.y, first.end.y);
+      const firstMax = horizontal ? Math.max(first.start.x, first.end.x) : Math.max(first.start.y, first.end.y);
+      const secondMin = horizontal ? Math.min(second.start.x, second.end.x) : Math.min(second.start.y, second.end.y);
+      const secondMax = horizontal ? Math.max(second.start.x, second.end.x) : Math.max(second.start.y, second.end.y);
+      const overlap = Math.max(0, Math.min(firstMax, secondMax) - Math.max(firstMin, secondMin));
+      const overlapRatio = overlap / Math.max(1, Math.min(first.length, second.length));
+      const firstAxis = horizontal ? (first.start.y + first.end.y) / 2 : (first.start.x + first.end.x) / 2;
+      const secondAxis = horizontal ? (second.start.y + second.end.y) / 2 : (second.start.x + second.end.x) / 2;
+      const thickness = Math.abs(firstAxis - secondAxis);
+      if (overlapRatio < 0.65 || thickness < 4 || thickness > 60) continue;
+      const lengthSimilarity = Math.min(first.length, second.length) / Math.max(first.length, second.length);
+      const score = overlapRatio * 0.7 + lengthSimilarity * 0.3;
+      pairCandidates.push({ firstIndex, secondIndex, overlapRatio, thickness, score });
+    }
+  }
+
+  const usedSegments = new Set<number>();
+  const pairedWalls: PlanElementDraft[] = [];
+  for (const pair of pairCandidates.sort((a, b) => b.score - a.score)) {
+    if (usedSegments.has(pair.firstIndex) || usedSegments.has(pair.secondIndex)) continue;
+    const first = segments[pair.firstIndex];
+    const second = segments[pair.secondIndex];
+    usedSegments.add(pair.firstIndex);
+    usedSegments.add(pair.secondIndex);
+    const centerline = {
+      start: {
+        x: Number(((first.start.x + second.start.x) / 2).toFixed(2)),
+        y: Number(((first.start.y + second.start.y) / 2).toFixed(2)),
+      },
+      end: {
+        x: Number(((first.end.x + second.end.x) / 2).toFixed(2)),
+        y: Number(((first.end.y + second.end.y) / 2).toFixed(2)),
+      },
+    };
+    pairedWalls.push({
       element_type: "wall",
-      label: `مرشح جدار ${wallCandidates.length + 1}`,
-      value: length.toFixed(2),
+      label: `مرشح جدار مزدوج ${pairedWalls.length + 1}`,
+      value: pair.thickness.toFixed(2),
       unit: "pt",
-      confidence_score: 45,
+      confidence_score: Math.min(82, Math.round(52 + pair.score * 30)),
+      geometry: {
+        kind: "paired_lines",
+        coordinateSystem: "pdf_points",
+        orientation: first.orientation,
+        thickness: Number(pair.thickness.toFixed(2)),
+        overlapRatio: Number(pair.overlapRatio.toFixed(3)),
+        firstLine: { start: first.start, end: first.end },
+        secondLine: { start: second.start, end: second.end },
+        centerline,
+      },
+      notes: "Two parallel overlapping PDF vector segments inferred as a wall candidate; engineer confirmation is mandatory.",
+    });
+    if (pairedWalls.length >= 40) break;
+  }
+
+  const singleWalls = segments
+    .map((segment, index) => ({ segment, index }))
+    .filter(({ index }) => !usedSegments.has(index))
+    .slice(0, 30)
+    .map(({ segment }, index): PlanElementDraft => ({
+      element_type: "wall",
+      label: `مرشح خط جدار ${index + 1}`,
+      value: segment.length.toFixed(2),
+      unit: "pt",
+      confidence_score: 42,
       geometry: {
         kind: "line",
         coordinateSystem: "pdf_points",
-        start: { x: points[0][0], y: points[0][1] },
-        end: { x: points[1][0], y: points[1][1] },
+        orientation: segment.orientation,
+        start: segment.start,
+        end: segment.end,
       },
-      notes: "Axis-aligned PDF vector segment only; it is not a confirmed wall until reviewed.",
-    });
-    if (wallCandidates.length >= 60) break;
-  }
+      notes: "Unpaired axis-aligned PDF vector segment; it is not a confirmed wall until reviewed.",
+    }));
 
-  return [...textElements, ...wallCandidates];
+  return [...textElements, ...pairedWalls, ...singleWalls];
 }
 
 function inspectImage(bytes: Uint8Array, mimeType: string) {
@@ -221,7 +307,7 @@ Deno.serve(async (req: Request) => {
         drawing_id: drawing.id,
         project_id: drawing.project_id,
         status: "processing",
-        engine_version: "vector-wall-candidates-v1",
+        engine_version: "paired-wall-inference-v1",
         started_at: new Date().toISOString(),
       })
       .select("id")
