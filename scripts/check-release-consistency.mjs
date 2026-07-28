@@ -1,6 +1,6 @@
 import fs from "node:fs";
 
-const expected = "3.0.0-alpha.16";
+const expected = "3.0.0-alpha.17";
 const files = [
   ["package.json", JSON.parse(fs.readFileSync("package.json", "utf8")).version],
   ["mobile/package.json", JSON.parse(fs.readFileSync("mobile/package.json", "utf8")).version],
@@ -21,4 +21,3 @@ if (failures.length) {
   process.exit(1);
 }
 console.log(`Release consistency verified: v${expected}`);
-
