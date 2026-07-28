@@ -10,6 +10,7 @@ import {
   type PlanElementType,
 } from "@/lib/architecture/plan-understanding-service";
 import type { CloudReviewFinding } from "@/lib/architecture/review-service";
+import type { ReviewComment } from "@/lib/architecture/review-comment-service";
 
 type Props = {
   drawing: CloudDrawing | null;
@@ -21,6 +22,9 @@ type Props = {
   busyElementId: string;
   findings: CloudReviewFinding[];
   onSelectFinding: (finding: CloudReviewFinding) => void;
+  comments: ReviewComment[];
+  onSelectComment: (comment: ReviewComment) => void;
+  onElementSelected: (element: CloudPlanElement) => void;
 };
 
 type Point = { x: number; y: number };
@@ -94,7 +98,7 @@ function markerGeometry(element: CloudPlanElement, scale: number) {
   return null;
 }
 
-export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onEditElement, onDecideElement, busyElementId, findings, onSelectFinding }: Props) {
+export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onEditElement, onDecideElement, busyElementId, findings, onSelectFinding, comments, onSelectComment, onElementSelected }: Props) {
   const [previewUrl, setPreviewUrl] = useState("");
   const [previewError, setPreviewError] = useState("");
   const [overlayVisible, setOverlayVisible] = useState(true);
@@ -115,6 +119,16 @@ export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onEdi
     finding.status !== "rejected" &&
     finding.status !== "resolved",
   );
+  const pageComments = comments.filter((comment) =>
+    comment.drawing_id === drawing?.id &&
+    comment.plan_element_id &&
+    (comment.page_number == null || comment.page_number === page) &&
+    comment.status === "open",
+  );
+  const selectElement = (element: CloudPlanElement) => {
+    setActiveElementId(element.id);
+    onElementSelected(element);
+  };
   const scale = useMemo(() => {
     if (pageElements.some((element) => getPlanElementLocation(element).coordinateSystem === "normalized_0_1000")) {
       return 10;
@@ -176,10 +190,10 @@ export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onEdi
             role="button"
             tabIndex={0}
             aria-label={element.label}
-            onClick={() => setActiveElementId(element.id)}
+            onClick={() => selectElement(element)}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
-                setActiveElementId(element.id);
+                selectElement(element);
                 setActiveElementId(element.id);
               }
             }}
@@ -213,6 +227,29 @@ export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onEdi
             <title>{finding.title}</title>
           </g>;
         })}
+        {pageComments.map((comment) => {
+          const element = pageElements.find((candidate) => candidate.id === comment.plan_element_id);
+          if (!element) return null;
+          const marker = markerGeometry(element, scale);
+          if (!marker) return null;
+          const x = marker.kind === "box" ? marker.x + marker.width / 2 : (marker.x1 + marker.x2) / 2;
+          const y = marker.kind === "box" ? marker.y + marker.height / 2 : (marker.y1 + marker.y2) / 2;
+          return <g
+            key={`comment-${comment.id}`}
+            className="plan-comment-pin"
+            role="button"
+            tabIndex={0}
+            aria-label={comment.body}
+            onClick={() => onSelectComment(comment)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") onSelectComment(comment);
+            }}
+          >
+            <circle cx={x + 2.8} cy={y - 2.8} r="1.8"/>
+            <text x={x + 2.8} y={y - 2.25} textAnchor="middle">•</text>
+            <title>{comment.body}</title>
+          </g>;
+        })}
       </svg>}
       {activeElement && <aside className="plan-overlay-selection" aria-live="polite">
         <button className="plan-overlay-selection-close" aria-label="إغلاق بطاقة العنصر" onClick={() => setActiveElementId("")}>×</button>
@@ -229,6 +266,7 @@ export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onEdi
     <div className="plan-overlay-legend">
       {(Object.keys(elementColors) as PlanElementType[]).map((type) => <span key={type}><i style={{ background: elementColors[type] }}/>{elementTypeLabels[type]}</span>)}
       <span><i className="finding-legend-dot"/>ملاحظة مرتبطة</span>
+      <span><i className="comment-legend-dot"/>تعليق مراجعة</span>
       <em>اضغط على العنصر لاتخاذ القرار مباشرة</em>
     </div>
   </div>;
