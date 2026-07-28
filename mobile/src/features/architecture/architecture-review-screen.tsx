@@ -3,7 +3,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Screen } from "../../components/Screen";
 import { tokens } from "../../theme/tokens";
-import type { ArchitecturalFinding, ArchitecturalPlanElement, MobileWorkspaceData } from "../../types/domain";
+import type { ArchitecturalFinding, ArchitecturalPlanElement, ArchitecturalReviewComment, MobileWorkspaceData } from "../../types/domain";
 import type { MobileDrawingAnalysisResult, MobileFindingDecision } from "../../services/workspace";
 
 export function ArchitectureReviewScreen({
@@ -15,6 +15,8 @@ export function ArchitectureReviewScreen({
   decidingFindingId,
   onDecidePlanElement,
   updatingPlanElementId,
+  onUpdateReviewComment,
+  updatingReviewCommentId,
   onUploadDrawing,
   uploadingDrawing,
   onRetryDrawing,
@@ -28,6 +30,8 @@ export function ArchitectureReviewScreen({
   decidingFindingId: string;
   onDecidePlanElement: (elementId: string, status: "confirmed" | "rejected") => void;
   updatingPlanElementId: string;
+  onUpdateReviewComment: (comment: ArchitecturalReviewComment, status: ArchitecturalReviewComment["status"]) => void;
+  updatingReviewCommentId: string;
   onUploadDrawing: (input: { projectId: string; revision: string; uri: string; name: string; mimeType: string; size: number }) => Promise<MobileDrawingAnalysisResult>;
   uploadingDrawing: boolean;
   onRetryDrawing: (drawingId: string) => Promise<MobileDrawingAnalysisResult>;
@@ -55,6 +59,7 @@ export function ArchitectureReviewScreen({
   );
   const visiblePlanElements = data.planElements.filter((element) => elementFilter === "all" || element.element_type === elementFilter);
   const confirmedElementCount = data.planElements.filter((element) => element.status === "confirmed" || element.status === "corrected").length;
+  const visibleReviewComments = data.reviewComments.filter((comment) => !projectId || comment.project_id === projectId);
 
   async function chooseDrawing() {
     setMessage("");
@@ -239,6 +244,45 @@ export function ArchitectureReviewScreen({
         </View>
       ))}
 
+      <Text style={styles.sectionTitle}>سجل المراجعة المكانية</Text>
+      {visibleReviewComments.length === 0 ? (
+        <View style={styles.empty}>
+          <Text selectable style={styles.emptyTitle}>لا توجد ملاحظات ميدانية لهذا المشروع</Text>
+          <Text selectable style={styles.emptyText}>أضف ملاحظة من المخطط على الويب، وستظهر هنا فور المزامنة لاتخاذ القرار في الموقع.</Text>
+        </View>
+      ) : visibleReviewComments.map((comment) => (
+        <View key={comment.id} style={[styles.commentCard, comment.status === "resolved" && styles.commentResolved]}>
+          <View style={styles.commentTop}>
+            <Text style={[styles.commentStatus, comment.status === "resolved" && styles.commentStatusResolved]}>
+              {comment.status === "resolved" ? "تمت المعالجة" : "تحتاج متابعة"}
+            </Text>
+            <Text selectable style={styles.commentTitle}>
+              {drawingNames.get(comment.drawing_id) || "مخطط معماري"}
+            </Text>
+          </View>
+          <Text selectable style={styles.commentBody}>{comment.body}</Text>
+          <Text selectable style={styles.commentLocation}>
+            {comment.page_number ? `الصفحة ${comment.page_number}` : "المخطط"}
+            {comment.plan_element_id ? " · مرتبطة بعنصر" : ""}
+            {comment.finding_id ? " · مرتبطة بملاحظة تحليل" : ""}
+          </Text>
+          <Text selectable style={styles.commentDate}>
+            {new Date(comment.created_at).toLocaleString("ar-SA")}
+          </Text>
+          <TouchableOpacity
+            disabled={updatingReviewCommentId === comment.id}
+            style={[styles.commentAction, updatingReviewCommentId === comment.id && styles.uploadButtonDisabled]}
+            onPress={() => onUpdateReviewComment(comment, comment.status === "open" ? "resolved" : "open")}
+          >
+            <Text style={styles.commentActionText}>
+              {updatingReviewCommentId === comment.id
+                ? "جارٍ الحفظ"
+                : comment.status === "open" ? "تعليم كمعالجة" : "إعادة فتح"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+
       <Text style={styles.sectionTitle}>سجل جلسات المراجعة</Text>
       {data.reviews.length === 0 ? (
         <View style={styles.empty}><Text selectable style={styles.emptyTitle}>لا توجد جلسة مراجعة بعد</Text><Text selectable style={styles.emptyText}>ارفع مخططًا من مشروع نشط لبدء التحليل المعماري.</Text></View>
@@ -355,6 +399,17 @@ const styles = StyleSheet.create({
   elementValue: { color: tokens.colors.text, fontSize: 18, fontWeight: "900", textAlign: "right", marginTop: 8 },
   elementGeometry: { color: tokens.colors.gold, fontSize: 10, textAlign: "right", marginTop: 6, fontVariant: ["tabular-nums"] },
   elementEvidence: { color: tokens.colors.muted, fontSize: 11, textAlign: "right", marginTop: 7 },
+  commentCard: { backgroundColor: tokens.colors.surface, borderWidth: 1, borderColor: tokens.colors.gold, borderRadius: tokens.radius.md, padding: 14, marginBottom: 9 },
+  commentResolved: { borderColor: tokens.colors.success, opacity: .82 },
+  commentTop: { flexDirection: "row", justifyContent: "space-between", gap: 8, alignItems: "center" },
+  commentTitle: { color: tokens.colors.text, flex: 1, fontSize: 15, fontWeight: "900", textAlign: "right" },
+  commentStatus: { color: tokens.colors.gold, fontSize: 10, fontWeight: "900" },
+  commentStatusResolved: { color: tokens.colors.success },
+  commentBody: { color: tokens.colors.text, lineHeight: 21, textAlign: "right", marginTop: 10 },
+  commentLocation: { color: tokens.colors.gold, fontSize: 11, textAlign: "right", marginTop: 8 },
+  commentDate: { color: tokens.colors.muted, fontSize: 10, textAlign: "right", marginTop: 5 },
+  commentAction: { alignSelf: "flex-end", borderWidth: 1, borderColor: tokens.colors.gold, borderRadius: tokens.radius.sm, paddingHorizontal: 12, paddingVertical: 9, marginTop: 10 },
+  commentActionText: { color: tokens.colors.gold, fontWeight: "900", fontSize: 11 },
   sectionTitle: { color: tokens.colors.text, fontSize: 20, fontWeight: "900", textAlign: "right", marginTop: tokens.space.xl, marginBottom: tokens.space.md },
   empty: { backgroundColor: tokens.colors.surface, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.lg, padding: tokens.space.lg },
   emptyTitle: { color: tokens.colors.text, fontSize: 17, fontWeight: "900", textAlign: "right" },
