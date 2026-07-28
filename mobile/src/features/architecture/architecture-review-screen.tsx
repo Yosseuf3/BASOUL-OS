@@ -148,7 +148,7 @@ export function ArchitectureReviewScreen({
             {drawingNames.get(element.drawing_id) || "مخطط معماري"} · {planElementTypeLabels[element.element_type]}
           </Text>
           {element.value ? <Text selectable style={styles.elementValue}>{element.value}{element.unit ? ` ${element.unit}` : ""}</Text> : null}
-          {element.geometry?.start && element.geometry?.end ? (
+          {element.geometry?.kind !== "wall_gap" && element.geometry?.start && element.geometry?.end ? (
             <Text selectable style={styles.elementGeometry}>
               ({element.geometry.start.x}, {element.geometry.start.y}) ← ({element.geometry.end.x}, {element.geometry.end.y})
             </Text>
@@ -157,6 +157,12 @@ export function ArchitectureReviewScreen({
             <Text selectable style={styles.elementGeometry}>
               محور الجدار: ({element.geometry.centerline.start.x}, {element.geometry.centerline.start.y}) ← ({element.geometry.centerline.end.x}, {element.geometry.centerline.end.y})
               {"\n"}السماكة المرشحة: {element.geometry.thickness} pt · التداخل {Math.round((element.geometry.overlapRatio ?? 0) * 100)}%
+            </Text>
+          ) : null}
+          {element.geometry?.kind === "wall_gap" && element.geometry.start && element.geometry.end ? (
+            <Text selectable style={styles.elementGeometry}>
+              فجوة مرشحة: ({element.geometry.start.x}, {element.geometry.start.y}) ← ({element.geometry.end.x}, {element.geometry.end.y})
+              {"\n"}العرض المرشح: {element.geometry.width} pt · سماكة الجدار المرجعية {element.geometry.averageWallThickness} pt
             </Text>
           ) : null}
           <Text selectable style={styles.elementEvidence}>

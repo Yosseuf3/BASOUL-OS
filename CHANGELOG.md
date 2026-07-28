@@ -1,3 +1,14 @@
+# 3.0.0-alpha.15 · Opening Candidates
+
+- Added conservative opening candidates derived from gaps between aligned paired-wall candidates.
+- Validates wall orientation, centerline alignment, thickness similarity, and plausible gap width.
+- Stores opening endpoints, width, host wall references, and average wall thickness as explainable evidence.
+- Limits and deduplicates candidates to reduce false-positive noise.
+- Every candidate remains unclassified until an engineer confirms whether it is a door, window, or false positive.
+- Mobile review now displays opening gap coordinates and wall-thickness evidence.
+- Advanced the analysis engine to `opening-candidates-v1`.
+- Advanced iOS build number and Android version code to 16.
+
 # 3.0.0-alpha.14 · Paired Wall Inference
 
 - Added conservative pairing of parallel, overlapping PDF vector segments.
