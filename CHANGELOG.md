@@ -1,3 +1,10 @@
+# 3.0.0-alpha.23 · Mobile Spatial Review
+
+- مزامنة سجل المراجعة المكانية مع تطبيق Expo.
+- عرض الملاحظات الميدانية حسب المشروع والمخطط والصفحة.
+- دعم إغلاق الملاحظة أو إعادة فتحها مباشرة من الهاتف.
+- تحديث بيانات مساحة العمل في الويب والموبايل من المصدر نفسه.
+
 # 3.0.0-alpha.22 · Spatial Review Log
 
 - Added persistent spatial review comments linked to drawing elements and pages.

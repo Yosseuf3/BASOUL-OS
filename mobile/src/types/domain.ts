@@ -105,6 +105,21 @@ export type ArchitecturalPlanElement = {
   created_at: string;
 };
 
+export type ArchitecturalReviewComment = {
+  id: string;
+  project_id: string;
+  drawing_id: string;
+  plan_element_id: string | null;
+  finding_id: string | null;
+  page_number: number | null;
+  geometry: ArchitecturalPlanElement["geometry"] | null;
+  body: string;
+  status: "open" | "resolved";
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type MobileWorkspaceData = {
   projects: Project[];
   tasks: Task[];
@@ -112,4 +127,5 @@ export type MobileWorkspaceData = {
   drawings: ArchitecturalDrawing[];
   reviews: ArchitecturalReview[];
   planElements: ArchitecturalPlanElement[];
+  reviewComments: ArchitecturalReviewComment[];
 };
