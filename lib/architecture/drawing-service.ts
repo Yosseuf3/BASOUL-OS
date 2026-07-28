@@ -70,3 +70,11 @@ export async function deleteProjectDrawing(drawing: CloudDrawing): Promise<void>
   const { error } = await supabase.from("architectural_drawings").delete().eq("id", drawing.id);
   if (error) throw error;
 }
+
+export async function createDrawingPreviewUrl(drawing: Pick<CloudDrawing, "storage_path">): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(ARCHITECTURAL_DRAWINGS_BUCKET)
+    .createSignedUrl(drawing.storage_path, 60 * 30);
+  if (error) throw error;
+  return data.signedUrl;
+}
