@@ -1,6 +1,6 @@
 export const APP_INFO = {
   name: "YOSSEUF OS",
-  version: "3.0.0-alpha.20",
-  codename: "Interactive Drawing Review",
-  fullLabel: "v3.0.0-alpha.20 · Interactive Drawing Review",
+  version: "3.0.0-alpha.21",
+  codename: "Spatial Finding Links",
+  fullLabel: "v3.0.0-alpha.21 · Spatial Finding Links",
 } as const;

@@ -1,3 +1,13 @@
+# 3.0.0-alpha.21 · Spatial Finding Links
+
+- Added secure spatial links between review findings and plan elements.
+- Added page and geometry snapshots to preserve the location used for each decision.
+- Added RLS validation so findings can only link to owned elements from the same drawing.
+- Findings can be linked or unlinked from the review result card.
+- Linked findings appear as severity-aware pins over the drawing.
+- Selecting a finding pin navigates to its full evidence and decision record.
+- Advanced iOS build number and Android version code to 22.
+
 # 3.0.0-alpha.20 · Interactive Drawing Review
 
 - Added an in-canvas decision card for the selected plan element.

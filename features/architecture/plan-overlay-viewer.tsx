@@ -9,6 +9,7 @@ import {
   type CloudPlanElement,
   type PlanElementType,
 } from "@/lib/architecture/plan-understanding-service";
+import type { CloudReviewFinding } from "@/lib/architecture/review-service";
 
 type Props = {
   drawing: CloudDrawing | null;
@@ -18,6 +19,8 @@ type Props = {
   onEditElement: (element: CloudPlanElement) => void;
   onDecideElement: (element: CloudPlanElement, status: "confirmed" | "rejected") => void;
   busyElementId: string;
+  findings: CloudReviewFinding[];
+  onSelectFinding: (finding: CloudReviewFinding) => void;
 };
 
 type Point = { x: number; y: number };
@@ -91,7 +94,7 @@ function markerGeometry(element: CloudPlanElement, scale: number) {
   return null;
 }
 
-export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onEditElement, onDecideElement, busyElementId }: Props) {
+export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onEditElement, onDecideElement, busyElementId, findings, onSelectFinding }: Props) {
   const [previewUrl, setPreviewUrl] = useState("");
   const [previewError, setPreviewError] = useState("");
   const [overlayVisible, setOverlayVisible] = useState(true);
@@ -105,6 +108,13 @@ export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onEdi
     [drawing?.id, elements, page],
   );
   const activeElement = pageElements.find((element) => element.id === activeElementId) ?? null;
+  const linkedFindings = findings.filter((finding) =>
+    finding.drawing_id === drawing?.id &&
+    finding.plan_element_id &&
+    (finding.page_number == null || finding.page_number === page) &&
+    finding.status !== "rejected" &&
+    finding.status !== "resolved",
+  );
   const scale = useMemo(() => {
     if (pageElements.some((element) => getPlanElementLocation(element).coordinateSystem === "normalized_0_1000")) {
       return 10;
@@ -180,6 +190,29 @@ export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onEdi
             <title>{element.label} · {element.confidence_score}% ثقة</title>
           </g>;
         })}
+        {linkedFindings.map((finding) => {
+          const element = pageElements.find((candidate) => candidate.id === finding.plan_element_id);
+          if (!element) return null;
+          const marker = markerGeometry(element, scale);
+          if (!marker) return null;
+          const x = marker.kind === "box" ? marker.x + marker.width / 2 : (marker.x1 + marker.x2) / 2;
+          const y = marker.kind === "box" ? marker.y + marker.height / 2 : (marker.y1 + marker.y2) / 2;
+          return <g
+            key={`finding-${finding.id}`}
+            className={`plan-finding-pin severity-${finding.severity}`}
+            role="button"
+            tabIndex={0}
+            aria-label={finding.title}
+            onClick={() => onSelectFinding(finding)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") onSelectFinding(finding);
+            }}
+          >
+            <circle cx={x} cy={y} r="2.2"/>
+            <text x={x} y={y + .7} textAnchor="middle">!</text>
+            <title>{finding.title}</title>
+          </g>;
+        })}
       </svg>}
       {activeElement && <aside className="plan-overlay-selection" aria-live="polite">
         <button className="plan-overlay-selection-close" aria-label="إغلاق بطاقة العنصر" onClick={() => setActiveElementId("")}>×</button>
@@ -195,6 +228,7 @@ export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onEdi
     </div>
     <div className="plan-overlay-legend">
       {(Object.keys(elementColors) as PlanElementType[]).map((type) => <span key={type}><i style={{ background: elementColors[type] }}/>{elementTypeLabels[type]}</span>)}
+      <span><i className="finding-legend-dot"/>ملاحظة مرتبطة</span>
       <em>اضغط على العنصر لاتخاذ القرار مباشرة</em>
     </div>
   </div>;

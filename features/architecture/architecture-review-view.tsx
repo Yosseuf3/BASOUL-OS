@@ -8,6 +8,7 @@ import { deleteProjectDrawing, listProjectDrawings, uploadProjectDrawing, type C
 import {
   analyzeProjectDrawing,
   convertFindingToTask,
+  linkFindingToPlanElement,
   listProjectReviews,
   updateFindingDecision,
   type CloudReview,
@@ -112,6 +113,7 @@ export function ArchitectureReviewView({ projects }: Props) {
   const [convertingFindingId, setConvertingFindingId] = useState("");
   const [decidingFindingId, setDecidingFindingId] = useState("");
   const [retryingDrawingId, setRetryingDrawingId] = useState("");
+  const [linkingFindingId, setLinkingFindingId] = useState("");
   const [cloudState, setCloudState] = useState<"idle" | "loading" | "saving" | "error">("loading");
   const [cloudMessage, setCloudMessage] = useState("");
   const elementPages = useMemo(() => [...new Set(planElements
@@ -240,6 +242,35 @@ export function ArchitectureReviewView({ projects }: Props) {
       setDecidingFindingId("");
     }
   };
+  const linkFinding = async (finding: CloudReviewFinding, elementId: string) => {
+    setLinkingFindingId(finding.id);
+    setCloudMessage("");
+    try {
+      const element = planElements.find((candidate) => candidate.id === elementId) ?? null;
+      await linkFindingToPlanElement(finding, element);
+      const reviewRows = await listProjectReviews(projectId);
+      const selectedReview = reviewRows.find((item) => item.id === finding.review_id) ?? null;
+      setReviews(reviewRows);
+      setSavedReview(selectedReview);
+      if (selectedReview) setReport(cloudReviewToReport(selectedReview));
+      setCloudState("idle");
+      setCloudMessage(element ? "تم ربط الملاحظة بموضعها على المخطط." : "تم إلغاء الربط المكاني للملاحظة.");
+    } catch (linkError) {
+      setCloudState("error");
+      setCloudMessage(linkError instanceof Error ? linkError.message : "تعذر ربط الملاحظة بالمخطط.");
+    } finally {
+      setLinkingFindingId("");
+    }
+  };
+  const inspectFinding = (finding: CloudReviewFinding) => {
+    const element = planElements.find((candidate) => candidate.id === finding.plan_element_id);
+    const page = finding.page_number ?? (element ? getPlanElementLocation(element).page : null);
+    if (page) {
+      setOverlayPage(page);
+      setElementPage(page);
+    }
+    document.getElementById(`finding-${finding.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
   const resetElementForm = () => {
     setEditingElement(null);
     setElementType("room");
@@ -317,7 +348,7 @@ export function ArchitectureReviewView({ projects }: Props) {
       <article className="panel review-result-card"><div className="panel-head"><div><span className="section-kicker">02 · القرار</span><h2>نتيجة المراجعة</h2></div><ShieldCheck size={22}/></div>
         {!report ? <div className="architecture-empty"><FileSearch size={30}/><h3>لا يوجد تحليل بعد</h3><p>اختر مشروعًا وارفع مخططًا لبدء مراجعة قابلة للتفسير والتتبع.</p></div> : <><div className="plan-health"><div><small>صحة المخطط</small><strong>{report.planHealth}%</strong></div><span>{report.findings.filter((finding) => finding.status === "open" || finding.status === "accepted").length} ملاحظة تحتاج متابعة</span></div><div className="finding-list">{report.findings.map((finding) => {
           const cloudFinding = savedReview?.architectural_review_findings.find((item) => item.id === finding.id || item.code === finding.code);
-          return <article key={finding.id} className={`finding finding-${finding.severity} finding-status-${finding.status}`}><span>{finding.severity === "warning" || finding.severity === "critical" ? <AlertTriangle size={16}/> : <CheckCircle2 size={16}/>}</span><div><div className="finding-heading"><b>{finding.title}</b><span className={`finding-status status-${finding.status}`}>{findingStatusLabels[finding.status]}</span></div><p>{finding.description}</p><small>{finding.recommendation}</small>{finding.evidence.length > 0 && <small>الأدلة: {finding.evidence.map((item) => item.reference ?? item.title).join(" · ")}</small>}{cloudFinding && <div className="finding-actions">
+          return <article id={cloudFinding ? `finding-${cloudFinding.id}` : undefined} key={finding.id} className={`finding finding-${finding.severity} finding-status-${finding.status}`}><span>{finding.severity === "warning" || finding.severity === "critical" ? <AlertTriangle size={16}/> : <CheckCircle2 size={16}/>}</span><div><div className="finding-heading"><b>{finding.title}</b><span className={`finding-status status-${finding.status}`}>{findingStatusLabels[finding.status]}</span></div><p>{finding.description}</p><small>{finding.recommendation}</small>{finding.evidence.length > 0 && <small>الأدلة: {finding.evidence.map((item) => item.reference ?? item.title).join(" · ")}</small>}{cloudFinding && <label className="finding-spatial-link"><span>الموضع على المخطط</span><select disabled={linkingFindingId === cloudFinding.id} value={cloudFinding.plan_element_id ?? ""} onChange={(event) => void linkFinding(cloudFinding, event.target.value)}><option value="">غير مرتبط</option>{planElements.filter((element) => element.drawing_id === cloudFinding.drawing_id && element.status !== "rejected").map((element) => <option key={element.id} value={element.id}>{element.label} · {planElementTypeLabels[element.element_type]}</option>)}</select></label>}{cloudFinding && <div className="finding-actions">
             {cloudFinding.status === "open" && <><button disabled={decidingFindingId === cloudFinding.id} onClick={() => void decideFinding(cloudFinding, "accepted")}><CheckCircle2 size={14}/>اعتماد</button><button disabled={decidingFindingId === cloudFinding.id} onClick={() => void decideFinding(cloudFinding, "rejected")}><XCircle size={14}/>رفض</button></>}
             {cloudFinding.status === "accepted" && <><button disabled={decidingFindingId === cloudFinding.id} onClick={() => void decideFinding(cloudFinding, "resolved")}><ShieldCheck size={14}/>تمت المعالجة</button><button className="finding-task-action" disabled={convertingFindingId === cloudFinding.id} onClick={() => void createTask(cloudFinding)}><ListChecks size={14}/>{convertingFindingId === cloudFinding.id ? "جارٍ الإنشاء" : "تحويل إلى مهمة"}</button></>}
             {cloudFinding.status === "converted_to_task" && <span className="finding-done"><ListChecks size={14}/>مرتبطة بمهمة</span>}
@@ -335,6 +366,8 @@ export function ArchitectureReviewView({ projects }: Props) {
         onEditElement={inspectPlanElement}
         onDecideElement={(element, status) => void decidePlanElement(element, status)}
         busyElementId={savingElementId}
+        findings={savedReview?.architectural_review_findings ?? reviews.flatMap((review) => review.architectural_review_findings)}
+        onSelectFinding={inspectFinding}
       />
       <div className="plan-inspector-summary">
         <span><b>{planElements.length}</b> مكتشف</span>
