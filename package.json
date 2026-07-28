@@ -1,12 +1,15 @@
 {
   "name": "yosseuf-os-cloud",
-  "version": "3.0.0-alpha.23",
+  "version": "3.0.0-beta.1",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "quality": "npm run check:release && npm run lint && npm run typecheck && npm run build",
     "mobile:install": "npm --prefix mobile install",
@@ -20,21 +23,26 @@
     "check:release": "node scripts/check-release-consistency.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.49.4",
+    "@supabase/supabase-js": "^2.111.0",
     "lucide-react": "0.468.0",
-    "next": "14.2.25",
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "next": "^16.2.12",
+    "react": "^19.2.2",
+    "react-dom": "^19.2.2"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.6",
     "@types/node": "22.10.2",
-    "@types/react": "18.3.18",
-    "@types/react-dom": "18.3.5",
-    "eslint": "8.57.1",
-    "eslint-config-next": "14.2.25",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.12",
     "typescript": "5.7.2"
   },
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "overrides": {
+    "postcss": "8.5.24",
+    "sharp": "0.35.3"
+  }
 }
