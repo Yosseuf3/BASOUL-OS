@@ -28,6 +28,10 @@ export type FindingDecision = Extract<
 export type DrawingAnalysisResult = {
   runId: string;
   metadata: Record<string, unknown>;
+  analysisStatus: "completed" | "needs_better_source";
+  failureCode: string | null;
+  retryable: boolean;
+  planElements: Array<Record<string, unknown>>;
   review: CloudReview;
 };
 
@@ -121,9 +125,12 @@ export async function listProjectReviews(projectId?: string): Promise<CloudRevie
   return (data ?? []) as CloudReview[];
 }
 
-export async function analyzeProjectDrawing(drawingId: string): Promise<DrawingAnalysisResult> {
+export async function analyzeProjectDrawing(
+  drawingId: string,
+  options: { retry?: boolean } = {},
+): Promise<DrawingAnalysisResult> {
   const { data, error } = await supabase.functions.invoke("architectural-analyze-v2", {
-    body: { drawingId },
+    body: { drawingId, retry: Boolean(options.retry) },
   });
   if (error) throw error;
   if (!data?.review) throw new Error(data?.error ?? "لم يُرجع التحليل جلسة مراجعة.");
@@ -178,4 +185,3 @@ export async function convertFindingToTask(
   await syncReviewCompletion(finding.review_id, user.id);
   return task.id as string;
 }
-
