@@ -2,25 +2,25 @@
   "expo": {
     "name": "YOSSEUF OS",
     "slug": "yosseuf-os",
-    "version": "3.0.0-alpha.18",
+    "version": "3.0.0-alpha.19",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "yosseufos",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yosseufradwan.os",
-      "buildNumber": "19",
+      "buildNumber": "20",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.yosseufradwan.os",
-      "versionCode": 19
+      "versionCode": 20
     },
     "extra": {
       "product": "YOSSEUF OS Executive Operating System",
-      "release": "v3.0.0-alpha.18 Plan Element Inspector",
+      "release": "v3.0.0-alpha.19 Visual Plan Overlay",
       "eas": {
         "projectId": "6f770730-8c8e-49b0-81b9-f9773faf567a"
       }

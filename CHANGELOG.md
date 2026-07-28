@@ -1,3 +1,14 @@
+# 3.0.0-alpha.19 · Visual Plan Overlay
+
+- Added an authenticated preview URL for drawings stored in Supabase.
+- Added a multi-page drawing viewer with previous and next page navigation.
+- Added an interactive SVG overlay for rooms, dimensions, walls, openings, and labels.
+- Uses bounding boxes, line geometry, and centerlines already produced by the analysis engine.
+- Added element highlighting and direct navigation from the drawing to the correction form.
+- Added overlay visibility controls, a color legend, loading, error, and empty states.
+- Keeps rejected elements hidden from the visual review layer.
+- Advanced iOS build number and Android version code to 20.
+
 # 3.0.0-alpha.16 · Raster PDF Vision
 
 - Added an OpenAI-powered vision fallback for raster-heavy PDFs and uploaded plan images.
