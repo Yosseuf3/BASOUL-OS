@@ -343,7 +343,7 @@ export default function Home() {
     <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
       <button className="sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="إغلاق القائمة"><X size={19} /></button>
       <div className="logo"><div className="logo-mark"><Brain size={25} /></div><div><strong>{APP_INFO.name}</strong><span>{APP_INFO.fullLabel}</span></div></div>
-      <WorkspaceSwitcher value={workspace} onChange={(next) => { setWorkspace(next); if (next === "executive") navigate("dashboard"); else if (next === "operations") navigate("projects"); else if (next === "knowledge") navigate("knowledge"); }} />
+      <WorkspaceSwitcher value={workspace} onChange={(next) => { setWorkspace(next); if (next === "executive") navigate("dashboard"); else if (next === "operations") navigate("projects"); else if (next === "engineering") navigate("architecture"); else if (next === "knowledge") navigate("knowledge"); }} />
       <nav>
         <button className={view === "dashboard" ? "active" : ""} onClick={() => navigate("dashboard")}><LayoutDashboard size={18}/> لوحة القيادة</button>
         <button className={view === "projects" ? "active" : ""} onClick={() => navigate("projects")}><FolderKanban size={18}/> المشاريع</button>
