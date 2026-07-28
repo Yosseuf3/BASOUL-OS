@@ -11,7 +11,8 @@
 - [x] persistent walls, openings, rooms, labels, and dimensions
 - [x] confidence and source tracking
 - [x] human correction, confirmation, and rejection workflow
-- [ ] automatic geometric extraction from drawing content
+- [x] conservative PDF text-layer extraction for labels, room keywords, and dimensions
+- [ ] geometric extraction of walls and openings from vector paths
 
 ## Phase 3 — Design Reasoning
 - circulation, privacy, adjacency, daylight, furnishing, and area efficiency
