@@ -1,3 +1,14 @@
+# 3.0.0-alpha.22 · Spatial Review Log
+
+- Added persistent spatial review comments linked to drawing elements and pages.
+- Added open, resolved, reopened, and deleted comment workflows.
+- Added comment geometry snapshots so the recorded location survives later extraction changes.
+- Added comment pins to the visual drawing overlay.
+- Added a review composer and chronological per-drawing log.
+- Added RLS ownership checks across project, drawing, element, and finding references.
+- Applied the idempotent production migration successfully.
+- Advanced iOS build number and Android version code to 23.
+
 # 3.0.0-alpha.21 · Spatial Finding Links
 
 - Added secure spatial links between review findings and plan elements.

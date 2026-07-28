@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, CloudUpload, FileSearch, FileUp, ListChecks, PencilRuler, RotateCcw, ShieldCheck, Sparkles, Trash2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CloudUpload, FileSearch, FileUp, ListChecks, MessageSquare, PencilRuler, RotateCcw, ShieldCheck, Sparkles, Trash2, XCircle } from "lucide-react";
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { createArchitecturalReview, type ArchitecturalReviewReport, type DrawingAsset, type FindingDraft } from "@yosseuf/architectural-intelligence";
 import type { Project } from "@/lib/types";
@@ -26,6 +26,13 @@ import {
   type PlanElementType,
 } from "@/lib/architecture/plan-understanding-service";
 import { PlanOverlayViewer } from "@/features/architecture/plan-overlay-viewer";
+import {
+  createReviewComment,
+  deleteReviewComment,
+  listReviewComments,
+  setReviewCommentStatus,
+  type ReviewComment,
+} from "@/lib/architecture/review-comment-service";
 
 type Props = { projects: Project[] };
 type AnalysisState = "idle" | "reading" | "ready" | "error";
@@ -114,6 +121,10 @@ export function ArchitectureReviewView({ projects }: Props) {
   const [decidingFindingId, setDecidingFindingId] = useState("");
   const [retryingDrawingId, setRetryingDrawingId] = useState("");
   const [linkingFindingId, setLinkingFindingId] = useState("");
+  const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
+  const [selectedReviewElement, setSelectedReviewElement] = useState<CloudPlanElement | null>(null);
+  const [commentBody, setCommentBody] = useState("");
+  const [savingCommentId, setSavingCommentId] = useState("");
   const [cloudState, setCloudState] = useState<"idle" | "loading" | "saving" | "error">("loading");
   const [cloudMessage, setCloudMessage] = useState("");
   const elementPages = useMemo(() => [...new Set(planElements
@@ -130,14 +141,16 @@ export function ArchitectureReviewView({ projects }: Props) {
   const loadDrawings = useCallback(async () => {
     setCloudState("loading");
     try {
-      const [drawingRows, reviewRows, elementRows] = await Promise.all([
+      const [drawingRows, reviewRows, elementRows, commentRows] = await Promise.all([
         listProjectDrawings(projectId || undefined),
         listProjectReviews(projectId || undefined),
         listPlanElements(projectId || undefined),
+        listReviewComments(projectId || undefined),
       ]);
       setDrawings(drawingRows);
       setReviews(reviewRows);
       setPlanElements(elementRows);
+      setReviewComments(commentRows);
       setElementDrawingId((current) => drawingRows.some((drawing) => drawing.id === current) ? current : drawingRows[0]?.id ?? "");
       setCloudState("idle");
       setCloudMessage("");
@@ -271,6 +284,63 @@ export function ArchitectureReviewView({ projects }: Props) {
     }
     document.getElementById(`finding-${finding.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
+  const saveReviewComment = async () => {
+    if (!projectId || !selectedReviewElement || !commentBody.trim()) return;
+    setSavingCommentId("new");
+    setCloudMessage("");
+    try {
+      await createReviewComment({
+        projectId,
+        drawingId: selectedReviewElement.drawing_id,
+        element: selectedReviewElement,
+        body: commentBody,
+      });
+      setCommentBody("");
+      setReviewComments(await listReviewComments(projectId));
+      setCloudState("idle");
+      setCloudMessage("تم حفظ التعليق في سجل المراجعة المكاني.");
+    } catch (commentError) {
+      setCloudState("error");
+      setCloudMessage(commentError instanceof Error ? commentError.message : "تعذر حفظ تعليق المراجعة.");
+    } finally {
+      setSavingCommentId("");
+    }
+  };
+  const resolveReviewComment = async (comment: ReviewComment) => {
+    setSavingCommentId(comment.id);
+    try {
+      await setReviewCommentStatus(comment.id, comment.status === "open" ? "resolved" : "open");
+      setReviewComments(await listReviewComments(projectId));
+      setCloudState("idle");
+    } catch (commentError) {
+      setCloudState("error");
+      setCloudMessage(commentError instanceof Error ? commentError.message : "تعذر تحديث التعليق.");
+    } finally {
+      setSavingCommentId("");
+    }
+  };
+  const removeReviewComment = async (comment: ReviewComment) => {
+    setSavingCommentId(comment.id);
+    try {
+      await deleteReviewComment(comment.id);
+      setReviewComments(await listReviewComments(projectId));
+      setCloudState("idle");
+    } catch (commentError) {
+      setCloudState("error");
+      setCloudMessage(commentError instanceof Error ? commentError.message : "تعذر حذف التعليق.");
+    } finally {
+      setSavingCommentId("");
+    }
+  };
+  const inspectReviewComment = (comment: ReviewComment) => {
+    const element = planElements.find((candidate) => candidate.id === comment.plan_element_id);
+    if (element) setSelectedReviewElement(element);
+    if (comment.page_number) {
+      setOverlayPage(comment.page_number);
+      setElementPage(comment.page_number);
+    }
+    document.getElementById(`review-comment-${comment.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
   const resetElementForm = () => {
     setEditingElement(null);
     setElementType("room");
@@ -368,7 +438,20 @@ export function ArchitectureReviewView({ projects }: Props) {
         busyElementId={savingElementId}
         findings={savedReview?.architectural_review_findings ?? reviews.flatMap((review) => review.architectural_review_findings)}
         onSelectFinding={inspectFinding}
+        comments={reviewComments}
+        onSelectComment={inspectReviewComment}
+        onElementSelected={setSelectedReviewElement}
       />
+      <div className="spatial-review-log">
+        <div className="spatial-comment-composer">
+          <div><span className="section-kicker"><MessageSquare size={13}/> تعليق مكاني</span><b>{selectedReviewElement ? selectedReviewElement.label : "اختر عنصرًا من المخطط"}</b></div>
+          <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} disabled={!selectedReviewElement} maxLength={2000} placeholder="اكتب ملاحظة المراجعة أو القرار المطلوب…"/>
+          <button className="primary" disabled={!selectedReviewElement || !commentBody.trim() || Boolean(savingCommentId)} onClick={() => void saveReviewComment()}>حفظ التعليق</button>
+        </div>
+        <div className="spatial-comment-list">
+          {reviewComments.filter((comment) => comment.drawing_id === elementDrawingId).length ? reviewComments.filter((comment) => comment.drawing_id === elementDrawingId).map((comment) => <article id={`review-comment-${comment.id}`} key={comment.id} className={`spatial-comment status-${comment.status}`}><MessageSquare size={16}/><div><b>{comment.body}</b><small>{comment.page_number ? `الصفحة ${comment.page_number} · ` : ""}{new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium", timeStyle: "short" }).format(new Date(comment.created_at))}</small></div><span>{comment.status === "open" ? "مفتوح" : "مغلق"}</span><button disabled={savingCommentId === comment.id} onClick={() => void resolveReviewComment(comment)}>{comment.status === "open" ? "إغلاق" : "إعادة فتح"}</button><button aria-label="حذف التعليق" disabled={savingCommentId === comment.id} onClick={() => void removeReviewComment(comment)}><Trash2 size={14}/></button></article>) : <div className="spatial-comment-empty">لا توجد تعليقات مكانية لهذا المخطط بعد.</div>}
+        </div>
+      </div>
       <div className="plan-inspector-summary">
         <span><b>{planElements.length}</b> مكتشف</span>
         <span><b>{pendingElementCount}</b> ينتظر التحقق</span>
