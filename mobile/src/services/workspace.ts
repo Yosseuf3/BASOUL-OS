@@ -72,7 +72,7 @@ export async function loadMobileWorkspace(userId: string): Promise<MobileWorkspa
       .limit(20),
     supabase
       .from("architectural_plan_elements")
-      .select("id,project_id,drawing_id,element_type,label,value,unit,confidence_score,source,status,notes,created_at")
+      .select("id,project_id,drawing_id,element_type,label,value,unit,geometry,confidence_score,source,status,notes,created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(100),

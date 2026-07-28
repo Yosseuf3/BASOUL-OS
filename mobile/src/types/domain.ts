@@ -79,6 +79,12 @@ export type ArchitecturalPlanElement = {
   label: string;
   value: string | null;
   unit: string | null;
+  geometry: {
+    kind?: string;
+    coordinateSystem?: string;
+    start?: { x: number; y: number };
+    end?: { x: number; y: number };
+  };
   confidence_score: number;
   source: "automatic" | "manual";
   status: "detected" | "confirmed" | "corrected" | "rejected";
