@@ -11,6 +11,14 @@ export type MobileDrawingFile = {
   size: number;
 };
 
+export type MobileDrawingAnalysisResult = {
+  drawingId: string;
+  analysisStatus: "completed" | "needs_better_source";
+  detectedElements: number;
+  failureCode: string | null;
+  retryable: boolean;
+};
+
 export type MobileFindingDecision = Extract<
   ArchitecturalFinding["status"],
   "accepted" | "rejected" | "resolved"
@@ -156,7 +164,7 @@ export async function uploadMobileDrawing(
   projectId: string,
   revision: string,
   file: MobileDrawingFile,
-): Promise<{ analysisStatus: "completed" | "needs_better_source"; detectedElements: number }> {
+): Promise<MobileDrawingAnalysisResult> {
   if (!supabase) throw new Error("Supabase is not configured.");
   const supportedTypes = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);
   if (!supportedTypes.has(file.mimeType)) throw new Error("نوع الملف غير مدعوم.");
@@ -207,8 +215,27 @@ export async function uploadMobileDrawing(
     throw analysisError ?? new Error(analysis?.error ?? "فشل تحليل المخطط.");
   }
   return {
+    drawingId: drawing.id as string,
     analysisStatus: analysis.analysisStatus === "needs_better_source" ? "needs_better_source" : "completed",
     detectedElements: Array.isArray(analysis.planElements) ? analysis.planElements.length : 0,
+    failureCode: typeof analysis.failureCode === "string" ? analysis.failureCode : null,
+    retryable: Boolean(analysis.retryable),
+  };
+}
+
+export async function retryMobileDrawingAnalysis(drawingId: string): Promise<MobileDrawingAnalysisResult> {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data: analysis, error } = await supabase.functions.invoke(
+    "architectural-analyze-v2",
+    { body: { drawingId, retry: true } },
+  );
+  if (error || !analysis?.review) throw error ?? new Error(analysis?.error ?? "فشلت إعادة تحليل المخطط.");
+  return {
+    drawingId,
+    analysisStatus: analysis.analysisStatus === "needs_better_source" ? "needs_better_source" : "completed",
+    detectedElements: Array.isArray(analysis.planElements) ? analysis.planElements.length : 0,
+    failureCode: typeof analysis.failureCode === "string" ? analysis.failureCode : null,
+    retryable: Boolean(analysis.retryable),
   };
 }
 
@@ -246,4 +273,3 @@ export async function advanceMobileTask(task: Task): Promise<void> {
   const { error } = await supabase.from("tasks").update(next[task.status]).eq("id", task.id);
   if (error) throw error;
 }
-
