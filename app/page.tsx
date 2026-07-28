@@ -664,7 +664,7 @@ function Auth(){
     }
   }
 
-  return <div className="auth-page"><div className="auth-card"><div className="logo-mark auth-logo"><Brain/></div><span className="section-kicker">PERSONAL OPERATING SYSTEM</span><h1>YOSSEUF OS</h1><p>سجّل الدخول للوصول إلى مشاريعك ومهامك.</p><form onSubmit={submit}><label><span>البريد الإلكتروني</span><input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required autoComplete="email" inputMode="email"/></label><button className="primary" disabled={busy}>{busy?"جارٍ التحقق والإرسال…":"إرسال رابط الدخول"}</button></form>{message&&<div className={`auth-message ${messageTone}`} role="status" aria-live="polite">{message}</div>}<small className="auth-diagnostic-note">v1.0.1 · Auth Diagnostics Hotfix</small></div></div>
+  return <div className="auth-page"><div className="auth-card"><div className="logo-mark auth-logo"><Brain/></div><span className="section-kicker">PERSONAL OPERATING SYSTEM</span><h1>YOSSEUF OS</h1><p>سجّل الدخول للوصول إلى مشاريعك ومهامك.</p><form onSubmit={submit}><label><span>البريد الإلكتروني</span><input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required autoComplete="email" inputMode="email"/></label><button className="primary" disabled={busy}>{busy?"جارٍ التحقق والإرسال…":"إرسال رابط الدخول"}</button></form>{message&&<div className={`auth-message ${messageTone}`} role="status" aria-live="polite">{message}</div>}<small className="auth-diagnostic-note">{APP_INFO.fullLabel}</small></div></div>
 }
 function LoadingScreen(){return <div className="center-screen"><div className="loader"><Brain size={38}/><span>جارٍ تشغيل YOSSEUF OS…</span></div></div>}
 

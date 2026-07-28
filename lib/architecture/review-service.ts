@@ -20,6 +20,11 @@ export type CloudReviewFinding = {
   created_at: string;
 };
 
+export type FindingDecision = Extract<
+  CloudReviewFinding["status"],
+  "accepted" | "rejected" | "resolved"
+>;
+
 export type DrawingAnalysisResult = {
   runId: string;
   metadata: Record<string, unknown>;
@@ -42,6 +47,24 @@ async function requireUser() {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw error ?? new Error("Authentication is required.");
   return data.user;
+}
+
+async function syncReviewCompletion(reviewId: string, userId: string): Promise<void> {
+  const { data: remaining, error: remainingError } = await supabase
+    .from("architectural_review_findings")
+    .select("id")
+    .eq("review_id", reviewId)
+    .eq("user_id", userId)
+    .in("status", ["open", "accepted"])
+    .limit(1);
+  if (remainingError) throw remainingError;
+
+  const { error: reviewError } = await supabase
+    .from("architectural_reviews")
+    .update({ status: remaining?.length ? "ready" : "completed" })
+    .eq("id", reviewId)
+    .eq("user_id", userId);
+  if (reviewError) throw reviewError;
 }
 
 export async function saveReviewSession(
@@ -103,8 +126,26 @@ export async function analyzeProjectDrawing(drawingId: string): Promise<DrawingA
     body: { drawingId },
   });
   if (error) throw error;
-  if (!data?.review) throw new Error(data?.error ?? "?? ????? ????? ??????.");
+  if (!data?.review) throw new Error(data?.error ?? "لم يُرجع التحليل جلسة مراجعة.");
   return data as DrawingAnalysisResult;
+}
+
+export async function updateFindingDecision(
+  finding: Pick<CloudReviewFinding, "id" | "review_id">,
+  status: FindingDecision,
+): Promise<void> {
+  const user = await requireUser();
+  const { data: updatedFinding, error } = await supabase
+    .from("architectural_review_findings")
+    .update({ status })
+    .eq("id", finding.id)
+    .eq("user_id", user.id)
+    .select("id")
+    .single();
+  if (error) throw error;
+  if (!updatedFinding) throw new Error("تعذر تحديث الملاحظة.");
+
+  await syncReviewCompletion(finding.review_id, user.id);
 }
 
 export async function convertFindingToTask(
@@ -121,7 +162,7 @@ export async function convertFindingToTask(
       user_id: user.id,
       project_id: projectId,
       title: finding.title,
-      description: `${finding.description}\n\n???????: ${finding.recommendation}`,
+      description: `${finding.description}\n\nالتوصية: ${finding.recommendation}`,
       status: "To Do",
       priority,
       progress: 0,
@@ -134,5 +175,6 @@ export async function convertFindingToTask(
     .update({ status: "converted_to_task", task_id: task.id })
     .eq("id", finding.id);
   if (updateError) throw updateError;
+  await syncReviewCompletion(finding.review_id, user.id);
   return task.id as string;
 }

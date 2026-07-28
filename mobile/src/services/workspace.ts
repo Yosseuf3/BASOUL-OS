@@ -11,8 +11,32 @@ export type MobileDrawingFile = {
   size: number;
 };
 
+export type MobileFindingDecision = Extract<
+  ArchitecturalFinding["status"],
+  "accepted" | "rejected" | "resolved"
+>;
+
 const safeFileName = (name: string) =>
   name.normalize("NFKD").replace(/[^\w.\-]+/g, "-").replace(/-+/g, "-").toLowerCase();
+
+async function syncMobileReviewCompletion(reviewId: string, userId: string): Promise<void> {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data: remaining, error: remainingError } = await supabase
+    .from("architectural_review_findings")
+    .select("id")
+    .eq("review_id", reviewId)
+    .eq("user_id", userId)
+    .in("status", ["open", "accepted"])
+    .limit(1);
+  if (remainingError) throw remainingError;
+
+  const { error: reviewError } = await supabase
+    .from("architectural_reviews")
+    .update({ status: remaining?.length ? "ready" : "completed" })
+    .eq("id", reviewId)
+    .eq("user_id", userId);
+  if (reviewError) throw reviewError;
+}
 
 export async function loadMobileWorkspace(userId: string): Promise<MobileWorkspaceData> {
   if (!supabase) throw new Error("Supabase is not configured.");
@@ -73,7 +97,7 @@ export async function convertMobileFindingToTask(
     user_id: userId,
     project_id: projectId,
     title: finding.title,
-    description: `${finding.description}\n\n???????: ${finding.recommendation}`,
+    description: `${finding.description}\n\nالتوصية: ${finding.recommendation}`,
     priority,
     status: "To Do",
     progress: 0,
@@ -84,6 +108,26 @@ export async function convertMobileFindingToTask(
     .update({ status: "converted_to_task", task_id: task.id })
     .eq("id", finding.id);
   if (findingError) throw findingError;
+  await syncMobileReviewCompletion(finding.review_id, userId);
+}
+
+export async function updateMobileFindingDecision(
+  userId: string,
+  finding: Pick<ArchitecturalFinding, "id" | "review_id">,
+  status: MobileFindingDecision,
+): Promise<void> {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data: updatedFinding, error } = await supabase
+    .from("architectural_review_findings")
+    .update({ status })
+    .eq("id", finding.id)
+    .eq("user_id", userId)
+    .select("id")
+    .single();
+  if (error) throw error;
+  if (!updatedFinding) throw new Error("تعذر تحديث الملاحظة.");
+
+  await syncMobileReviewCompletion(finding.review_id, userId);
 }
 
 export async function uploadMobileDrawing(
@@ -94,10 +138,10 @@ export async function uploadMobileDrawing(
 ): Promise<void> {
   if (!supabase) throw new Error("Supabase is not configured.");
   const supportedTypes = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);
-  if (!supportedTypes.has(file.mimeType)) throw new Error("???? ????? ??? ??????.");
-  if (file.size > 50 * 1024 * 1024) throw new Error("??? ????? ?????? ???? ?????? 50 MB.");
+  if (!supportedTypes.has(file.mimeType)) throw new Error("نوع الملف غير مدعوم.");
+  if (file.size > 50 * 1024 * 1024) throw new Error("حجم الملف يتجاوز الحد المسموح: 50 MB.");
   const response = await fetch(file.uri);
-  if (!response.ok) throw new Error("???? ????? ????? ?????? ?? ??????.");
+  if (!response.ok) throw new Error("تعذر قراءة الملف المحدد من الجهاز.");
   const body = await response.arrayBuffer();
   const uploadId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const path = `${userId}/${projectId}/${uploadId}-${safeFileName(file.name)}`;
@@ -139,7 +183,7 @@ export async function uploadMobileDrawing(
   if (analysisError || !analysis?.review) {
     await supabase.from("architectural_drawings").delete().eq("id", drawing.id);
     await supabase.storage.from(ARCHITECTURAL_DRAWINGS_BUCKET).remove([path]);
-    throw analysisError ?? new Error(analysis?.error ?? "???? ????? ??????.");
+    throw analysisError ?? new Error(analysis?.error ?? "فشل تحليل المخطط.");
   }
 }
 

@@ -1,11 +1,19 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, CloudUpload, FileSearch, FileUp, ListChecks, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CloudUpload, FileSearch, FileUp, ListChecks, ShieldCheck, Sparkles, Trash2, XCircle } from "lucide-react";
 import { ChangeEvent, useCallback, useEffect, useState } from "react";
 import { createArchitecturalReview, type ArchitecturalReviewReport, type DrawingAsset, type FindingDraft } from "@yosseuf/architectural-intelligence";
 import type { Project } from "@/lib/types";
 import { deleteProjectDrawing, listProjectDrawings, uploadProjectDrawing, type CloudDrawing } from "@/lib/architecture/drawing-service";
-import { analyzeProjectDrawing, convertFindingToTask, listProjectReviews, type CloudReview, type CloudReviewFinding } from "@/lib/architecture/review-service";
+import {
+  analyzeProjectDrawing,
+  convertFindingToTask,
+  listProjectReviews,
+  updateFindingDecision,
+  type CloudReview,
+  type CloudReviewFinding,
+  type FindingDecision,
+} from "@/lib/architecture/review-service";
 
 type Props = { projects: Project[] };
 type AnalysisState = "idle" | "reading" | "ready" | "error";
@@ -18,7 +26,7 @@ function cloudReviewToReport(review: CloudReview): ArchitecturalReviewReport {
     drawingId: review.drawing_id,
     planHealth: review.plan_health,
     generatedAt: review.generated_at,
-    disclaimer: "????? ????? ????? ????? ???????. ???? ???????? ???????? ??????? ?????? ??????? ??????? ?????? ????????.",
+    disclaimer: "مراجعة هندسية مساعدة بالذكاء الاصطناعي. تبقى المصادقة النهائية مسؤولية الفريق المرخص والجهة المختصة.",
     findings: review.architectural_review_findings.map((finding) => ({
       id: finding.id,
       drawingId: finding.drawing_id,
@@ -43,7 +51,7 @@ function cloudReviewToReport(review: CloudReview): ArchitecturalReviewReport {
         level: finding.confidence_score >= 90 ? "very_high" : finding.confidence_score >= 75 ? "high" : finding.confidence_score >= 50 ? "medium" : "low",
         evidenceCount: finding.evidence.length,
         verifiedEvidenceCount: finding.evidence.length,
-        explanation: "?????? ?? ????? ????? ???? ?? ?????? ????.",
+        explanation: "محسوبة من الأدلة التقنية المستخرجة من الملف.",
       },
       createdAt: finding.created_at,
     })),
@@ -59,11 +67,11 @@ async function inspectDrawing(file: File, projectId: string): Promise<{ report: 
     const text = new TextDecoder("latin1").decode(await file.arrayBuffer());
     pages = Math.max(1, (text.match(/\/Type\s*\/Page\b/g) ?? []).length);
   }
-  const evidence = [{ id: `${drawing.id}-file`, sourceType: "user_input" as const, title: "??? ?????? ???????", reference: `${file.name} ? ${formatBytes(file.size)}`, weight: 1, verified: true }];
+  const evidence = [{ id: `${drawing.id}-file`, sourceType: "user_input" as const, title: "بيانات الملف المرفوع", reference: `${file.name} · ${formatBytes(file.size)}`, weight: 1, verified: true }];
   const drafts: FindingDraft[] = [];
-  if (file.size > 25 * 1024 * 1024) drafts.push({ code: "FILE_SIZE", title: "??? ????? ????? ???????", description: "?????? ????? 25 MB? ??? ???? ???????? ?????????.", recommendation: "???? ???? PDF ?????? ?? ?????? ??? ???? ??????? ???????.", category: "constructability", severity: "opportunity", location: {}, evidence });
-  if (format === "image") drafts.push({ code: "RASTER_INPUT", title: "???? ???? ????? ?????", description: "?????? ?????? ????? ??????? ??? ?????? ???????? ?? ?? ???? ????? ????????? ????.", recommendation: "???? ??? PDF ??????? ??? ????? ?????? ??? ????? ?????? ????.", category: "constructability", severity: "warning", location: {}, evidence });
-  drafts.push({ code: "READY_FOR_REVIEW", title: "?????? ???? ????? ????????", description: `?? ?????? ?? ?????${pages ? ` ??????? ${pages} ????` : ""}.`, recommendation: "??? ????? ????? ???? ??????? ??????? ??????? ??? ??? ??????? ??????? ???????.", category: "space_efficiency", severity: "info", location: {}, evidence });
+  if (file.size > 25 * 1024 * 1024) drafts.push({ code: "FILE_SIZE", title: "حجم الملف مرتفع للمراجعة", description: "يتجاوز الملف 25 MB، وقد يبطئ المعالجة والمشاركة.", recommendation: "صدّر نسخة PDF محسنة مع الحفاظ على وضوح النصوص والأبعاد.", category: "constructability", severity: "opportunity", location: {}, evidence });
+  if (format === "image") drafts.push({ code: "RASTER_INPUT", title: "المصدر صورة نقطية", description: "الصورة مناسبة للفحص البصري، لكنها أقل دقة في استخراج النصوص والعناصر الهندسية.", recommendation: "استخدم PDF متجهيًا عندما يكون متاحًا لرفع موثوقية التحليل.", category: "constructability", severity: "warning", location: {}, evidence });
+  drafts.push({ code: "READY_FOR_REVIEW", title: "المخطط جاهز لمسار المراجعة", description: `تم التحقق من الملف${pages ? ` واكتشاف ${pages} صفحة` : ""}.`, recommendation: "احفظ النسخة في السحابة لتشغيل التحليل المعماري وإنشاء سجل قرار قابل للتتبع.", category: "space_efficiency", severity: "info", location: {}, evidence });
   return { report: createArchitecturalReview(drawing, drafts), pages };
 }
 
@@ -79,6 +87,7 @@ export function ArchitectureReviewView({ projects }: Props) {
   const [reviews, setReviews] = useState<CloudReview[]>([]);
   const [savedReview, setSavedReview] = useState<CloudReview | null>(null);
   const [convertingFindingId, setConvertingFindingId] = useState("");
+  const [decidingFindingId, setDecidingFindingId] = useState("");
   const [cloudState, setCloudState] = useState<"idle" | "loading" | "saving" | "error">("loading");
   const [cloudMessage, setCloudMessage] = useState("");
   const loadDrawings = useCallback(async () => {
@@ -93,18 +102,18 @@ export function ArchitectureReviewView({ projects }: Props) {
       setCloudState("idle");
       setCloudMessage("");
     }
-    catch (loadError) { setCloudState("error"); setCloudMessage(loadError instanceof Error ? loadError.message : "???? ????? ??? ????????."); }
+    catch (loadError) { setCloudState("error"); setCloudMessage(loadError instanceof Error ? loadError.message : "تعذر تحميل سجل المراجعات."); }
   }, [projectId]);
   useEffect(() => { void loadDrawings(); }, [loadDrawings]);
   const onFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files?.[0];
     if (!selected) return;
     setError(""); setReport(null); setSavedReview(null); setFile(selected);
-    if (!projectId) { setState("error"); setError("???? ??????? ?? ???? ??????? ??? ??? ??????."); return; }
-    if (!["application/pdf", "image/png", "image/jpeg", "image/webp"].includes(selected.type)) { setState("error"); setError("????? ???????? ??????: PDF ?PNG ?JPG ?WebP."); return; }
+    if (!projectId) { setState("error"); setError("اختر المشروع قبل رفع المخطط."); return; }
+    if (!["application/pdf", "image/png", "image/jpeg", "image/webp"].includes(selected.type)) { setState("error"); setError("الصيغ المدعومة: PDF وPNG وJPG وWebP."); return; }
     setState("reading");
     try { const result = await inspectDrawing(selected, projectId); setReport(result.report); setPages(result.pages); setState("ready"); }
-    catch { setState("error"); setError("???? ??? ?????. ???? ?????? ??? ???? ?? ???? ???? PDF ????."); }
+    catch { setState("error"); setError("تعذر فحص الملف. جرّب ملفًا صالحًا أو نسخة PDF أخرى."); }
   };
   const saveToCloud = async () => {
     if (!file || !projectId || !report) return;
@@ -114,17 +123,17 @@ export function ArchitectureReviewView({ projects }: Props) {
       const { review } = await analyzeProjectDrawing(drawing.id);
       setSavedReview(review);
       setReport(cloudReviewToReport(review));
-      setCloudMessage("?? ??? ?????? ??????? ?????? ????? ?????? ???????.");
+      setCloudMessage("تم رفع المخطط وتحليله وإنشاء جلسة مراجعة.");
       await loadDrawings();
     } catch (uploadError) {
       setCloudState("error");
-      setCloudMessage(uploadError instanceof Error ? uploadError.message : "???? ??? ??????.");
+      setCloudMessage(uploadError instanceof Error ? uploadError.message : "تعذر رفع المخطط.");
     }
   };
   const removeDrawing = async (drawing: CloudDrawing) => {
     setCloudState("saving"); setCloudMessage("");
     try { await deleteProjectDrawing(drawing); await loadDrawings(); }
-    catch (deleteError) { setCloudState("error"); setCloudMessage(deleteError instanceof Error ? deleteError.message : "???? ??? ??????."); }
+    catch (deleteError) { setCloudState("error"); setCloudMessage(deleteError instanceof Error ? deleteError.message : "تعذر حذف المخطط."); }
   };
   const createTask = async (finding: CloudReviewFinding) => {
     if (!projectId) return;
@@ -132,39 +141,72 @@ export function ArchitectureReviewView({ projects }: Props) {
     setCloudMessage("");
     try {
       await convertFindingToTask(finding, projectId);
-      setCloudMessage("?? ????? ???????? ??? ???? ?????? ????????.");
+      setCloudMessage("تم تحويل الملاحظة إلى مهمة مرتبطة بالمشروع.");
       const reviewRows = await listProjectReviews(projectId);
+      const selectedReview = reviewRows.find((item) => item.id === savedReview?.id) ?? null;
       setReviews(reviewRows);
-      setSavedReview(reviewRows.find((item) => item.id === savedReview?.id) ?? null);
+      setSavedReview(selectedReview);
+      if (selectedReview) setReport(cloudReviewToReport(selectedReview));
     } catch (taskError) {
       setCloudState("error");
-      setCloudMessage(taskError instanceof Error ? taskError.message : "???? ????? ??????.");
+      setCloudMessage(taskError instanceof Error ? taskError.message : "تعذر إنشاء المهمة.");
     } finally {
       setConvertingFindingId("");
     }
   };
+  const decideFinding = async (finding: CloudReviewFinding, status: FindingDecision) => {
+    setDecidingFindingId(finding.id);
+    setCloudMessage("");
+    try {
+      await updateFindingDecision(finding, status);
+      const reviewRows = await listProjectReviews(projectId);
+      const selectedReview = reviewRows.find((item) => item.id === finding.review_id) ?? null;
+      setReviews(reviewRows);
+      setSavedReview(selectedReview);
+      if (selectedReview) setReport(cloudReviewToReport(selectedReview));
+      setCloudMessage(status === "accepted" ? "تم اعتماد الملاحظة." : status === "rejected" ? "تم رفض الملاحظة وتوثيق القرار." : "تم إغلاق الملاحظة بعد المعالجة.");
+      setCloudState("idle");
+    } catch (decisionError) {
+      setCloudState("error");
+      setCloudMessage(decisionError instanceof Error ? decisionError.message : "تعذر حفظ قرار المراجعة.");
+    } finally {
+      setDecidingFindingId("");
+    }
+  };
   return <div className="architecture-review">
-    <section className="panel architecture-intro"><div><span className="section-kicker"><Sparkles size={14}/> YOSSEUF Architectural Intelligence</span><h2>???????? ????????? ???????</h2><p>???? ?????? ????????? ???? ???????? ????? ??? ?????? ?????? ???????.</p></div><span className="alpha-badge">ALPHA ? PREFLIGHT</span></section>
+    <section className="panel architecture-intro"><div><span className="section-kicker"><Sparkles size={14}/> YOSSEUF Architectural Intelligence</span><h2>المراجعة المعمارية الذكية</h2><p>حوّل تحليل المخطط إلى قرارات موثقة، ثم إلى مهام قابلة للتنفيذ.</p></div><span className="alpha-badge">ALPHA · DECISION WORKFLOW</span></section>
     <section className="architecture-grid">
-      <article className="panel drawing-upload-card"><div className="panel-head"><div><span className="section-kicker">01 ? ???????</span><h2>??? ??????</h2></div><FileUp size={22}/></div>
-        <label className="field"><span>???????</span><select value={projectId} onChange={(event) => setProjectId(event.target.value)}><option value="">???? ???????</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
-        <label className={`drawing-dropzone ${state === "reading" ? "reading" : ""}`}><input type="file" accept=".pdf,image/png,image/jpeg,image/webp" onChange={(event) => void onFile(event)} /><FileSearch size={34}/><strong>{state === "reading" ? "???? ??? ???????" : "???? PDF ?? ???? ????"}</strong><span>??? ???? ????? ??? ??? ????? ??? ??????? ?? ??? ???????.</span></label>
-        {file && <div className="drawing-file-meta"><b>{file.name}</b><span>{formatBytes(file.size)}{pages ? ` ? ${pages} ????` : ""}</span></div>}
-        {report && <div className="cloud-save-row"><label className="field"><span>??? ???????</span><input value={revision} onChange={(event) => setRevision(event.target.value)} maxLength={12}/></label><button className="primary" disabled={cloudState === "saving"} onClick={() => void saveToCloud()}><CloudUpload size={16}/>{cloudState === "saving" ? "???? ??????" : "??? ?? ???????"}</button></div>}
+      <article className="panel drawing-upload-card"><div className="panel-head"><div><span className="section-kicker">01 · الإدخال</span><h2>رفع المخطط</h2></div><FileUp size={22}/></div>
+        <label className="field"><span>المشروع</span><select value={projectId} onChange={(event) => setProjectId(event.target.value)}><option value="">اختر المشروع</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
+        <label className={`drawing-dropzone ${state === "reading" ? "reading" : ""}`}><input type="file" accept=".pdf,image/png,image/jpeg,image/webp" onChange={(event) => void onFile(event)} /><FileSearch size={34}/><strong>{state === "reading" ? "جارٍ فحص المخطط" : "اختر PDF أو صورة مخطط"}</strong><span>يُجرى فحص محلي أولي قبل الحفظ والتحليل الآمن في السحابة.</span></label>
+        {file && <div className="drawing-file-meta"><b>{file.name}</b><span>{formatBytes(file.size)}{pages ? ` · ${pages} صفحة` : ""}</span></div>}
+        {report && <div className="cloud-save-row"><label className="field"><span>رمز الإصدار</span><input value={revision} onChange={(event) => setRevision(event.target.value)} maxLength={12}/></label><button className="primary" disabled={cloudState === "saving"} onClick={() => void saveToCloud()}><CloudUpload size={16}/>{cloudState === "saving" ? "جارٍ التحليل" : "حفظ وتحليل"}</button></div>}
         {error && <div className="architecture-error"><AlertTriangle size={16}/>{error}</div>}{cloudMessage && <div className={cloudState === "error" ? "architecture-error" : "architecture-success"}>{cloudState === "error" ? <AlertTriangle size={16}/> : <CheckCircle2 size={16}/>} {cloudMessage}</div>}
       </article>
-      <article className="panel review-result-card"><div className="panel-head"><div><span className="section-kicker">02 ? ?????</span><h2>????? ?????</h2></div><ShieldCheck size={22}/></div>
-        {!report ? <div className="architecture-empty"><FileSearch size={30}/><h3>?? ???? ????? ???</h3><p>???? ??????? ?? ???? ?????? ???? ?????? ????? ???????? ?? ??? ????????.</p></div> : <><div className="plan-health"><div><small>?????? ??????</small><strong>{report.planHealth}%</strong></div><span>{report.findings.length} ????? ????? ???????</span></div><div className="finding-list">{report.findings.map((finding) => {
-          const cloudFinding = savedReview?.architectural_review_findings.find((item) => item.code === finding.code);
-          return <article key={finding.id} className={`finding finding-${finding.severity}`}><span>{finding.severity === "warning" ? <AlertTriangle size={16}/> : <CheckCircle2 size={16}/>}</span><div><b>{finding.title}</b><p>{finding.description}</p><small>{finding.recommendation}</small>{finding.evidence.length > 0 && <small>??????: {finding.evidence.map((item) => item.reference ?? item.title).join(" ? ")}</small>}{cloudFinding && <button className="finding-task-action" disabled={cloudFinding.status === "converted_to_task" || convertingFindingId === cloudFinding.id} onClick={() => void createTask(cloudFinding)}><ListChecks size={14}/>{cloudFinding.status === "converted_to_task" ? "?? ????? ??????" : convertingFindingId === cloudFinding.id ? "???? ????????" : "????? ??? ????"}</button>}</div><em>{finding.confidence.score}% ???</em></article>;
+      <article className="panel review-result-card"><div className="panel-head"><div><span className="section-kicker">02 · القرار</span><h2>نتيجة المراجعة</h2></div><ShieldCheck size={22}/></div>
+        {!report ? <div className="architecture-empty"><FileSearch size={30}/><h3>لا يوجد تحليل بعد</h3><p>اختر مشروعًا وارفع مخططًا لبدء مراجعة قابلة للتفسير والتتبع.</p></div> : <><div className="plan-health"><div><small>صحة المخطط</small><strong>{report.planHealth}%</strong></div><span>{report.findings.filter((finding) => finding.status === "open" || finding.status === "accepted").length} ملاحظة تحتاج متابعة</span></div><div className="finding-list">{report.findings.map((finding) => {
+          const cloudFinding = savedReview?.architectural_review_findings.find((item) => item.id === finding.id || item.code === finding.code);
+          return <article key={finding.id} className={`finding finding-${finding.severity} finding-status-${finding.status}`}><span>{finding.severity === "warning" || finding.severity === "critical" ? <AlertTriangle size={16}/> : <CheckCircle2 size={16}/>}</span><div><div className="finding-heading"><b>{finding.title}</b><span className={`finding-status status-${finding.status}`}>{findingStatusLabels[finding.status]}</span></div><p>{finding.description}</p><small>{finding.recommendation}</small>{finding.evidence.length > 0 && <small>الأدلة: {finding.evidence.map((item) => item.reference ?? item.title).join(" · ")}</small>}{cloudFinding && <div className="finding-actions">
+            {cloudFinding.status === "open" && <><button disabled={decidingFindingId === cloudFinding.id} onClick={() => void decideFinding(cloudFinding, "accepted")}><CheckCircle2 size={14}/>اعتماد</button><button disabled={decidingFindingId === cloudFinding.id} onClick={() => void decideFinding(cloudFinding, "rejected")}><XCircle size={14}/>رفض</button></>}
+            {cloudFinding.status === "accepted" && <><button disabled={decidingFindingId === cloudFinding.id} onClick={() => void decideFinding(cloudFinding, "resolved")}><ShieldCheck size={14}/>تمت المعالجة</button><button className="finding-task-action" disabled={convertingFindingId === cloudFinding.id} onClick={() => void createTask(cloudFinding)}><ListChecks size={14}/>{convertingFindingId === cloudFinding.id ? "جارٍ الإنشاء" : "تحويل إلى مهمة"}</button></>}
+            {cloudFinding.status === "converted_to_task" && <span className="finding-done"><ListChecks size={14}/>مرتبطة بمهمة</span>}
+          </div>}</div><em>{finding.confidence.score}% ثقة</em></article>;
         })}</div><p className="review-disclaimer">{report.disclaimer}</p></>}
       </article>
     </section>
-    <section className="panel drawing-history"><div className="panel-head"><div><span className="section-kicker">03 ? ???????</span><h2>??? ???????? ??????????</h2></div><span>{drawings.length} ?????</span></div>
-      {cloudState === "loading" ? <div className="architecture-empty compact"><FileSearch size={24}/><p>???? ????? ??????</p></div> : drawings.length ? <div className="drawing-history-list">{drawings.map((drawing) => <article key={drawing.id}><FileSearch size={18}/><div><b>{drawing.name}</b><small>??????? {drawing.revision} ? {formatBytes(drawing.file_size)} ? {drawing.page_count ? `${drawing.page_count} ????` : drawing.format.toUpperCase()}</small></div><time>{new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium" }).format(new Date(drawing.created_at))}</time><button aria-label="??? ??????" onClick={() => void removeDrawing(drawing)}><Trash2 size={15}/></button></article>)}</div> : <div className="architecture-empty compact"><FileSearch size={24}/><p>?? ???? ?????? ?????? ???? ??????? ???.</p></div>}
+    <section className="panel drawing-history"><div className="panel-head"><div><span className="section-kicker">03 · الإصدارات</span><h2>سجل المخططات المحفوظة</h2></div><span>{drawings.length} ملف</span></div>
+      {cloudState === "loading" ? <div className="architecture-empty compact"><FileSearch size={24}/><p>جارٍ تحميل السجل</p></div> : drawings.length ? <div className="drawing-history-list">{drawings.map((drawing) => <article key={drawing.id}><FileSearch size={18}/><div><b>{drawing.name}</b><small>الإصدار {drawing.revision} · {formatBytes(drawing.file_size)} · {drawing.page_count ? `${drawing.page_count} صفحة` : drawing.format.toUpperCase()}</small></div><time>{new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium" }).format(new Date(drawing.created_at))}</time><button aria-label="حذف المخطط" onClick={() => void removeDrawing(drawing)}><Trash2 size={15}/></button></article>)}</div> : <div className="architecture-empty compact"><FileSearch size={24}/><p>لا توجد مخططات محفوظة لهذا المشروع.</p></div>}
     </section>
-    <section className="panel review-history"><div className="panel-head"><div><span className="section-kicker">04 ? ???????</span><h2>????? ????????</h2></div><span>{reviews.length} ?????</span></div>
-      {reviews.length ? <div className="review-history-list">{reviews.map((item) => <article key={item.id}><div className="review-score"><strong>{item.plan_health}%</strong><small>??? ??????</small></div><div><b>?????? ????? ???????</b><small>{item.architectural_review_findings.length} ??????? ? {item.architectural_review_findings.filter((finding) => finding.status === "converted_to_task").length} ???? ?????</small></div><span className={`review-status ${item.status}`}>{item.status === "completed" ? "??????" : "?????"}</span><time>{new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium" }).format(new Date(item.created_at))}</time></article>)}</div> : <div className="architecture-empty compact"><ListChecks size={24}/><p>???? ?????? ??? ???? ???? ??? ???? ??????.</p></div>}
+    <section className="panel review-history"><div className="panel-head"><div><span className="section-kicker">04 · القرارات</span><h2>سجل المراجعات</h2></div><span>{reviews.length} جلسة</span></div>
+      {reviews.length ? <div className="review-history-list">{reviews.map((item) => <article key={item.id}><div className="review-score"><strong>{item.plan_health}%</strong><small>صحة المخطط</small></div><div><b>مراجعة قابلة للتنفيذ</b><small>{item.architectural_review_findings.filter((finding) => finding.status === "open" || finding.status === "accepted").length} قيد المتابعة · {item.architectural_review_findings.filter((finding) => finding.status === "converted_to_task").length} مهمة منشأة</small></div><span className={`review-status ${item.status}`}>{item.status === "completed" ? "مكتملة" : "جاهزة"}</span><time>{new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium" }).format(new Date(item.created_at))}</time></article>)}</div> : <div className="architecture-empty compact"><ListChecks size={24}/><p>ارفع مخططًا لإنشاء أول جلسة مراجعة.</p></div>}
     </section>
   </div>;
 }
+
+const findingStatusLabels: Record<ArchitecturalReviewReport["findings"][number]["status"], string> = {
+  open: "بانتظار القرار",
+  accepted: "معتمدة",
+  rejected: "مرفوضة",
+  resolved: "تمت المعالجة",
+  converted_to_task: "تحولت إلى مهمة",
+};

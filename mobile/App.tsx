@@ -14,7 +14,16 @@ import { TimelineScreen } from "./src/features/timeline/TimelineScreen";
 import { GlobalSearchScreen } from "./src/features/search/GlobalSearchScreen";
 import { ArchitectureReviewScreen } from "./src/features/architecture/architecture-review-screen";
 import { isMobileConfigured, supabase } from "./src/config/supabase";
-import { advanceMobileTask, convertMobileFindingToTask, createMobileTask, loadMobileWorkspace, markMobileNotificationRead, uploadMobileDrawing } from "./src/services/workspace";
+import {
+  advanceMobileTask,
+  convertMobileFindingToTask,
+  createMobileTask,
+  loadMobileWorkspace,
+  markMobileNotificationRead,
+  updateMobileFindingDecision,
+  uploadMobileDrawing,
+  type MobileFindingDecision,
+} from "./src/services/workspace";
 import { tokens } from "./src/theme/tokens";
 import type { ArchitecturalFinding, MobileWorkspaceData, Task } from "./src/types/domain";
 
@@ -29,13 +38,14 @@ export default function App() {
   const [data, setData] = useState<MobileWorkspaceData>(emptyData);
   const [error, setError] = useState<string | null>(null);
   const [convertingFindingId, setConvertingFindingId] = useState("");
+  const [decidingFindingId, setDecidingFindingId] = useState("");
   const [uploadingDrawing, setUploadingDrawing] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!session?.user.id) return;
     setLoading(true); setError(null);
     try { setData(await loadMobileWorkspace(session.user.id)); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "???? ????? ?????? ????? ?????."); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحميل بيانات مساحة العمل."); }
     finally { setLoading(false); }
   }, [session?.user.id]);
 
@@ -51,9 +61,9 @@ export default function App() {
 
   useEffect(() => { if (session) void refresh(); }, [session, refresh]);
 
-  async function readNotification(id: string) { try { await markMobileNotificationRead(id); setData((current) => ({ ...current, notifications: current.notifications.map((item) => item.id === id ? { ...item, is_read: true } : item) })); } catch (cause) { setError(cause instanceof Error ? cause.message : "???? ????? ???????."); } }
+  async function readNotification(id: string) { try { await markMobileNotificationRead(id); setData((current) => ({ ...current, notifications: current.notifications.map((item) => item.id === id ? { ...item, is_read: true } : item) })); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحديث الإشعار."); } }
   async function createTask(input: NewTaskInput) { if (!session) return; await createMobileTask(session.user.id, input); await refresh(); setScreen("tasks"); }
-  async function advanceTask(task: Task) { try { await advanceMobileTask(task); await refresh(); } catch (cause) { setError(cause instanceof Error ? cause.message : "???? ????? ??????."); } }
+  async function advanceTask(task: Task) { try { await advanceMobileTask(task); await refresh(); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحديث المهمة."); } }
   async function convertFinding(finding: ArchitecturalFinding, projectId: string) {
     if (!session) return;
     setConvertingFindingId(finding.id);
@@ -61,9 +71,21 @@ export default function App() {
       await convertMobileFindingToTask(session.user.id, projectId, finding);
       await refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "???? ????? ???????? ??? ????.");
+      setError(cause instanceof Error ? cause.message : "تعذر تحويل الملاحظة إلى مهمة.");
     } finally {
       setConvertingFindingId("");
+    }
+  }
+  async function decideFinding(finding: ArchitecturalFinding, status: MobileFindingDecision) {
+    if (!session) return;
+    setDecidingFindingId(finding.id);
+    try {
+      await updateMobileFindingDecision(session.user.id, finding, status);
+      await refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر حفظ قرار المراجعة.");
+    } finally {
+      setDecidingFindingId("");
     }
   }
   async function uploadDrawing(input: { projectId: string; revision: string; uri: string; name: string; mimeType: string; size: number }) {
@@ -88,11 +110,11 @@ export default function App() {
     {screen === "tasks" ? <TasksScreen tasks={data.tasks} projects={data.projects} onBack={() => setScreen("dashboard")} onCreate={() => setScreen("createTask")} onAdvance={(task) => void advanceTask(task)} /> : null}
     {screen === "notifications" ? <NotificationsScreen notifications={data.notifications} onBack={() => setScreen("dashboard")} onRead={readNotification} /> : null}
     {screen === "intelligence" ? <CommandCenterScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
-    {screen === "architecture" ? <ArchitectureReviewScreen data={data} onBack={() => setScreen("dashboard")} onConvertFinding={(finding, projectId) => void convertFinding(finding, projectId)} convertingFindingId={convertingFindingId} onUploadDrawing={uploadDrawing} uploadingDrawing={uploadingDrawing} /> : null}
+    {screen === "architecture" ? <ArchitectureReviewScreen data={data} onBack={() => setScreen("dashboard")} onConvertFinding={(finding, projectId) => void convertFinding(finding, projectId)} convertingFindingId={convertingFindingId} onDecideFinding={(finding, status) => void decideFinding(finding, status)} decidingFindingId={decidingFindingId} onUploadDrawing={uploadDrawing} uploadingDrawing={uploadingDrawing} /> : null}
     {screen === "createTask" ? <CreateTaskScreen projects={data.projects} onCancel={() => setScreen("dashboard")} onSubmit={createTask} /> : null}
     {screen === "timeline" ? <TimelineScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "search" ? <GlobalSearchScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
-    <View style={styles.footer}><Text style={styles.version}>v3.0.0-alpha.9 ? Architectural Analysis Pipeline</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>????? ??????</Text></TouchableOpacity></View>
+    <View style={styles.footer}><Text style={styles.version}>v3.0.0-alpha.10 · Actionable Review Decisions</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
   </View>;
 }
 
