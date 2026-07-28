@@ -1,3 +1,13 @@
+# 3.0.0-alpha.13 · Vector Wall Candidates
+
+- Added extraction of axis-aligned PDF vector line segments as reviewable wall candidates.
+- Stores PDF coordinates, segment length, coordinate system, and low confidence for every candidate.
+- Deduplicates identical segments and applies conservative length and alignment limits.
+- Wall candidates remain `detected` until explicitly confirmed or corrected by an engineer.
+- Mobile review now displays the stored start and end coordinates.
+- Advanced the analysis engine to `vector-wall-candidates-v1`.
+- Advanced iOS build number and Android version code to 14.
+
 # 3.0.0-alpha.12 · Automatic Plan Extraction
 
 - Added conservative extraction of literal text from vector PDF drawing layers.

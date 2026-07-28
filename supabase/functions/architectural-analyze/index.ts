@@ -23,12 +23,12 @@ type Finding = {
   evidence: Evidence[];
 };
 type PlanElementDraft = {
-  element_type: "room" | "label" | "dimension";
+  element_type: "wall" | "room" | "label" | "dimension";
   label: string;
   value: string | null;
   unit: string | null;
   confidence_score: number;
-  geometry: Record<string, never>;
+  geometry: Record<string, unknown>;
   notes: string;
 };
 
@@ -72,7 +72,7 @@ function extractPdfPlanElements(bytes: Uint8Array): PlanElementDraft[] {
   const dimensionPattern = /^(\d+(?:[.,]\d+)?)\s*(mm|cm|m|ft|in)$/i;
   const roomPattern = /\b(room|bedroom|living|kitchen|bath(?:room)?|toilet|wc|hall|corridor|majlis|office|garage|store|laundry|dining)\b/i;
 
-  return unique.map((label): PlanElementDraft => {
+  const textElements = unique.map((label): PlanElementDraft => {
     const dimension = label.match(dimensionPattern);
     if (dimension) {
       return {
@@ -106,6 +106,41 @@ function extractPdfPlanElements(bytes: Uint8Array): PlanElementDraft[] {
       notes: "Extracted from the PDF text layer; human confirmation is required.",
     };
   }).slice(0, 40);
+
+  const wallCandidates: PlanElementDraft[] = [];
+  const seenSegments = new Set<string>();
+  const linePattern = /(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+m\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+l\b/g;
+  for (const match of text.matchAll(linePattern)) {
+    const [x1, y1, x2, y2] = match.slice(1).map(Number);
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const length = Math.hypot(dx, dy);
+    const axisAligned = Math.min(Math.abs(dx), Math.abs(dy)) <= Math.max(Math.abs(dx), Math.abs(dy)) * 0.08;
+    if (!axisAligned || length < 20 || length > 2000) continue;
+    const points = [[x1, y1], [x2, y2]]
+      .map(([x, y]) => [Number(x.toFixed(2)), Number(y.toFixed(2))])
+      .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const key = points.flat().join(":");
+    if (seenSegments.has(key)) continue;
+    seenSegments.add(key);
+    wallCandidates.push({
+      element_type: "wall",
+      label: `مرشح جدار ${wallCandidates.length + 1}`,
+      value: length.toFixed(2),
+      unit: "pt",
+      confidence_score: 45,
+      geometry: {
+        kind: "line",
+        coordinateSystem: "pdf_points",
+        start: { x: points[0][0], y: points[0][1] },
+        end: { x: points[1][0], y: points[1][1] },
+      },
+      notes: "Axis-aligned PDF vector segment only; it is not a confirmed wall until reviewed.",
+    });
+    if (wallCandidates.length >= 60) break;
+  }
+
+  return [...textElements, ...wallCandidates];
 }
 
 function inspectImage(bytes: Uint8Array, mimeType: string) {
@@ -186,7 +221,7 @@ Deno.serve(async (req: Request) => {
         drawing_id: drawing.id,
         project_id: drawing.project_id,
         status: "processing",
-        engine_version: "plan-extraction-v1",
+        engine_version: "vector-wall-candidates-v1",
         started_at: new Date().toISOString(),
       })
       .select("id")
