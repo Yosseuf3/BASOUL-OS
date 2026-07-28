@@ -14,8 +14,16 @@ export type CloudReviewFinding = {
   severity: "info" | "opportunity" | "warning" | "critical";
   status: "open" | "accepted" | "rejected" | "resolved" | "converted_to_task";
   confidence_score: number;
+  evidence: Array<{ source: string; observation: string; value?: string | number | boolean | null }>;
+  analysis_run_id: string | null;
   task_id: string | null;
   created_at: string;
+};
+
+export type DrawingAnalysisResult = {
+  runId: string;
+  metadata: Record<string, unknown>;
+  review: CloudReview;
 };
 
 export type CloudReview = {
@@ -90,6 +98,15 @@ export async function listProjectReviews(projectId?: string): Promise<CloudRevie
   return (data ?? []) as CloudReview[];
 }
 
+export async function analyzeProjectDrawing(drawingId: string): Promise<DrawingAnalysisResult> {
+  const { data, error } = await supabase.functions.invoke("architectural-analyze", {
+    body: { drawingId },
+  });
+  if (error) throw error;
+  if (!data?.review) throw new Error(data?.error ?? "?? ????? ????? ??????.");
+  return data as DrawingAnalysisResult;
+}
+
 export async function convertFindingToTask(
   finding: CloudReviewFinding,
   projectId: string,
@@ -104,7 +121,7 @@ export async function convertFindingToTask(
       user_id: user.id,
       project_id: projectId,
       title: finding.title,
-      description: `${finding.description}\n\nالتوصية: ${finding.recommendation}`,
+      description: `${finding.description}\n\n???????: ${finding.recommendation}`,
       status: "To Do",
       priority,
       progress: 0,

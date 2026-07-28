@@ -1,4 +1,15 @@
-# 3.0.0-alpha.8 — Mobile Drawing Intake
+# 3.0.0-alpha.9 ? Architectural Analysis Pipeline
+
+- ????? ???? ????? ??????? ???? ???? ??? ??? ?????? ?? ????? ?? ??????.
+- ?????? ?? ????? ????? ?????? ??? ???????? ??? ???????? ???.
+- ????? ???? PDF: ???????? ??????? ??????? ????? ??????? ????? ???????.
+- ??????? ????? PNG ?JPEG ????? ?????? ????? ????? ??????.
+- ????? ????? ????? ?????? ????? ????? ???.
+- ????? ??? ???? ???????? ??????? ?????? ?????? ?????? ?????? ????? ?????????.
+- ????? ???? ??????? ??? ????? ????? ?????? Expo.
+- ?? ???? ??????? ?????? ??? ?? ???????? ??????? ???????.
+
+# 3.0.0-alpha.8 ? Mobile Drawing Intake
 
 - Added native PDF and image selection with Expo Document Picker.
 - Added direct upload to the private architectural drawings bucket.
@@ -7,7 +18,7 @@
 - Added rollback cleanup when storage or database persistence fails.
 - Advanced iOS build number and Android version code to 9.
 
-# 3.0.0-alpha.7 — Mobile Architectural Review
+# 3.0.0-alpha.7 ? Mobile Architectural Review
 
 - Added architectural drawings and review sessions to the Expo workspace payload.
 - Added a native mobile architectural review screen.
@@ -15,7 +26,7 @@
 - Added review and drawing shortcuts to the mobile executive dashboard.
 - Advanced iOS build number and Android version code to 8.
 
-# 3.0.0-alpha.6 — Drawing Review Workflow
+# 3.0.0-alpha.6 ? Drawing Review Workflow
 
 - Added persistent architectural review sessions and explainable findings.
 - Added project-scoped review history with plan health and execution status.
@@ -23,7 +34,7 @@
 - Added RLS-protected review and finding tables.
 - Preserved the private drawing storage and revision workflow from alpha.5.
 
-# 2.0.0 — Executive Operating System
+# 2.0.0 ? Executive Operating System
 
 - Added the Executive Kernel orchestration layer.
 - Added explainable decision signals and ranked executive actions.
@@ -33,7 +44,7 @@
 
 # Changelog
 
-## v1.4.0.1 — PWA Manifest Build Hotfix
+## v1.4.0.1 ? PWA Manifest Build Hotfix
 
 - Fixed the Web App Manifest icon `purpose` value to use the valid Next.js metadata literal `maskable`.
 - Restored TypeScript compatibility during the Vercel build validation stage.
@@ -51,8 +62,8 @@
 ## [1.2.0] - 2026-07-26
 
 ### Added
-- Project Workspace متعددة التبويبات.
-- Executive Brief بقواعد قرار تشغيلية.
+- Project Workspace ?????? ?????????.
+- Executive Brief ?????? ???? ???????.
 - Architecture phase tracker.
 - Project Kanban, timeline, finance summary, and activity stream.
 
@@ -85,10 +96,10 @@
 - Replaced generic `Failed to fetch` feedback with actionable Arabic error messages and diagnostic codes.
 - Added accessible live status messaging to the login screen.
 
-## 1.0.0 — Stable
+## 1.0.0 ? Stable
 
 - Published the first stable production release.
-- Finalized the visible application version as `v1.0.0 · Stable`.
+- Finalized the visible application version as `v1.0.0 ? Stable`.
 - Confirmed successful functional tests, GitHub Quality Gate, and Vercel production deployment.
 - Added complete English and Arabic release documentation.
 - Added the stable release checklist, release notes, and release audit.
@@ -96,14 +107,14 @@
 - Preserved the historical RC security migration and audit trail.
 - Standardized GitHub Actions on Node.js 22.
 
-## 1.0.0-rc.1.1 — Release Configuration Hotfix
+## 1.0.0-rc.1.1 ? Release Configuration Hotfix
 
 - Added non-interactive ESLint configuration.
 - Updated GitHub Actions to Node.js 22.
 - Removed the npm cache requirement when no lock file was present.
 - Updated the visible release label for release validation.
 
-## 1.0.0-rc.1 — Release Candidate 1
+## 1.0.0-rc.1 ? Release Candidate 1
 
 - Entered code freeze and release engineering phase.
 - Removed duplicate nested project files from the archive.
@@ -111,7 +122,7 @@
 - Made date-driven Decision Layer calculations deterministic.
 - Added quality automation and release documentation.
 
-## 0.9.7 — Executive Experience
+## 0.9.7 ? Executive Experience
 - Redesigned the executive dashboard hero for higher information density.
 - Added Workspace Health 2.0 with circular progress and contextual insights.
 - Upgraded KPI cards with actionable context.
@@ -120,14 +131,14 @@
 - Removed the duplicate desktop floating create button while preserving the mobile FAB.
 - Added an explicit TypeScript quality-gate command.
 
-## v0.9.6.1 — Deployment Type Hotfix
+## v0.9.6.1 ? Deployment Type Hotfix
 
 - Fixed the production TypeScript build failure in `features/dashboard/dashboard-view.tsx`.
 - Added `dashboard` to the shared `DecisionTarget` union so the Workspace Health KPI can navigate to the dashboard safely.
 - No UI, database, or behavior changes beyond the type correction.
 
 
-## v0.9.6 — Workspace Architecture
+## v0.9.6 ? Workspace Architecture
 - Introduced role-oriented Workspace Architecture: Executive, Operations, Engineering foundation and Knowledge.
 - Added a reusable Workspace Switcher inside the App Shell.
 - Added Universal Quick Create with desktop command action, mobile FAB and `N` keyboard shortcut.
@@ -136,7 +147,7 @@
 - Added strategic and architectural documentation: Vision 2030, Product Principles, Workspace Architecture and AI Roadmap.
 - Added responsive and regression checklist for the final pre-RC architecture release.
 
-## v0.9.5 — Stability, Architecture & Final UI Polish
+## v0.9.5 ? Stability, Architecture & Final UI Polish
 - Added a unified workspace loading service with graceful partial-failure handling.
 - Added visible synchronization status, last-sync time, and retry action.
 - Added dashboard loading skeletons and a global runtime error boundary.
@@ -145,7 +156,7 @@
 - Added v1 readiness architecture and iOS preparation documentation.
 - No database migration required.
 
-## v0.9.4 — Dashboard 2.0 / Decision First Experience
+## v0.9.4 ? Dashboard 2.0 / Decision First Experience
 - Rebuilt the dashboard around daily decisions instead of raw counters.
 - Added a pure TypeScript Decision Layer under `core/intelligence`.
 - Added priority scoring for tasks, projects, clients, and pending finance items.
@@ -154,14 +165,14 @@
 - Connected quick actions directly to existing create workflows without adding database migrations.
 - Added responsive layouts for desktop, tablet, and mobile.
 
-## v0.9.3 — Notification Center
+## v0.9.3 ? Notification Center
 - Added persistent notifications linked to activity events.
 - Added unread state, priorities, search, filters, mark-all-read, delete, and source navigation.
 - Added RLS-protected notifications migration.
 - Updated activity service with centralized notification rules.
 
 
-## v0.9.2 — Unified Activity Feed
+## v0.9.2 ? Unified Activity Feed
 - Added persistent activity_events foundation with RLS and indexes.
 - Added central Activity Service for cross-module events.
 - Added unified Activity Timeline with filters and search.
@@ -169,7 +180,7 @@
 - Added recent activity to the integrated dashboard.
 - Prepared the shared event stream for Notification Center v0.9.3.
 
-## v0.9.1 — Command Center & Global Search Foundation
+## v0.9.1 ? Command Center & Global Search Foundation
 - Added a contextual Command Center to the dashboard.
 - Added overdue, due-today, seven-day, and pending-payment indicators.
 - Added global search across projects, tasks, clients, content, knowledge, and finance.
@@ -178,7 +189,7 @@
 - Standardized money formatting to en-US digits while preserving stored currencies.
 
 
-## v0.8.0 — Architecture Refactor + Finance Foundation
+## v0.8.0 ? Architecture Refactor + Finance Foundation
 
 ### Architecture
 - Added a shared typed Supabase repository for list/save/delete operations.
@@ -194,13 +205,13 @@
 - Added idempotent migration, indexes, RLS, and updated_at trigger.
 
 
-## v0.7.1 — Knowledge Foundation Hotfix
+## v0.7.1 ? Knowledge Foundation Hotfix
 
 - Fixed missing `KnowledgeType`, `KnowledgeItem`, and `KnowledgeInput` type imports in `app/page.tsx`.
 - Restored successful TypeScript validation and production build compatibility.
 - Updated the visible application version to v0.7.1.
 
-## v0.7.0 — Knowledge Foundation
+## v0.7.0 ? Knowledge Foundation
 
 ### Added
 - Personal knowledge library.
@@ -211,39 +222,39 @@
 - Supabase migration with RLS, indexes, and updated-at trigger.
 
 
-## v0.4.0 — Tasks Stable
+## v0.4.0 ? Tasks Stable
 
-- واجهة مهام احترافية بثلاث طرق عرض: بطاقات، قائمة، وكانبان.
-- البحث والتصفية حسب الحالة والمشروع.
-- ترتيب المهام حسب آخر تحديث أو الاستحقاق أو الأولوية أو الإنجاز.
-- مؤشرات للمهام المكتملة وقيد التنفيذ والمراجعة والمتأخرة.
-- تحسين تجربة تعديل وحذف المهام.
-- الحفاظ على CRUD وRLS والربط الكامل مع Supabase.
+- ????? ???? ???????? ????? ??? ???: ??????? ?????? ???????.
+- ????? ???????? ??? ?????? ????????.
+- ????? ?????? ??? ??? ????? ?? ????????? ?? ???????? ?? ???????.
+- ?????? ?????? ???????? ???? ??????? ????????? ?????????.
+- ????? ????? ????? ???? ??????.
+- ?????? ??? CRUD ?RLS ?????? ?????? ?? Supabase.
 
-## v0.3.0 — Tasks Foundation
+## v0.3.0 ? Tasks Foundation
 
-- قاعدة بيانات المهام والعلاقات وRLS.
-- إنشاء وتعديل وحذف المهام.
+- ????? ?????? ?????? ????????? ?RLS.
+- ????? ?????? ???? ??????.
 
 ### Final review patch
 - Prevented creating a task when no project exists; the user is redirected to Projects with a clear message.
 - Replaced floating `latest` dependency ranges with exact compatible versions for reproducible deployments.
 
-## v0.5.0 — Clients Foundation
+## v0.5.0 ? Clients Foundation
 - Added Clients CRM navigation and responsive directory.
 - Added client create, edit, delete, search, and status filtering.
 - Added client metrics and project counts.
 - Added optional project-to-client linking through `projects.client_id`.
 - Added the reviewed Supabase repair migration for the production database state.
 
-## v0.6.0 — Content Studio Foundation
+## v0.6.0 ? Content Studio Foundation
 - Added Content Studio navigation and dashboard.
 - Added content CRUD, search, status and platform filters.
 - Added Hook, Script, CTA, Hashtags and publishing date fields.
 - Added optional project/client relationships.
 - Added safe Supabase migration with RLS, indexes and updated_at trigger.
 
-## v0.8.1 — Finance UX Refinement
+## v0.8.1 ? Finance UX Refinement
 - Removed the duplicate finance create button from the toolbar.
 - Added a purposeful empty state and improved zero-data metrics.
 - Hidden sidebar counters when their value is zero.
@@ -252,7 +263,7 @@
 - Prevented misleading aggregation across different currencies.
 - Added responsive finance dashboard refinements.
 
-## v0.9.0 — Integrated Business Dashboard
+## v0.9.0 ? Integrated Business Dashboard
 - Added a feature-isolated integrated dashboard.
 - Connected project, task, client, and finance signals in one operational view.
 - Added overdue attention state, upcoming tasks, finance snapshot, and recent cashflow.
@@ -276,7 +287,7 @@
 ### Changed
 - Product version updated to Mobile Live Foundation.
 
-## 2.1.0 — Executive Productivity
+## 2.1.0 ? Executive Productivity
 - Added Executive Timeline, Global Search, dashboard Quick Actions, and Workspace Health 2.0.
 - Connected mobile task creation and stage advancement to Supabase.
 

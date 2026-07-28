@@ -35,7 +35,7 @@ export default function App() {
     if (!session?.user.id) return;
     setLoading(true); setError(null);
     try { setData(await loadMobileWorkspace(session.user.id)); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحميل بيانات مساحة العمل."); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "???? ????? ?????? ????? ?????."); }
     finally { setLoading(false); }
   }, [session?.user.id]);
 
@@ -51,9 +51,9 @@ export default function App() {
 
   useEffect(() => { if (session) void refresh(); }, [session, refresh]);
 
-  async function readNotification(id: string) { try { await markMobileNotificationRead(id); setData((current) => ({ ...current, notifications: current.notifications.map((item) => item.id === id ? { ...item, is_read: true } : item) })); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحديث الإشعار."); } }
+  async function readNotification(id: string) { try { await markMobileNotificationRead(id); setData((current) => ({ ...current, notifications: current.notifications.map((item) => item.id === id ? { ...item, is_read: true } : item) })); } catch (cause) { setError(cause instanceof Error ? cause.message : "???? ????? ???????."); } }
   async function createTask(input: NewTaskInput) { if (!session) return; await createMobileTask(session.user.id, input); await refresh(); setScreen("tasks"); }
-  async function advanceTask(task: Task) { try { await advanceMobileTask(task); await refresh(); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحديث المهمة."); } }
+  async function advanceTask(task: Task) { try { await advanceMobileTask(task); await refresh(); } catch (cause) { setError(cause instanceof Error ? cause.message : "???? ????? ??????."); } }
   async function convertFinding(finding: ArchitecturalFinding, projectId: string) {
     if (!session) return;
     setConvertingFindingId(finding.id);
@@ -61,7 +61,7 @@ export default function App() {
       await convertMobileFindingToTask(session.user.id, projectId, finding);
       await refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "تعذر تحويل الملاحظة إلى مهمة.");
+      setError(cause instanceof Error ? cause.message : "???? ????? ???????? ??? ????.");
     } finally {
       setConvertingFindingId("");
     }
@@ -82,7 +82,7 @@ export default function App() {
 
   return <View style={styles.app}>
     <StatusBar style="light" />
-    {error ? <View style={styles.errorBar}><Text style={styles.errorText}>{error}</Text><TouchableOpacity onPress={() => setError(null)}><Text style={styles.dismiss}>×</Text></TouchableOpacity></View> : null}
+    {error ? <View style={styles.errorBar}><Text style={styles.errorText}>{error}</Text><TouchableOpacity onPress={() => setError(null)}><Text style={styles.dismiss}>?</Text></TouchableOpacity></View> : null}
     {screen === "dashboard" ? <DashboardScreen data={data} onNavigate={setScreen} onRefresh={refresh} refreshing={loading} /> : null}
     {screen === "projects" ? <ProjectsScreen projects={data.projects} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "tasks" ? <TasksScreen tasks={data.tasks} projects={data.projects} onBack={() => setScreen("dashboard")} onCreate={() => setScreen("createTask")} onAdvance={(task) => void advanceTask(task)} /> : null}
@@ -92,7 +92,7 @@ export default function App() {
     {screen === "createTask" ? <CreateTaskScreen projects={data.projects} onCancel={() => setScreen("dashboard")} onSubmit={createTask} /> : null}
     {screen === "timeline" ? <TimelineScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "search" ? <GlobalSearchScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
-    <View style={styles.footer}><Text style={styles.version}>v3.0.0-alpha.8 · Mobile Drawing Intake</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
+    <View style={styles.footer}><Text style={styles.version}>v3.0.0-alpha.9 ? Architectural Analysis Pipeline</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>????? ??????</Text></TouchableOpacity></View>
   </View>;
 }
 

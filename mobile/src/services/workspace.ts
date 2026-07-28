@@ -42,7 +42,7 @@ export async function loadMobileWorkspace(userId: string): Promise<MobileWorkspa
       .limit(30),
     supabase
       .from("architectural_reviews")
-      .select("id,drawing_id,project_id,status,plan_health,created_at,architectural_review_findings(id,review_id,drawing_id,code,title,description,recommendation,severity,status,confidence_score,task_id)")
+      .select("id,drawing_id,project_id,status,plan_health,created_at,architectural_review_findings(id,review_id,drawing_id,analysis_run_id,code,title,description,recommendation,severity,status,confidence_score,evidence,task_id)")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(20),
@@ -73,7 +73,7 @@ export async function convertMobileFindingToTask(
     user_id: userId,
     project_id: projectId,
     title: finding.title,
-    description: `${finding.description}\n\nالتوصية: ${finding.recommendation}`,
+    description: `${finding.description}\n\n???????: ${finding.recommendation}`,
     priority,
     status: "To Do",
     progress: 0,
@@ -94,10 +94,10 @@ export async function uploadMobileDrawing(
 ): Promise<void> {
   if (!supabase) throw new Error("Supabase is not configured.");
   const supportedTypes = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);
-  if (!supportedTypes.has(file.mimeType)) throw new Error("صيغة الملف غير مدعومة.");
-  if (file.size > 50 * 1024 * 1024) throw new Error("حجم الملف يتجاوز الحد الأقصى 50 MB.");
+  if (!supportedTypes.has(file.mimeType)) throw new Error("???? ????? ??? ??????.");
+  if (file.size > 50 * 1024 * 1024) throw new Error("??? ????? ?????? ???? ?????? 50 MB.");
   const response = await fetch(file.uri);
-  if (!response.ok) throw new Error("تعذر قراءة الملف المحدد من الجهاز.");
+  if (!response.ok) throw new Error("???? ????? ????? ?????? ?? ??????.");
   const body = await response.arrayBuffer();
   const uploadId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const path = `${userId}/${projectId}/${uploadId}-${safeFileName(file.name)}`;
@@ -132,50 +132,15 @@ export async function uploadMobileDrawing(
     throw drawingError;
   }
 
-  const { data: review, error: reviewError } = await supabase
-    .from("architectural_reviews")
-    .insert({
-      user_id: userId,
-      drawing_id: drawing.id,
-      project_id: projectId,
-      status: "ready",
-      plan_health: format === "pdf" ? 88 : 78,
-    })
-    .select("id")
-    .single();
-  if (reviewError) {
+  const { data: analysis, error: analysisError } = await supabase.functions.invoke(
+    "architectural-analyze",
+    { body: { drawingId: drawing.id } },
+  );
+  if (analysisError || !analysis?.review) {
     await supabase.from("architectural_drawings").delete().eq("id", drawing.id);
     await supabase.storage.from(ARCHITECTURAL_DRAWINGS_BUCKET).remove([path]);
-    throw reviewError;
+    throw analysisError ?? new Error(analysis?.error ?? "???? ????? ??????.");
   }
-
-  const { error: findingError } = await supabase
-    .from("architectural_review_findings")
-    .insert({
-      user_id: userId,
-      review_id: review.id,
-      drawing_id: drawing.id,
-      code: "READY_FOR_REVIEW",
-      title: "المخطط جاهز لمسار المراجعة",
-      description: "تم استلام الملف من تطبيق الهاتف وربطه بالمشروع بنجاح.",
-      recommendation: "راجع بيانات المشروع ومقياس الرسم قبل بدء التحليل الهندسي المتقدم.",
-      category: "constructability",
-      severity: "info",
-      status: "open",
-      confidence_score: format === "pdf" ? 92 : 82,
-    });
-  if (findingError) {
-    await supabase.from("architectural_reviews").delete().eq("id", review.id);
-    await supabase.from("architectural_drawings").delete().eq("id", drawing.id);
-    await supabase.storage.from(ARCHITECTURAL_DRAWINGS_BUCKET).remove([path]);
-    throw findingError;
-  }
-
-  const { error: statusError } = await supabase
-    .from("architectural_drawings")
-    .update({ status: "reviewed" })
-    .eq("id", drawing.id);
-  if (statusError) throw statusError;
 }
 
 export async function markMobileNotificationRead(notificationId: string): Promise<void> {

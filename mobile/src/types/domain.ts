@@ -56,6 +56,8 @@ export type ArchitecturalFinding = {
   severity: "info" | "opportunity" | "warning" | "critical";
   status: "open" | "accepted" | "rejected" | "resolved" | "converted_to_task";
   confidence_score: number;
+  evidence?: Array<{ source: string; observation: string; value?: string | number | boolean | null }>;
+  analysis_run_id?: string | null;
   task_id: string | null;
 };
 
