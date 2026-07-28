@@ -17,17 +17,17 @@ export type PlatformEvent<TName extends PlatformEventName = PlatformEventName> =
 type EventHandler<TName extends PlatformEventName> = (event: PlatformEvent<TName>) => void | Promise<void>;
 
 export class EventBus {
-  private handlers = new Map<PlatformEventName, Set<EventHandler<any>>>();
+  private handlers = new Map<PlatformEventName, Set<EventHandler<PlatformEventName>>>();
 
   on<TName extends PlatformEventName>(name: TName, handler: EventHandler<TName>): () => void {
     const set = this.handlers.get(name) ?? new Set();
-    set.add(handler);
+    set.add(handler as EventHandler<PlatformEventName>);
     this.handlers.set(name, set);
     return () => this.off(name, handler);
   }
 
   off<TName extends PlatformEventName>(name: TName, handler: EventHandler<TName>): void {
-    this.handlers.get(name)?.delete(handler);
+    this.handlers.get(name)?.delete(handler as EventHandler<PlatformEventName>);
   }
 
   async emit<TName extends PlatformEventName>(name: TName, payload: PlatformEventMap[TName]): Promise<PlatformEvent<TName>> {

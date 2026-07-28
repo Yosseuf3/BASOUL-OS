@@ -173,6 +173,9 @@ export function PlanOverlayViewer({ drawing, elements, page, onPageChange, onEdi
     </div>
     <div className={`plan-overlay-stage ${drawing.format}`}>
       {previewUrl ? drawing.format === "image"
+        // Signed storage URLs must remain untransformed so overlay coordinates
+        // stay aligned with the original architectural image.
+        // eslint-disable-next-line @next/next/no-img-element
         ? <img src={previewUrl} alt={`معاينة ${drawing.name}`}/>
         : <object key={`${drawing.id}-${page}`} data={`${previewUrl}#page=${page}&toolbar=0&navpanes=0`} type="application/pdf" aria-label={`معاينة ${drawing.name}`}>
             <a href={previewUrl} target="_blank" rel="noreferrer">فتح ملف PDF</a>

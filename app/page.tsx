@@ -2,11 +2,11 @@
 
 import type { Session } from "@supabase/supabase-js";
 import {
-  AlertTriangle, Brain, CalendarDays, CheckCircle2, ChevronLeft, CirclePause,
+  AlertTriangle, Brain, CalendarDays, CheckCircle2, ChevronLeft,
   ClipboardList, FolderKanban, LayoutDashboard, LogOut, Menu, MoreHorizontal, Users, Mail, Phone, Building2,
   Pencil, Plus, Search, Trash2, X, List, Columns3, ArrowUpDown, Clock3, Film, Hash, Send, BookOpen, Star, FileText, Lightbulb, Library, Wallet, Activity, Bell, ScanLine,
 } from "lucide-react";
-import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Client, ClientInput, ClientStatus, ContentItem, ContentInput, ContentPlatform, ContentStatus, ActivityEvent, Notification, FinanceTransaction, FinanceTransactionInput, KnowledgeInput, KnowledgeItem, KnowledgeType, PriorityLevel, Project, ProjectInput, ProjectStatus, ProjectType, DesignPhase, Task, TaskInput, TaskStatus } from "@/lib/types";
 import { deleteRow, saveRow } from "@/lib/data/os-repository";
@@ -300,12 +300,6 @@ export default function Home() {
 
   if (authLoading) return <LoadingScreen />;
   if (!session) return <Auth />;
-
-  const activeProjects = projects.filter((p) => p.status === "Active").length;
-  const completedProjects = projects.filter((p) => p.status === "Completed").length;
-  const doneTasks = tasks.filter((t) => t.status === "Done").length;
-  const today = new Date().toISOString().slice(0, 10);
-  const overdueTasks = tasks.filter((t) => t.status !== "Done" && t.due_date && t.due_date < today).length;
 
   const navigate = (next: View) => { setView(next); setSidebarOpen(false); };
   const requestCreateTask = () => {
