@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, CheckCircle2, CloudUpload, FileSearch, FileUp, ListChecks, PencilRuler, RotateCcw, ShieldCheck, Sparkles, Trash2, XCircle } from "lucide-react";
-import { ChangeEvent, useCallback, useEffect, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { createArchitecturalReview, type ArchitecturalReviewReport, type DrawingAsset, type FindingDraft } from "@yosseuf/architectural-intelligence";
 import type { Project } from "@/lib/types";
 import { deleteProjectDrawing, listProjectDrawings, uploadProjectDrawing, type CloudDrawing } from "@/lib/architecture/drawing-service";
@@ -17,6 +17,8 @@ import {
 import {
   correctPlanElement,
   createPlanElement,
+  formatPlanElementLocation,
+  getPlanElementLocation,
   listPlanElements,
   updatePlanElementStatus,
   type CloudPlanElement,
@@ -95,6 +97,8 @@ export function ArchitectureReviewView({ projects }: Props) {
   const [reviews, setReviews] = useState<CloudReview[]>([]);
   const [savedReview, setSavedReview] = useState<CloudReview | null>(null);
   const [planElements, setPlanElements] = useState<CloudPlanElement[]>([]);
+  const [elementFilter, setElementFilter] = useState<PlanElementType | "all">("all");
+  const [elementPage, setElementPage] = useState<number | "all">("all");
   const [editingElement, setEditingElement] = useState<CloudPlanElement | null>(null);
   const [elementDrawingId, setElementDrawingId] = useState("");
   const [elementType, setElementType] = useState<PlanElementType>("room");
@@ -108,6 +112,17 @@ export function ArchitectureReviewView({ projects }: Props) {
   const [retryingDrawingId, setRetryingDrawingId] = useState("");
   const [cloudState, setCloudState] = useState<"idle" | "loading" | "saving" | "error">("loading");
   const [cloudMessage, setCloudMessage] = useState("");
+  const elementPages = useMemo(() => [...new Set(planElements
+    .map((element) => getPlanElementLocation(element).page)
+    .filter((page): page is number => page != null))]
+    .sort((a, b) => a - b), [planElements]);
+  const visiblePlanElements = useMemo(() => planElements.filter((element) => {
+    const matchesType = elementFilter === "all" || element.element_type === elementFilter;
+    const matchesPage = elementPage === "all" || getPlanElementLocation(element).page === elementPage;
+    return matchesType && matchesPage;
+  }), [elementFilter, elementPage, planElements]);
+  const confirmedElementCount = planElements.filter((element) => element.status === "confirmed" || element.status === "corrected").length;
+  const pendingElementCount = planElements.filter((element) => element.status === "detected").length;
   const loadDrawings = useCallback(async () => {
     setCloudState("loading");
     try {
@@ -299,8 +314,19 @@ export function ArchitectureReviewView({ projects }: Props) {
         })}</div><p className="review-disclaimer">{report.disclaimer}</p></>}
       </article>
     </section>
-    <section className="panel plan-understanding"><div className="panel-head"><div><span className="section-kicker">03 · فهم المخطط</span><h2>العناصر والتصحيح البشري</h2></div><span>{planElements.filter((element) => element.status !== "rejected").length} عنصر</span></div>
-      <p className="plan-understanding-intro">سجّل الغرف والتسميات والأبعاد الآن، وراجع نتائج الاستخراج الآلي مستقبلًا داخل المسار نفسه.</p>
+    <section className="panel plan-understanding"><div className="panel-head"><div><span className="section-kicker">03 · فهم المخطط</span><h2>مفتش عناصر المخطط</h2></div><span>{planElements.filter((element) => element.status !== "rejected").length} عنصر</span></div>
+      <p className="plan-understanding-intro">راجع الغرف والأبعاد والجدران والفتحات حسب النوع والصفحة، ثم أكد النتائج أو صححها لبناء ذاكرة هندسية موثوقة.</p>
+      <div className="plan-inspector-summary">
+        <span><b>{planElements.length}</b> مكتشف</span>
+        <span><b>{pendingElementCount}</b> ينتظر التحقق</span>
+        <span><b>{confirmedElementCount}</b> مؤكد بشريًا</span>
+        <span><b>{elementPages.length || "—"}</b> صفحات منظمة</span>
+      </div>
+      <div className="plan-inspector-filters">
+        <label className="field"><span>نوع العنصر</span><select value={elementFilter} onChange={(event) => setElementFilter(event.target.value as PlanElementType | "all")}><option value="all">كل الأنواع</option>{Object.entries(planElementTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label className="field"><span>صفحة المخطط</span><select value={elementPage} onChange={(event) => setElementPage(event.target.value === "all" ? "all" : Number(event.target.value))}><option value="all">كل الصفحات</option>{elementPages.map((page) => <option key={page} value={page}>الصفحة {page}</option>)}</select></label>
+        <span className="plan-filter-result">يعرض {visiblePlanElements.length} من {planElements.length}</span>
+      </div>
       <div className="plan-element-form">
         <label className="field"><span>المخطط</span><select value={elementDrawingId} onChange={(event) => setElementDrawingId(event.target.value)}><option value="">اختر المخطط</option>{drawings.map((drawing) => <option key={drawing.id} value={drawing.id}>{drawing.name} · {drawing.revision}</option>)}</select></label>
         <label className="field"><span>نوع العنصر</span><select value={elementType} onChange={(event) => setElementType(event.target.value as PlanElementType)}>{Object.entries(planElementTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
@@ -310,7 +336,7 @@ export function ArchitectureReviewView({ projects }: Props) {
         <button className="primary plan-element-save" disabled={Boolean(savingElementId)} onClick={() => void savePlanElement()}><PencilRuler size={16}/>{editingElement ? "حفظ التصحيح" : "إضافة عنصر"}</button>
         {editingElement && <button className="plan-element-cancel" onClick={resetElementForm}>إلغاء</button>}
       </div>
-      {planElements.length ? <div className="plan-element-list">{planElements.map((element) => <article key={element.id} className={`plan-element status-${element.status}`}><PencilRuler size={18}/><div><div className="plan-element-heading"><b>{element.label}</b><span>{planElementTypeLabels[element.element_type]}</span></div><small>{[element.value, element.unit].filter(Boolean).join(" " ) || "بلا قيمة رقمية"} · {element.source === "manual" ? "إدخال بشري" : `${element.confidence_score}% ثقة`}</small><em>{planElementStatusLabels[element.status]}</em></div><div className="plan-element-actions"><button disabled={savingElementId === element.id} onClick={() => editPlanElement(element)}>تصحيح</button>{element.status === "detected" && <button disabled={savingElementId === element.id} onClick={() => void decidePlanElement(element, "confirmed")}>تأكيد</button>}{element.status !== "rejected" && <button disabled={savingElementId === element.id} onClick={() => void decidePlanElement(element, "rejected")}>استبعاد</button>}</div></article>)}</div> : <div className="architecture-empty compact"><PencilRuler size={24}/><p>لا توجد عناصر مسجلة. ابدأ بإضافة غرفة أو بُعد مؤكد.</p></div>}
+      {visiblePlanElements.length ? <div className="plan-element-list">{visiblePlanElements.map((element) => <article key={element.id} className={`plan-element status-${element.status}`}><PencilRuler size={18}/><div><div className="plan-element-heading"><b>{element.label}</b><span>{planElementTypeLabels[element.element_type]}</span></div><small>{[element.value, element.unit].filter(Boolean).join(" " ) || "بلا قيمة رقمية"} · {element.source === "manual" ? "إدخال بشري" : `${element.confidence_score}% ثقة`}</small><small className="plan-element-location">{formatPlanElementLocation(element)}</small><em>{planElementStatusLabels[element.status]}</em></div><div className="plan-element-actions"><button disabled={savingElementId === element.id} onClick={() => editPlanElement(element)}>تصحيح</button>{element.status === "detected" && <button disabled={savingElementId === element.id} onClick={() => void decidePlanElement(element, "confirmed")}>تأكيد</button>}{element.status !== "rejected" && <button disabled={savingElementId === element.id} onClick={() => void decidePlanElement(element, "rejected")}>استبعاد</button>}</div></article>)}</div> : planElements.length ? <div className="architecture-empty compact"><FileSearch size={24}/><p>لا توجد عناصر مطابقة للفلاتر الحالية.</p></div> : <div className="architecture-empty compact"><PencilRuler size={24}/><p>لا توجد عناصر مسجلة. ابدأ بإضافة غرفة أو بُعد مؤكد.</p></div>}
     </section>
     <section className="panel drawing-history"><div className="panel-head"><div><span className="section-kicker">04 · الإصدارات</span><h2>سجل المخططات المحفوظة</h2></div><span>{drawings.length} ملف</span></div>
       {cloudState === "loading" ? <div className="architecture-empty compact"><FileSearch size={24}/><p>جارٍ تحميل السجل</p></div> : drawings.length ? <div className="drawing-history-list">{drawings.map((drawing) => <article key={drawing.id}><FileSearch size={18}/><div><b>{drawing.name}</b><small>الإصدار {drawing.revision} · {formatBytes(drawing.file_size)} · {drawing.page_count ? `${drawing.page_count} صفحة` : drawing.format.toUpperCase()}</small></div><time>{new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium" }).format(new Date(drawing.created_at))}</time><button aria-label={`إعادة تحليل ${drawing.name}`} disabled={Boolean(retryingDrawingId)} onClick={() => void retryDrawingAnalysis(drawing)}><RotateCcw size={15}/>{retryingDrawingId === drawing.id ? "جارٍ التحليل" : "إعادة التحليل"}</button><button aria-label="حذف المخطط" disabled={Boolean(retryingDrawingId)} onClick={() => void removeDrawing(drawing)}><Trash2 size={15}/></button></article>)}</div> : <div className="architecture-empty compact"><FileSearch size={24}/><p>لا توجد مخططات محفوظة لهذا المشروع.</p></div>}
