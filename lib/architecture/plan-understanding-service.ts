@@ -32,6 +32,40 @@ export type PlanElementInput = {
   notes?: string;
 };
 
+export type PlanElementLocation = {
+  page: number | null;
+  x: number | null;
+  y: number | null;
+  width: number | null;
+  height: number | null;
+  coordinateSystem: string | null;
+};
+
+function finiteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+export function getPlanElementLocation(element: Pick<CloudPlanElement, "geometry">): PlanElementLocation {
+  return {
+    page: finiteNumber(element.geometry.page),
+    x: finiteNumber(element.geometry.x),
+    y: finiteNumber(element.geometry.y),
+    width: finiteNumber(element.geometry.width),
+    height: finiteNumber(element.geometry.height),
+    coordinateSystem: typeof element.geometry.coordinateSystem === "string" ? element.geometry.coordinateSystem : null,
+  };
+}
+
+export function formatPlanElementLocation(element: Pick<CloudPlanElement, "geometry">): string {
+  const location = getPlanElementLocation(element);
+  const page = location.page ? `الصفحة ${location.page}` : "صفحة غير محددة";
+  if (location.x == null || location.y == null) return page;
+  const box = location.width != null && location.height != null
+    ? ` · موضع ${Math.round(location.x)}, ${Math.round(location.y)} · حجم ${Math.round(location.width)}×${Math.round(location.height)}`
+    : ` · موضع ${Math.round(location.x)}, ${Math.round(location.y)}`;
+  return `${page}${box}`;
+}
+
 async function requireUserId(): Promise<string> {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw error ?? new Error("Authentication is required.");
