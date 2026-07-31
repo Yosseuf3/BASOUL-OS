@@ -1,3 +1,11 @@
+# 3.0.2 · Foundation v1 Migration
+
+- Adopted YOSSEUF Design System Foundation v1.0.0 as the shared web and mobile theme source.
+- Replaced duplicated mobile color constants with the shared `@yosseuf/ui-tokens` adapter.
+- Added semantic web tokens, compatibility aliases, light/high-contrast themes, RTL-safe foundations, and reduced-motion handling.
+- Aligned Expo SDK patch dependencies and verified all Expo Doctor checks.
+- Advanced iOS and Android build metadata to 31.
+
 # 3.0.1 · Android Build Hotfix
 
 - تثبيت صورة EAS Android على `sdk-57`.
