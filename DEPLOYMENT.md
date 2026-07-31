@@ -2,14 +2,14 @@
 
 ## Vercel
 
-1. Upload or merge the complete v1.0.0 package into the GitHub repository.
-2. Confirm the GitHub Quality Gate passes.
-3. Import or connect the repository to Vercel.
-4. Configure the variables from `.env.example` for Preview and Production.
+1. Merge the release commit into `main` after the full quality gate passes.
+2. Confirm the GitHub Quality Gate is green.
+3. Confirm the repository remains connected to the production Vercel project.
+4. Configure `.env.example` variables for Preview and Production.
 5. Use `npm run build` as the build command.
-6. Deploy a Preview and complete `TEST_CHECKLIST_v1.0.0.md`.
+6. Verify the preview with automated accessibility and bundle-budget gates plus critical user journeys.
 7. Promote the verified deployment to Production.
-8. Confirm the application displays `v1.0.0 · Stable`.
+8. Confirm the application displays the version declared in `lib/config/app-info.ts`.
 
 ## Required environment variables
 

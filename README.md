@@ -1,5 +1,7 @@
 # YOSSEUF OS
 
+Current production baseline: **v3.0.3 · Foundation Hardening**
+
 ![Version](https://img.shields.io/badge/version-v1.1.1-d4af37)
 ![Status](https://img.shields.io/badge/status-stable-2ea44f)
 ![Node](https://img.shields.io/badge/node-22.x-43853d)

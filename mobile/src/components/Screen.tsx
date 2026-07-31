@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { SafeAreaView, ScrollView, StyleSheet, View } from "react-native";
-import { tokens } from "../theme/tokens";
+import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
 
 export function Screen({ children }: PropsWithChildren) {
   return (

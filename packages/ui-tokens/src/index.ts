@@ -1,6 +1,11 @@
 /** YOSSEUF Design System Foundation v1.0.0 semantic contract. */
 export const foundationVersion = "1.0.0" as const;
 
+/** Raw values are exposed only for native controls that cannot resolve CSS custom properties. */
+export const foundationColorValues = {
+  primary: "#d7ad43",
+} as const;
+
 export const tokens = {
   color: {
     background: "var(--ys-surface-canvas)",
@@ -16,8 +21,16 @@ export const tokens = {
     borderStrong: "var(--ys-border-strong)",
     success: "var(--ys-status-success)",
     danger: "var(--ys-status-danger)",
+    dangerBorder: "var(--ys-status-danger-border)",
+    dangerSubtle: "var(--ys-status-danger-subtle)",
     warning: "var(--ys-status-warning)",
     info: "var(--ys-status-info)",
+    primarySubtle: "var(--ys-action-primary-subtle)",
+    visualizationWall: "var(--ys-data-wall)",
+    visualizationOpening: "var(--ys-data-opening)",
+    visualizationRoom: "var(--ys-data-room)",
+    visualizationLabel: "var(--ys-data-label)",
+    visualizationDimension: "var(--ys-data-dimension)",
   },
   spacing: { xs: "var(--ys-space-2)", sm: "var(--ys-space-4)", md: "var(--ys-space-6)", lg: "var(--ys-space-8)", xl: "var(--ys-space-10)" },
   radius: { sm: "var(--ys-radius-sm)", md: "var(--ys-radius-md)", lg: "var(--ys-radius-lg)", xl: "var(--ys-radius-xl)" },

@@ -226,6 +226,15 @@
 
 # Changelog
 
+## 3.0.3 — Foundation Hardening
+
+- Removed deprecated web and native Foundation compatibility aliases.
+- Enforced semantic UI roles and eliminated raw component styling colors.
+- Removed obsolete migration, checklist, manifest, and release-package artifacts.
+- Added accessibility, Foundation integrity, test, and bundle-budget validation to CI.
+- Removed the unused `@eslint/eslintrc` direct dependency and generated TypeScript build state.
+- Stabilized production builds on the verified webpack path.
+
 ## v3.0.0-alpha.18 — Plan Element Inspector
 
 - Added structured plan-element summaries for detected, pending, confirmed, and page-organized results.
