@@ -24,6 +24,7 @@ import { QuickCreate } from "@/components/commands/quick-create";
 import type { QuickCreateTarget, WorkspaceId } from "@/packages/types/src";
 import { DEFAULT_WORKSPACE } from "@/packages/core/src";
 import { APP_INFO } from "@/lib/config/app-info";
+import { foundationColorValues } from "@yosseuf/ui-tokens";
 import {
   createProjectFileDownloadUrl,
   deleteProjectFile,
@@ -419,7 +420,7 @@ function TasksView({ tasks, allTasks, projects, query, filter, projectFilter, on
       <div className="tasks-filters"><div className="filter-tabs">{taskFilters.map((f)=><button key={f} className={filter===f?"active":""} onClick={()=>onFilter(f)}>{f==="All"?"الكل":taskStatusLabels[f]}</button>)}</div><select value={projectFilter} onChange={(e)=>onProjectFilter(e.target.value)}><option value="All">كل المشاريع</option>{projects.map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></div>
       <div className="task-view-tools"><label className="sort-select"><ArrowUpDown size={15}/><select value={sort} onChange={e=>setSort(e.target.value as TaskSort)}><option value="updated">آخر تحديث</option><option value="due">موعد الاستحقاق</option><option value="priority">الأولوية</option><option value="progress">نسبة الإنجاز</option></select></label><div className="view-switch"><button className={viewMode==="cards"?"active":""} onClick={()=>setViewMode("cards")} title="بطاقات"><Columns3 size={17}/></button><button className={viewMode==="list"?"active":""} onClick={()=>setViewMode("list")} title="قائمة"><List size={17}/></button><button className={viewMode==="kanban"?"active":""} onClick={()=>setViewMode("kanban")} title="كانبان"><ClipboardList size={17}/></button></div></div>
     </div>
-    {projects.length===0?<EmptyState text="أنشئ مشروعًا أولًا قبل إضافة المهام."/>:sorted.length===0?<EmptyState text="لا توجد مهام مطابقة." onCreate={onCreate}/>:viewMode==="cards"?<div className="task-grid">{sorted.map(t=><TaskCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={()=>onEdit(t)} onDelete={()=>onDelete(t)}/>)}</div>:viewMode==="list"?<TaskList tasks={sorted} projects={projects} onEdit={onEdit} onDelete={onDelete}/>:<KanbanBoard tasks={sorted} projects={projects} onEdit={onEdit} onDelete={onDelete}/>} 
+    {projects.length===0?<EmptyState text="أنشئ مشروعًا أولًا قبل إضافة المهام."/>:sorted.length===0?<EmptyState text="لا توجد مهام مطابقة." onCreate={onCreate}/>:viewMode==="cards"?<div className="task-grid">{sorted.map(t=><TaskCard key={t.id} task={t} project={projects.find(p=>p.id===t.project_id)} onEdit={()=>onEdit(t)} onDelete={()=>onDelete(t)}/>)}</div>:viewMode==="list"?<TaskList tasks={sorted} projects={projects} onEdit={onEdit} onDelete={onDelete}/>:<KanbanBoard tasks={sorted} projects={projects} onEdit={onEdit} onDelete={onDelete}/>}
   </section>;
 }
 
@@ -490,7 +491,7 @@ function ProjectModal({ state, clients, onClose, onSave }: { state:Exclude<Proje
     description:p?.description??p?.notes??"", client_id:p?.client_id??"", client_name:p?.client_name??"", area:p?.area??"",
     status:p?.status??"Planning", priority:p?.priority??"Medium", design_phase:p?.design_phase??"Concept",
     start_date:p?.start_date??"", due_date:p?.due_date??"", progress:String(p?.progress??0), budget:p?.budget==null?"":String(p.budget),
-    currency:p?.currency??"SAR", color:p?.color??"#C9A24A", icon:p?.icon??"building"
+    currency:p?.currency??"SAR", color:p?.color??foundationColorValues.primary, icon:p?.icon??"building"
   });
   const steps=["المعلومات الأساسية","الجدول والتنفيذ","الميزانية والهوية","المراجعة"];
   const projectTypeLabels:Record<ProjectType,string>={Villa:"فيلا","Residential Building":"مبنى سكني",Commercial:"تجاري",Office:"مكتب",Interior:"تصميم داخلي",Other:"أخرى"};

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { StatusBar } from "expo-status-bar";
+import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
 import { LoginScreen } from "./src/features/auth/LoginScreen";
 import { completeMobileAuthUrl, getInitialAuthUrl } from "./src/features/auth/mobileAuth";
 import { DashboardScreen } from "./src/features/dashboard/DashboardScreen";
@@ -27,7 +28,6 @@ import {
   uploadMobileDrawing,
   type MobileFindingDecision,
 } from "./src/services/workspace";
-import { tokens } from "./src/theme/tokens";
 import type { ArchitecturalFinding, ArchitecturalReviewComment, MobileWorkspaceData, Task } from "./src/types/domain";
 
 const emptyData: MobileWorkspaceData = { projects: [], tasks: [], notifications: [], drawings: [], reviews: [], planElements: [], reviewComments: [] };
@@ -140,7 +140,7 @@ export default function App() {
     }
   }
 
-  if (booting) return <View style={styles.center}><StatusBar style="light" /><ActivityIndicator color={tokens.colors.gold} size="large" /></View>;
+  if (booting) return <View style={styles.center}><StatusBar style="light" /><ActivityIndicator color={tokens.colors.primary} size="large" /></View>;
   if (!isMobileConfigured || !session) return <><StatusBar style="light" /><LoginScreen /></>;
 
   return <View style={styles.app}>
@@ -159,4 +159,4 @@ export default function App() {
   </View>;
 }
 
-const styles = StyleSheet.create({ app: { flex: 1, backgroundColor: tokens.colors.background }, center: { flex: 1, backgroundColor: tokens.colors.background, alignItems: "center", justifyContent: "center" }, errorBar: { backgroundColor: "#4a2020", paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center" }, errorText: { color: "#ffdada", flex: 1, textAlign: "right" }, dismiss: { color: "#ffdada", fontSize: 24, marginLeft: 12 }, footer: { borderTopWidth: 1, borderTopColor: tokens.colors.border, paddingHorizontal: 18, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", backgroundColor: tokens.colors.surface }, version: { color: tokens.colors.muted, fontSize: 11 }, logout: { color: "#df8d8d", fontWeight: "800" } });
+const styles = StyleSheet.create({ app: { flex: 1, backgroundColor: tokens.colors.background }, center: { flex: 1, backgroundColor: tokens.colors.background, alignItems: "center", justifyContent: "center" }, errorBar: { backgroundColor: tokens.colors.dangerSubtle, paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center" }, errorText: { color: tokens.colors.danger, flex: 1, textAlign: "right" }, dismiss: { color: tokens.colors.danger, fontSize: 24, marginLeft: 12 }, footer: { borderTopWidth: 1, borderTopColor: tokens.colors.border, paddingHorizontal: 18, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", backgroundColor: tokens.colors.surface }, version: { color: tokens.colors.muted, fontSize: 11 }, logout: { color: tokens.colors.danger, fontWeight: "800" } });

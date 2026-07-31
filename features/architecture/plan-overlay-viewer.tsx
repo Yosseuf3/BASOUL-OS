@@ -2,6 +2,7 @@
 
 import { CheckCircle2, ChevronLeft, ChevronRight, Eye, EyeOff, Focus, Pencil, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { tokens } from "@yosseuf/ui-tokens";
 import type { CloudDrawing } from "@/lib/architecture/drawing-service";
 import { createDrawingPreviewUrl } from "@/lib/architecture/drawing-service";
 import {
@@ -30,11 +31,11 @@ type Props = {
 type Point = { x: number; y: number };
 
 const elementColors: Record<PlanElementType, string> = {
-  wall: "#e3b84f",
-  opening: "#5ecb93",
-  room: "#6ca8ff",
-  label: "#c890f7",
-  dimension: "#ef9c97",
+  wall: tokens.color.visualizationWall,
+  opening: tokens.color.visualizationOpening,
+  room: tokens.color.visualizationRoom,
+  label: tokens.color.visualizationLabel,
+  dimension: tokens.color.visualizationDimension,
 };
 
 function point(value: unknown): Point | null {

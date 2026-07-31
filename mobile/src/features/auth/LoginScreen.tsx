@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Screen } from "../../components/Screen";
 import { isMobileConfigured, supabase } from "../../config/supabase";
-import { tokens } from "../../theme/tokens";
+import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
 import { MOBILE_AUTH_CALLBACK } from "./mobileAuth";
 
 export function LoginScreen() {
@@ -16,13 +16,13 @@ export function LoginScreen() {
     setSent(false);
 
     if (!supabase) {
-      setMessage("أضف مفاتيح Supabase داخل ملف .env أولًا.");
+      setMessage("Ø£Ø¶Ù Ù…ÙØ§ØªÙŠØ­ Supabase Ø¯Ø§Ø®Ù„ Ù…Ù„Ù .env Ø£ÙˆÙ„Ù‹Ø§.");
       return;
     }
 
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
-      setMessage("أدخل البريد الإلكتروني لإرسال رابط الدخول.");
+      setMessage("Ø£Ø¯Ø®Ù„ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ Ù„Ø¥Ø±Ø³Ø§Ù„ Ø±Ø§Ø¨Ø· Ø§Ù„Ø¯Ø®ÙˆÙ„.");
       return;
     }
 
@@ -42,20 +42,20 @@ export function LoginScreen() {
     }
 
     setSent(true);
-    setMessage("تم إرسال رابط الدخول. افتح الرسالة من هذا الجهاز واضغط الرابط للعودة إلى التطبيق.");
+    setMessage("ØªÙ… Ø¥Ø±Ø³Ø§Ù„ Ø±Ø§Ø¨Ø· Ø§Ù„Ø¯Ø®ÙˆÙ„. Ø§ÙØªØ­ Ø§Ù„Ø±Ø³Ø§Ù„Ø© Ù…Ù† Ù‡Ø°Ø§ Ø§Ù„Ø¬Ù‡Ø§Ø² ÙˆØ§Ø¶ØºØ· Ø§Ù„Ø±Ø§Ø¨Ø· Ù„Ù„Ø¹ÙˆØ¯Ø© Ø¥Ù„Ù‰ Ø§Ù„ØªØ·Ø¨ÙŠÙ‚.");
   }
 
   return (
     <Screen>
       <View style={styles.hero}>
-        <Text style={styles.kicker}>YOSSEUF OS · MOBILE</Text>
-        <Text style={styles.title}>مركز القيادة معك دائمًا</Text>
-        <Text style={styles.subtitle}>استخدم رابط الدخول الآمن نفسه المستخدم في نسخة الويب.</Text>
+        <Text style={styles.kicker}>YOSSEUF OS Â· MOBILE</Text>
+        <Text style={styles.title}>Ù…Ø±ÙƒØ² Ø§Ù„Ù‚ÙŠØ§Ø¯Ø© Ù…Ø¹Ùƒ Ø¯Ø§Ø¦Ù…Ù‹Ø§</Text>
+        <Text style={styles.subtitle}>Ø§Ø³ØªØ®Ø¯Ù… Ø±Ø§Ø¨Ø· Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø§Ù„Ø¢Ù…Ù† Ù†ÙØ³Ù‡ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… ÙÙŠ Ù†Ø³Ø®Ø© Ø§Ù„ÙˆÙŠØ¨.</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>الدخول عبر البريد</Text>
-        <Text style={styles.label}>البريد الإلكتروني</Text>
+        <Text style={styles.cardTitle}>Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø¹Ø¨Ø± Ø§Ù„Ø¨Ø±ÙŠØ¯</Text>
+        <Text style={styles.label}>Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ</Text>
         <TextInput
           value={email}
           onChangeText={setEmail}
@@ -72,10 +72,10 @@ export function LoginScreen() {
         />
         {message ? <Text style={sent ? styles.success : styles.error}>{message}</Text> : null}
         <TouchableOpacity style={[styles.button, loading && styles.disabled]} onPress={() => void sendMagicLink()} disabled={loading}>
-          {loading ? <ActivityIndicator color={tokens.colors.background} /> : <Text style={styles.buttonText}>إرسال رابط الدخول</Text>}
+          {loading ? <ActivityIndicator color={tokens.colors.background} /> : <Text style={styles.buttonText}>Ø¥Ø±Ø³Ø§Ù„ Ø±Ø§Ø¨Ø· Ø§Ù„Ø¯Ø®ÙˆÙ„</Text>}
         </TouchableOpacity>
-        <Text style={styles.help}>الرابط صالح لمرة واحدة. يجب فتحه على الجهاز الذي يحتوي على التطبيق.</Text>
-        <Text style={styles.config}>{isMobileConfigured ? "الاتصال بالمنصة جاهز" : "إعداد Supabase مطلوب"}</Text>
+        <Text style={styles.help}>Ø§Ù„Ø±Ø§Ø¨Ø· ØµØ§Ù„Ø­ Ù„Ù…Ø±Ø© ÙˆØ§Ø­Ø¯Ø©. ÙŠØ¬Ø¨ ÙØªØ­Ù‡ Ø¹Ù„Ù‰ Ø§Ù„Ø¬Ù‡Ø§Ø² Ø§Ù„Ø°ÙŠ ÙŠØ­ØªÙˆÙŠ Ø¹Ù„Ù‰ Ø§Ù„ØªØ·Ø¨ÙŠÙ‚.</Text>
+        <Text style={styles.config}>{isMobileConfigured ? "Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ù…Ù†ØµØ© Ø¬Ø§Ù‡Ø²" : "Ø¥Ø¹Ø¯Ø§Ø¯ Supabase Ù…Ø·Ù„ÙˆØ¨"}</Text>
       </View>
     </Screen>
   );
@@ -83,16 +83,16 @@ export function LoginScreen() {
 
 const styles = StyleSheet.create({
   hero: { marginTop: tokens.space.xl, marginBottom: tokens.space.xl },
-  kicker: { color: tokens.colors.gold, fontWeight: "900", letterSpacing: 1, textAlign: "right" },
+  kicker: { color: tokens.colors.primary, fontWeight: "900", letterSpacing: 1, textAlign: "right" },
   title: { color: tokens.colors.text, fontSize: 34, fontWeight: "900", textAlign: "right", marginTop: tokens.space.sm, lineHeight: 46 },
   subtitle: { color: tokens.colors.muted, fontSize: 16, lineHeight: 26, textAlign: "right", marginTop: tokens.space.sm },
   card: { backgroundColor: tokens.colors.surface, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.lg, padding: tokens.space.lg },
   cardTitle: { color: tokens.colors.text, fontSize: 24, fontWeight: "900", textAlign: "right", marginBottom: tokens.space.lg },
   label: { color: tokens.colors.muted, textAlign: "right", marginBottom: 7, fontWeight: "700" },
   input: { color: tokens.colors.text, backgroundColor: tokens.colors.background, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.md, paddingHorizontal: tokens.space.md, paddingVertical: 14, marginBottom: tokens.space.md },
-  error: { color: "#ef8f8f", textAlign: "right", lineHeight: 21, marginBottom: tokens.space.md },
-  success: { color: "#9ed8ac", textAlign: "right", lineHeight: 22, marginBottom: tokens.space.md },
-  button: { backgroundColor: tokens.colors.gold, borderRadius: tokens.radius.md, padding: tokens.space.md, alignItems: "center" },
+  error: { color: tokens.colors.danger, textAlign: "right", lineHeight: 21, marginBottom: tokens.space.md },
+  success: { color: tokens.colors.success, textAlign: "right", lineHeight: 22, marginBottom: tokens.space.md },
+  button: { backgroundColor: tokens.colors.primary, borderRadius: tokens.radius.md, padding: tokens.space.md, alignItems: "center" },
   disabled: { opacity: 0.7 },
   buttonText: { color: tokens.colors.background, fontWeight: "900", fontSize: 17 },
   help: { color: tokens.colors.muted, textAlign: "center", marginTop: tokens.space.md, fontSize: 12, lineHeight: 19 },

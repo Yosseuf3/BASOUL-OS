@@ -24,8 +24,5 @@ pnpm-debug.log*
 .expo/
 mobile/.expo/
 mobile/node_modules/
-
-# Expo local state
-.expo/
-mobile/.expo/
-mobile/node_modules/
+*.tsbuildinfo
+next-env.d.ts

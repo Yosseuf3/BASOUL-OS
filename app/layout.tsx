@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import "./architecture-alpha6.css";
+import "./foundation-architecture.css";
 
 export const metadata: Metadata = {
   title: "YOSSEUF OS",
