@@ -1,15 +1,45 @@
 :root {
-  --bg: #090b0d;
-  --panel: #121518;
-  --panel-soft: #181c20;
+  color-scheme: dark;
+  --ys-surface-canvas: #080b0d;
+  --ys-surface-base: #111519;
+  --ys-surface-subtle: #181d21;
+  --ys-surface-raised: #1d2227;
+  --ys-text-primary: #f7f3e8;
+  --ys-text-secondary: #b8bab8;
+  --ys-text-muted: #9ba2a8;
+  --ys-border-default: #293036;
+  --ys-border-strong: #3c444a;
+  --ys-action-primary: #d7ad43;
+  --ys-action-primary-hover: #e9ce7d;
+  --ys-status-danger: #ef7777;
+  --ys-status-success: #54d39a;
+  --ys-status-warning: #e9ce7d;
+  --ys-status-info: #6ca8ff;
+  --ys-focus-ring: #e9ce7d;
+  --ys-space-2: .375rem;
+  --ys-space-4: .625rem;
+  --ys-space-6: 1rem;
+  --ys-space-8: 1.5rem;
+  --ys-space-10: 2rem;
+  --ys-radius-sm: .5rem;
+  --ys-radius-md: .75rem;
+  --ys-radius-lg: 1.125rem;
+  --ys-radius-xl: 1.625rem;
+  --ys-motion-duration-fast: 120ms;
+  --ys-motion-duration-normal: 180ms;
+  --ys-motion-duration-slow: 280ms;
+  /* Foundation migration aliases; remove after product CSS adopts --ys-* roles. */
+  --bg: var(--ys-surface-canvas);
+  --panel: var(--ys-surface-base);
+  --panel-soft: var(--ys-surface-subtle);
   --panel-raised: #1d2227;
-  --text: #f7f4ec;
-  --muted: #9b9b96;
-  --line: #2b3035;
-  --gold: #c9a24a;
-  --gold-soft: #e0c77f;
-  --danger: #dc6464;
-  --success: #5dbb89;
+  --text: var(--ys-text-primary);
+  --muted: var(--ys-text-muted);
+  --line: var(--ys-border-default);
+  --gold: var(--ys-action-primary);
+  --gold-soft: var(--ys-action-primary-hover);
+  --danger: var(--ys-status-danger);
+  --success: var(--ys-status-success);
   --shadow: 0 24px 70px rgba(0,0,0,.32);
 }
 * { box-sizing: border-box; }
@@ -18,6 +48,8 @@ body { margin: 0; min-width: 320px; font-family: Inter, "Segoe UI", Tahoma, Aria
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 button:disabled { opacity: .65; cursor: wait; }
+:focus-visible { outline: 2px solid var(--ys-focus-ring); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 270px minmax(0,1fr); }
 .sidebar { position: sticky; top: 0; height: 100vh; padding: 26px 20px; border-left: 1px solid var(--line); background: rgba(12,14,16,.96); backdrop-filter: blur(18px); display: flex; flex-direction: column; z-index: 30; }
 .sidebar-close, .mobile-menu, .sidebar-overlay { display: none; }
