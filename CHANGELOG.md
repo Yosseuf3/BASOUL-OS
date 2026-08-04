@@ -512,3 +512,10 @@
 - Fixed stale v1.5.0 sidebar release label.
 - Synchronized web, mobile, Expo, Android, and iOS release metadata.
 - Added automated release consistency validation.
+# 3.1.0 — IAM Foundation
+
+- Added organization creation and protected membership lifecycle operations.
+- Added owner, admin, member, and viewer RBAC roles with explicit permissions.
+- Enforced organization ownership and deny-by-default RLS across all business tables.
+- Added authenticated server write boundaries and authorization regression coverage.
+- Validated on YOSSEUF Platform Staging only; Production was not changed.

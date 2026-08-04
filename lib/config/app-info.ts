@@ -1,6 +1,6 @@
 export const APP_INFO = {
   name: "YOSSEUF OS",
-  version: "3.0.3",
-  codename: "Foundation Hardening",
-  fullLabel: "v3.0.3 · Foundation Hardening",
+  version: "3.1.0",
+  codename: "IAM Foundation",
+  fullLabel: "v3.1.0 · IAM Foundation",
 } as const;
