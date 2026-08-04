@@ -1,6 +1,6 @@
 # YOSSEUF OS
 
-Current production baseline: **v3.0.3 · Foundation Hardening**
+Current release candidate: **v3.1.0 · IAM Foundation** (Staging validation only; not deployed to Production)
 
 ![Version](https://img.shields.io/badge/version-v1.1.1-d4af37)
 ![Status](https://img.shields.io/badge/status-stable-2ea44f)

@@ -1,5 +1,6 @@
 import type { ActivityEvent, Client, ContentItem, FinanceTransaction, KnowledgeItem, Notification, Project, Task } from "@/lib/types";
 import { listRows } from "@/lib/data/os-repository";
+import { supabase } from "@/lib/supabase";
 
 export type WorkspaceData = {
   projects: Project[];
@@ -22,6 +23,8 @@ async function safeRows<T>(label: string, request: Promise<RowResult<T>>): Promi
 }
 
 export async function loadWorkspaceData(): Promise<WorkspaceLoadResult> {
+  const { error: organizationError } = await supabase.rpc("ensure_personal_organization");
+  if (organizationError) throw new Error(`organization: ${organizationError.message}`);
   const [projects, tasks, clients, contentItems, knowledgeItems, financeItems, activityEvents, notifications] = await Promise.all([
     safeRows("projects", listRows<Project>("projects")),
     safeRows("tasks", listRows<Task>("tasks")),

@@ -9,8 +9,8 @@ import {
 import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Client, ClientInput, ClientStatus, ContentItem, ContentInput, ContentPlatform, ContentStatus, ActivityEvent, Notification, FinanceTransaction, FinanceTransactionInput, KnowledgeInput, KnowledgeItem, KnowledgeType, PriorityLevel, Project, ProjectInput, ProjectStatus, ProjectType, DesignPhase, Task, TaskInput, TaskStatus } from "@/lib/types";
-import { deleteRow, saveRow } from "@/lib/data/os-repository";
 import { loadWorkspaceData } from "@/lib/data/workspace-service";
+import { authorizedWorkspaceDelete, authorizedWorkspaceWrite } from "@/lib/data/authorized-workspace-client";
 import { FinanceModal, FinanceView } from "@/features/finance/finance-view";
 import { DashboardView } from "@/features/dashboard/dashboard-view";
 import { GlobalSearch } from "@/features/global-search";
@@ -207,18 +207,16 @@ export default function Home() {
 
   async function saveProject(input: ProjectInput, current?: Project) {
     if (!session) return false;
-    const payload = { ...input, user_id: session.user.id };
-    const { error } = current ? await supabase.from("projects").update(payload).eq("id", current.id) : await supabase.from("projects").insert(payload);
-    if (error) { showToast(`لم يتم حفظ المشروع: ${error.message}`, "error"); return false; }
+    const error = await authorizedWorkspaceWrite("projects", session, input, current?.id);
+    if (error) { showToast(`لم يتم حفظ المشروع: ${error}`, "error"); return false; }
     await logActivity("projects", current ? "updated" : "created", current ? `تم تحديث المشروع: ${input.name}` : `تم إنشاء مشروع جديد: ${input.name}`, current?.id, input.status);
     showToast(current ? "تم تحديث المشروع." : "تم إنشاء المشروع.", "success"); await loadData(); return true;
   }
 
   async function saveTask(input: TaskInput, current?: Task) {
     if (!session) return false;
-    const payload = { ...input, user_id: session.user.id, progress: input.status === "Done" ? 100 : input.progress };
-    const { error } = current ? await supabase.from("tasks").update(payload).eq("id", current.id) : await supabase.from("tasks").insert(payload);
-    if (error) { showToast(`لم يتم حفظ المهمة: ${error.message}`, "error"); return false; }
+    const error = await authorizedWorkspaceWrite("tasks", session, { ...input, progress: input.status === "Done" ? 100 : input.progress }, current?.id);
+    if (error) { showToast(`لم يتم حفظ المهمة: ${error}`, "error"); return false; }
     await logActivity("tasks", input.status === "Done" && current?.status !== "Done" ? "completed" : current ? "updated" : "created", input.status === "Done" && current?.status !== "Done" ? `اكتملت المهمة: ${input.title}` : current ? `تم تحديث المهمة: ${input.title}` : `تم إنشاء مهمة جديدة: ${input.title}`, current?.id, input.status);
     showToast(current ? "تم تحديث المهمة." : "تم إنشاء المهمة.", "success"); await loadData(); return true;
   }
@@ -226,18 +224,16 @@ export default function Home() {
 
   async function saveClient(input: ClientInput, current?: Client) {
     if (!session) return false;
-    const payload = { ...input, user_id: session.user.id };
-    const { error } = current ? await supabase.from("clients").update(payload).eq("id", current.id) : await supabase.from("clients").insert(payload);
-    if (error) { showToast(`لم يتم حفظ العميل: ${error.message}`, "error"); return false; }
+    const error = await authorizedWorkspaceWrite("clients", session, input, current?.id);
+    if (error) { showToast(`لم يتم حفظ العميل: ${error}`, "error"); return false; }
     await logActivity("clients", current ? "updated" : "created", current ? `تم تحديث العميل: ${input.name}` : `تمت إضافة عميل جديد: ${input.name}`, current?.id, input.company);
     showToast(current ? "تم تحديث بيانات العميل." : "تم إنشاء العميل.", "success"); await loadData(); return true;
   }
 
   async function saveContent(input: ContentInput, current?: ContentItem) {
     if (!session) return false;
-    const payload = { ...input, user_id: session.user.id };
-    const { error } = current ? await supabase.from("content_items").update(payload).eq("id", current.id) : await supabase.from("content_items").insert(payload);
-    if (error) { showToast(`لم يتم حفظ المحتوى: ${error.message}`, "error"); return false; }
+    const error = await authorizedWorkspaceWrite("content_items", session, input, current?.id);
+    if (error) { showToast(`لم يتم حفظ المحتوى: ${error}`, "error"); return false; }
     await logActivity("content", input.status === "Published" && current?.status !== "Published" ? "published" : current ? "updated" : "created", input.status === "Published" && current?.status !== "Published" ? `تم نشر المحتوى: ${input.title}` : current ? `تم تحديث المحتوى: ${input.title}` : `تم إنشاء محتوى جديد: ${input.title}`, current?.id, input.platform);
     showToast(current ? "تم تحديث المحتوى." : "تم إنشاء المحتوى.", "success"); await loadData(); return true;
   }
@@ -251,9 +247,8 @@ export default function Home() {
 
   async function saveKnowledge(input: KnowledgeInput, current?: KnowledgeItem) {
     if (!session) return false;
-    const payload = { ...input, user_id: session.user.id };
-    const { error } = current ? await supabase.from("knowledge_items").update(payload).eq("id", current.id) : await supabase.from("knowledge_items").insert(payload);
-    if (error) { showToast(`لم يتم حفظ العنصر: ${error.message}`, "error"); return false; }
+    const error = await authorizedWorkspaceWrite("knowledge_items", session, input, current?.id);
+    if (error) { showToast(`لم يتم حفظ العنصر: ${error}`, "error"); return false; }
     await logActivity("knowledge", current ? "updated" : "created", current ? `تم تحديث المعرفة: ${input.title}` : `تمت إضافة عنصر معرفة: ${input.title}`, current?.id, input.type);
     showToast(current ? "تم تحديث عنصر المعرفة." : "تم إنشاء عنصر المعرفة.", "success"); await loadData(); return true;
   }
@@ -284,13 +279,14 @@ export default function Home() {
 
   async function saveFinance(input: FinanceTransactionInput, current?: FinanceTransaction) {
     if (!session) return false;
-    const error = await saveRow("finance_transactions", session.user.id, input, current);
+    const error = await authorizedWorkspaceWrite("finance_transactions", session, input, current?.id);
     if (error) { showToast(`لم يتم حفظ المعاملة: ${error}`, "error"); return false; }
     await logActivity("finance", input.status === "Paid" && current?.status !== "Paid" ? "paid" : current ? "updated" : "created", input.status === "Paid" && current?.status !== "Paid" ? `تم تسجيل دفعة: ${input.description}` : current ? `تم تحديث المعاملة: ${input.description}` : `تم إنشاء معاملة مالية: ${input.description}`, current?.id, `${input.type} · ${input.amount} ${input.currency}`);
     showToast(current ? "تم تحديث المعاملة المالية." : "تم إنشاء المعاملة المالية.", "success"); await loadData(); return true;
   }
   async function deleteFinance(item: FinanceTransaction) {
-    const error = await deleteRow("finance_transactions", item.id);
+    if (!session) return;
+    const error = await authorizedWorkspaceDelete("finance_transactions", session, item.id);
     if (error) showToast(`تعذر حذف المعاملة: ${error}`, "error");
     else { await logActivity("finance", "deleted", `تم حذف المعاملة: ${item.description}`, item.id); setDeleteFinanceTarget(null); showToast("تم حذف المعاملة المالية.", "success"); await loadData(); }
   }
