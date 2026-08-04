@@ -1,3 +1,19 @@
+# 3.1.0 · IAM Foundation
+
+- Added organization creation and protected organization membership lifecycle operations.
+- Added owner, admin, member, and viewer roles with explicit permission boundaries.
+- Enforced organization ownership and deny-by-default row-level security across business data.
+- Added authenticated server-side write boundaries and authorization regression coverage.
+- Added last-owner protection and privileged-membership safeguards.
+- Updated Expo SDK patch dependencies to `~57.0.10` without changing application behavior.
+- Added production deployment guards; this release package does not deploy or migrate Production.
+
+# 3.0.3 · Foundation Hardening
+
+- Removed deprecated Foundation compatibility aliases from web and native UI.
+- Enforced semantic UI roles and strengthened Foundation, accessibility, test, and bundle gates.
+- Stabilized production builds on the verified webpack path.
+
 # 3.0.2 · Foundation v1 Migration
 
 - Adopted YOSSEUF Design System Foundation v1.0.0 as the shared web and mobile theme source.
@@ -512,10 +528,3 @@
 - Fixed stale v1.5.0 sidebar release label.
 - Synchronized web, mobile, Expo, Android, and iOS release metadata.
 - Added automated release consistency validation.
-# 3.1.0 — IAM Foundation
-
-- Added organization creation and protected membership lifecycle operations.
-- Added owner, admin, member, and viewer RBAC roles with explicit permissions.
-- Enforced organization ownership and deny-by-default RLS across all business tables.
-- Added authenticated server write boundaries and authorization regression coverage.
-- Validated on YOSSEUF Platform Staging only; Production was not changed.
