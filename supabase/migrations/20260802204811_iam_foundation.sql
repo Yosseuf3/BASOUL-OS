@@ -108,14 +108,16 @@ create or replace function public.set_organization_membership(
 ) returns public.organization_memberships language plpgsql security definer
 set search_path = ''
 as $$
-declare caller_role text; changed public.organization_memberships;
+declare caller_role text; existing_role text; changed public.organization_memberships;
 begin
   caller_role := private.member_role(target_organization);
+  select role into existing_role from public.organization_memberships
+    where organization_id=target_organization and user_id=target_user;
   if private.role_rank(caller_role) < 30 then raise exception 'Insufficient membership permission' using errcode = '42501'; end if;
   if target_role not in ('owner','admin','member','viewer') or target_status not in ('active','invited','suspended') then
     raise exception 'Invalid membership role or status' using errcode = '22023';
   end if;
-  if caller_role <> 'owner' and target_role in ('owner','admin') then
+  if caller_role <> 'owner' and (target_role in ('owner','admin') or existing_role in ('owner','admin')) then
     raise exception 'Only owners may manage privileged memberships' using errcode = '42501';
   end if;
   insert into public.organization_memberships(organization_id,user_id,role,status,invited_by)

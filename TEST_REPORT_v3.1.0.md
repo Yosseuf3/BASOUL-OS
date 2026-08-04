@@ -19,3 +19,5 @@ Target: YOSSEUF Platform Staging only
 - RLS catalog coverage: PASS (16/16 tables, four policies each, forced RLS).
 
 Final local lint, typecheck, unit tests, and production build results are recorded in the pull request and CI.
+
+Final manual Staging smoke test: 14/14 assertions passed. Smoke data was rolled back and cleanup was verified.

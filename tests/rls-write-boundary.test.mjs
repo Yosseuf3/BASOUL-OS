@@ -38,5 +38,6 @@ test("IAM migrations cover every business table with organization RLS", async ()
     assert.match(foundation, new RegExp(`'${permission}'`));
   }
   assert.match(rls, /force row level security/);
+  assert.match(foundation, /existing_role in \('owner','admin'\)/);
   assert.doesNotMatch(foundation + rls, /raw_user_meta_data|user_metadata|auth\.role\(\)/);
 });

@@ -28,3 +28,7 @@ Production changes: none
 - No direct INSERT policy exists for organizations or memberships; protected RPCs preserve role escalation and last-owner invariants.
 
 Status: ready for human review after CI. This report does not authorize Production deployment.
+
+## Final manual smoke test
+
+Fourteen live assertions passed in a rollback-isolated Staging transaction: organization creation, member invitation and activation, member project creation, viewer read-only enforcement, admin management of non-privileged members, privileged-membership protection, cross-organization isolation, last-owner protection, and create/read/update/delete health across Projects, Tasks, CRM, Finance, Knowledge, and Documents. Cleanup verification found zero retained smoke users or organizations. A read-only Production comparison confirmed the IAM schema is absent there.
