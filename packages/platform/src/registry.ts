@@ -18,6 +18,16 @@ export type PlatformModuleDefinition = {
   legacyResource?: string;
 };
 
+export const PLATFORM_RESOURCE_MAP = {
+  crm: "clients",
+  projects: "projects",
+  tasks: "tasks",
+  finance: "finance_transactions",
+  knowledge: "knowledge_items",
+  documents: "content_items",
+  notifications: "notifications",
+} as const satisfies Partial<Record<PlatformModuleId, string>>;
+
 export const PLATFORM_REGISTRY: readonly PlatformModuleDefinition[] = [
   { id: "crm", label: "CRM", route: "/?view=clients", capability: "crm.read", status: "active", legacyResource: "clients" },
   { id: "projects", label: "Projects", route: "/?view=projects", capability: "projects.read", status: "active", legacyResource: "projects" },
@@ -34,4 +44,12 @@ export function platformModule(id: PlatformModuleId) {
   const definition = PLATFORM_REGISTRY.find((candidate) => candidate.id === id);
   if (!definition) throw new Error(`Unknown platform module: ${id}`);
   return definition;
+}
+
+export function isPlatformModuleId(value: string): value is PlatformModuleId {
+  return PLATFORM_REGISTRY.some((definition) => definition.id === value);
+}
+
+export function platformResource(id: PlatformModuleId) {
+  return PLATFORM_RESOURCE_MAP[id as keyof typeof PLATFORM_RESOURCE_MAP];
 }
