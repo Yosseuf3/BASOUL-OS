@@ -32,3 +32,5 @@ Status: ready for human review after CI. This report does not authorize Producti
 ## Final manual smoke test
 
 Fourteen live assertions passed in a rollback-isolated Staging transaction: organization creation, member invitation and activation, member project creation, viewer read-only enforcement, admin management of non-privileged members, privileged-membership protection, cross-organization isolation, last-owner protection, and create/read/update/delete health across Projects, Tasks, CRM, Finance, Knowledge, and Documents. Cleanup verification found zero retained smoke users or organizations. A read-only Production comparison confirmed the IAM schema is absent there.
+
+Automatic Vercel deployments from `main` are disabled for this release-candidate workflow so merging does not publish to Production; preview branch deployments remain enabled.
