@@ -1,6 +1,8 @@
 export const APP_INFO = {
-  name: "YOSSEUF OS",
+  name: "YOSSEUF Platform",
+  legacyName: "YOSSEUF OS",
   version: "3.1.0",
-  codename: "IAM Foundation",
-  fullLabel: "v3.1.0 · IAM Foundation",
+  platformVersion: "4.0.0-rc.1",
+  codename: "Platform Foundation",
+  fullLabel: "YOSSEUF Platform · v4.0.0-rc.1",
 } as const;

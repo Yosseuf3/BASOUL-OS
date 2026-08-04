@@ -8,6 +8,7 @@ const nextConfig = {
     "@yosseuf/services",
     "@yosseuf/intelligence",
     "@yosseuf/ui-tokens",
+    "@yosseuf/platform",
   ],
   async headers() {
     return [{
