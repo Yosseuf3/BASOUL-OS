@@ -1,13 +1,13 @@
-# YOSSEUF OS
+# YOSSEUF Platform
 
-Current release candidate: **v3.1.0 · IAM Foundation** (Staging validation only; not deployed to Production)
+Current release candidate: **v4.0.0-rc.1 · Platform Foundation** (Preview and Staging validation only; Production remains untouched)
 
 ![Version](https://img.shields.io/badge/version-v1.1.1-d4af37)
 ![Status](https://img.shields.io/badge/status-stable-2ea44f)
 ![Node](https://img.shields.io/badge/node-22.x-43853d)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-**An AI-ready, decision-first business operating system by YOSSEUF RADWAN.**
+**A unified, organization-aware business platform by YOSSEUF RADWAN.**
 
 YOSSEUF OS unifies projects, tasks, clients, content, knowledge, finance, activity, and notifications inside one executive workspace. Its dashboard is designed to answer one practical question:
 
