@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { OrganizationRole } from "@/lib/organizations/rbac";
 
 export const AUTHORIZED_RESOURCES = ["projects", "tasks", "clients", "content_items", "knowledge_items", "finance_transactions", "activity_events", "notifications"] as const;
 export type AuthorizedResource = (typeof AUTHORIZED_RESOURCES)[number];
@@ -14,7 +15,7 @@ export function trustedIdentityPayload(input: unknown, userId: string, organizat
   return { ...businessFields, user_id: userId, organization_id: organizationId };
 }
 
-export async function authenticatedDatabase(accessToken: string) {
+export async function authenticatedDatabase(accessToken: string, requestedOrganizationId?: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) throw new Error("Supabase environment variables are missing.");
@@ -24,7 +25,21 @@ export async function authenticatedDatabase(accessToken: string) {
   });
   const { data, error } = await database.auth.getUser(accessToken);
   if (error || !data.user) return null;
-  const { data: organizationId, error: organizationError } = await database.rpc("ensure_personal_organization");
-  if (organizationError || typeof organizationId !== "string") throw new Error("Unable to resolve an active organization.");
-  return { database, user: data.user, organizationId };
+  let organizationId = requestedOrganizationId;
+  let role: OrganizationRole | undefined;
+  if (organizationId) {
+    const membership = await database.from("organization_memberships")
+      .select("role,status").eq("organization_id", organizationId).eq("user_id", data.user.id).eq("status", "active").maybeSingle();
+    if (membership.error || !membership.data) return null;
+    role = membership.data.role as OrganizationRole;
+  } else {
+    const resolved = await database.rpc("ensure_personal_organization");
+    if (resolved.error || typeof resolved.data !== "string") throw new Error("Unable to resolve an active organization.");
+    organizationId = resolved.data;
+    const membership = await database.from("organization_memberships")
+      .select("role").eq("organization_id", organizationId).eq("user_id", data.user.id).eq("status", "active").single();
+    if (membership.error || !membership.data) return null;
+    role = membership.data.role as OrganizationRole;
+  }
+  return { database, user: data.user, organizationId, role };
 }

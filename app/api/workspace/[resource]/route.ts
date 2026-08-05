@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticatedDatabase, isAuthorizedResource, trustedIdentityPayload } from "@/lib/auth/authorized-workspace";
+import { requestedOrganization } from "@/lib/organizations/context";
 
 function bearer(request: NextRequest) {
   const value = request.headers.get("authorization") ?? "";
@@ -8,7 +9,7 @@ function bearer(request: NextRequest) {
 
 async function context(request: NextRequest, resource: string) {
   if (!isAuthorizedResource(resource)) return { response: NextResponse.json({ error: "Unknown resource" }, { status: 404 }) };
-  const auth = await authenticatedDatabase(bearer(request));
+  const auth = await authenticatedDatabase(bearer(request), requestedOrganization(request.headers));
   if (!auth) return { response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   return { auth, resource };
 }

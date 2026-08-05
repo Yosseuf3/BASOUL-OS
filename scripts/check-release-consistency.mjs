@@ -1,6 +1,6 @@
 import fs from "node:fs";
 
-const expected = "3.1.0";
+const expected = "4.0.0-rc.1";
 const files = [
   ["package.json", JSON.parse(fs.readFileSync("package.json", "utf8")).version],
   ["mobile/package.json", JSON.parse(fs.readFileSync("mobile/package.json", "utf8")).version],

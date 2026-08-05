@@ -1,6 +1,6 @@
 {
-  "name": "yosseuf-os-cloud",
-  "version": "3.1.0",
+  "name": "yosseuf-platform",
+  "version": "4.0.0-rc.1",
   "private": true,
   "engines": {
     "node": ">=20.9.0"
@@ -46,6 +46,7 @@
   ],
   "overrides": {
     "postcss": "8.5.24",
-    "sharp": "0.35.3"
+    "sharp": "0.35.3",
+    "brace-expansion": "1.1.18"
   }
 }
