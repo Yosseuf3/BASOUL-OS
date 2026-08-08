@@ -1,0 +1,16 @@
+{
+  "brand": "BASOUL",
+  "version": "1.0",
+  "status": "APPROVED VISUAL FOUNDATION",
+  "source_of_truth": "User-approved BASOUL brand board",
+  "rule": "No generative reinterpretation of approved logo geometry.",
+  "assets": {
+    "primary_logo": "01-primary-logo/",
+    "symbol": "02-symbol/",
+    "wordmark": "03-wordmark/",
+    "app_icons": "04-app-icons/",
+    "product_lockups": "05-product-lockups/",
+    "reference": "06-reference/"
+  },
+  "note": "PNG assets are pixel-derived from the approved visual reference. Native vector masters remain a separate reconstruction task."
+}
