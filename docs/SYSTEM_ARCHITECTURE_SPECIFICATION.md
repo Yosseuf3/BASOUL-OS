@@ -1,4 +1,4 @@
-# YOSSEUF OS — System Architecture Specification
+# BASOUL OS — System Architecture Specification
 
 Version: 1.0  
 Status: Approved  
@@ -6,7 +6,7 @@ Release baseline: v2.2.0
 
 ## Product architecture
 
-YOSSEUF OS is a decision-first Executive and Architectural Operating System. The platform separates presentation, application orchestration, cognitive reasoning, business rules, data access, and integrations.
+BASOUL OS is a decision-first Executive and Architectural Operating System. The platform separates presentation, application orchestration, cognitive reasoning, business rules, data access, and integrations.
 
 ## YOSSEUF Cognitive Core (YCC)
 

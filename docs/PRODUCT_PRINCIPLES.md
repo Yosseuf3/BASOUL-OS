@@ -1,6 +1,6 @@
 # Product Principles
 
-A feature is eligible for YOSSEUF OS only when it solves a real workflow problem and satisfies at least one value condition: save time, reduce errors or improve decision making.
+A feature is eligible for BASOUL OS only when it solves a real workflow problem and satisfies at least one value condition: save time, reduce errors or improve decision making.
 
 ## Product gates
 - Does it reduce steps or cognitive load?

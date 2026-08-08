@@ -32,4 +32,4 @@
 - AutoCAD/Revit copilot integrations
 
 ## North Star
-YOSSEUF OS should operate as an explainable digital architectural reviewer that preserves and amplifies the engineering knowledge of each firm.
+BASOUL OS should operate as an explainable digital architectural reviewer that preserves and amplifies the engineering knowledge of each firm.

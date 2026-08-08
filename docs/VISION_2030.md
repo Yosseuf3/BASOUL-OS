@@ -1,7 +1,7 @@
-# YOSSEUF OS — Vision 2030
+# BASOUL OS — Vision 2030
 
 ## Why we are building it
-YOSSEUF OS is an Engineering Business Operating System. It is designed to help engineering offices run projects, clients, finances, knowledge and decisions from one coherent workspace.
+BASOUL OS is an Engineering Business Operating System. It is designed to help engineering offices run projects, clients, finances, knowledge and decisions from one coherent workspace.
 
 ## Mission
 Enable engineering offices to spend less time coordinating fragmented tools and more time delivering accurate, profitable work.
@@ -13,7 +13,7 @@ Enable engineering offices to spend less time coordinating fragmented tools and 
 - Future site and design teams using web and mobile clients.
 
 ## Differentiation
-YOSSEUF OS is decision-first, engineering-aware and designed around role-based workspaces rather than a generic list of modules.
+BASOUL OS is decision-first, engineering-aware and designed around role-based workspaces rather than a generic list of modules.
 
 ## 3–5 year direction
 1. A stable web operating system for engineering offices.

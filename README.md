@@ -1,4 +1,4 @@
-# YOSSEUF Platform
+# BASOUL
 
 Current release candidate: **v4.0.0-rc.1 · Platform Foundation** (Preview and Staging validation only; Production remains untouched)
 
@@ -7,17 +7,19 @@ Current release candidate: **v4.0.0-rc.1 · Platform Foundation** (Preview and S
 ![Node](https://img.shields.io/badge/node-22.x-43853d)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-**A unified, organization-aware business platform by YOSSEUF RADWAN.**
+**A unified, organization-aware business platform founded by YOSSEUF RADWAN.**
 
-YOSSEUF OS unifies projects, tasks, clients, content, knowledge, finance, activity, and notifications inside one executive workspace. Its dashboard is designed to answer one practical question:
+BASOUL is the technology masterbrand succeeding the YOSSEUF technology identity. YOSSEUF RADWAN remains the founder and personal brand.
+
+BASOUL OS unifies projects, tasks, clients, content, knowledge, finance, activity, and notifications inside one executive workspace. Its dashboard is designed to answer one practical question:
 
 > **What should I do now?**
 
-![YOSSEUF OS Executive Dashboard](docs/assets/screenshots/executive-dashboard-v1.0.0.png)
+![BASOUL OS Executive Dashboard](docs/assets/screenshots/executive-dashboard-v1.0.0.png)
 
-## Why YOSSEUF OS
+## Why BASOUL OS
 
-Most business tools display data. YOSSEUF OS turns operational data into priorities, summaries, alerts, recommendations, and focused next actions through a dedicated Decision Layer.
+Most business tools display data. BASOUL OS turns operational data into priorities, summaries, alerts, recommendations, and focused next actions through a dedicated Decision Layer.
 
 ## Core capabilities
 
@@ -112,4 +114,4 @@ Released under the [MIT License](LICENSE).
 
 ---
 
-**YOSSEUF OS** · Built by **YOSSEUF RADWAN**
+**BASOUL OS** · Founded by **YOSSEUF RADWAN**
