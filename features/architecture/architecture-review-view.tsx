@@ -406,7 +406,7 @@ export function ArchitectureReviewView({ projects }: Props) {
     }
   };
   return <div className="architecture-review">
-    <section className="panel architecture-intro"><div><span className="section-kicker"><Sparkles size={14}/> YOSSEUF Architectural Intelligence</span><h2>المراجعة المعمارية الذكية</h2><p>حوّل تحليل المخطط إلى قرارات موثقة، ثم إلى مهام قابلة للتنفيذ.</p></div><span className="alpha-badge">ALPHA · DECISION WORKFLOW</span></section>
+    <section className="panel architecture-intro"><div><span className="section-kicker"><Sparkles size={14}/> BASOUL Architectural Intelligence</span><h2>المراجعة المعمارية الذكية</h2><p>حوّل تحليل المخطط إلى قرارات موثقة، ثم إلى مهام قابلة للتنفيذ.</p></div><span className="alpha-badge">ALPHA · DECISION WORKFLOW</span></section>
     <section className="architecture-grid">
       <article className="panel drawing-upload-card"><div className="panel-head"><div><span className="section-kicker">01 · الإدخال</span><h2>رفع المخطط</h2></div><FileUp size={22}/></div>
         <label className="field"><span>المشروع</span><select value={projectId} onChange={(event) => setProjectId(event.target.value)}><option value="">اختر المشروع</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
