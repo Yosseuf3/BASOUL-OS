@@ -6,6 +6,7 @@ on:
       - hotfix/basoul-production-encoding
     paths:
       - .github/workflows/basoul-production-encoding-hotfix.yml
+      - app/page.tsx
 
 permissions:
   contents: write
@@ -18,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: hotfix/basoul-production-encoding
-      - name: Repair mojibake without rolling back current features
+      - name: Repair mojibake and reapply BASOUL production label
         shell: bash
         run: |
           set -euo pipefail
@@ -29,16 +30,12 @@ jobs:
           text = path.read_text(encoding='utf-8')
           markers = ('Ø', 'Ù', 'Â', 'â€', 'Ã')
           fixed_lines = []
-          repaired = 0
 
           for line in text.splitlines(keepends=True):
               candidate = line
               if any(marker in line for marker in markers):
                   try:
-                      decoded = line.encode('cp1252').decode('utf-8')
-                      if decoded != line:
-                          candidate = decoded
-                          repaired += 1
+                      candidate = line.encode('cp1252').decode('utf-8')
                   except (UnicodeEncodeError, UnicodeDecodeError):
                       pass
               fixed_lines.append(candidate)
@@ -48,10 +45,8 @@ jobs:
           text = text.replace('YOSSEUF OS ·', 'BASOUL ·')
           text = text.replace('BASOUL Â·', 'BASOUL ·')
           path.write_text(text, encoding='utf-8')
-          print(f'Repaired lines: {repaired}')
           PY
 
-          # Production-visible encoding regression guards.
           ! grep -q 'BASOUL Â·' app/page.tsx
           ! grep -q 'Ø§' app/page.tsx
           ! grep -q 'Ù„' app/page.tsx
