@@ -1,5 +1,5 @@
-import type { PlatformModuleId } from "@yosseuf/platform";
-import { loadPlatformConfig } from "@yosseuf/platform";
+import type { PlatformModuleId } from "@basoul/platform";
+import { loadPlatformConfig } from "@basoul/platform";
 
 export type GatewayStatus = { gateway: PlatformModuleId; configured: boolean; reachable: boolean; status: "ready" | "unconfigured" | "degraded" };
 
