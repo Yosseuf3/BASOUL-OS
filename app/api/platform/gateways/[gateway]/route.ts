@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiMeta } from "@yosseuf/platform";
+import { apiMeta } from "@basoul/platform";
 import { authenticatedDatabase } from "@/lib/auth/authorized-workspace";
 import { requestedOrganization } from "@/lib/organizations/context";
 import { readGatewayStatus } from "@/lib/platform/gateway-service";
