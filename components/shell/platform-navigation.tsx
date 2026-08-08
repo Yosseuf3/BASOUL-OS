@@ -1,6 +1,6 @@
 "use client";
 
-import type { PlatformNavigationItem } from "@yosseuf/platform";
+import type { PlatformNavigationItem } from "@basoul/platform";
 
 export function PlatformNavigation({ items, active, onNavigate }: {
   items: readonly PlatformNavigationItem[];
