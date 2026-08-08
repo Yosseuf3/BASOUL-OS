@@ -1,6 +1,15 @@
 # Brand Genesis Report v1
 
-Generated on 2026-08-08 using deterministic seed **20260808**. This is research output, not a clearance opinion or renaming decision.
+Generated on 2026-08-08 using deterministic seed **20260808**. This is research output, not a clearance opinion or production renaming authorization.
+
+## Human-review decision
+
+After the deterministic generation/ranking stage and subsequent qualitative review, the naming process has advanced to:
+
+- **Primary final candidate: BASOUL**
+- **Backup candidate: BASTOUL**
+
+The algorithmic ranking is preserved below as research evidence. The human-review decision does not overwrite or manipulate the deterministic scores and does not represent legal trademark clearance. See `FINAL_BRAND_DECISION.md` for the decision record and remaining gates.
 
 ## Outcome
 
@@ -59,4 +68,4 @@ These five were scored by the same functions but were not injected into generate
 
 ## Limitations and next gates
 
-Automated filters use documented English-oriented reference lists and phonetic heuristics. Before selection, commission trademark searches, domain/handle research, native-speaker screening across priority languages, corporate-name checks, and counsel-led likelihood-of-confusion analysis. No repository, product, package, app, deployment, environment variable, database, YVL file, or production asset was renamed or modified.
+Automated filters use documented English-oriented reference lists and phonetic heuristics. Before any production renaming, complete counsel-led trademark searches, direct domain/handle verification, native-speaker screening across priority languages, corporate-name checks, and likelihood-of-confusion analysis. No repository, product, package, app, deployment, environment variable, database, YVL file, or production asset is authorized to be renamed by this report.
