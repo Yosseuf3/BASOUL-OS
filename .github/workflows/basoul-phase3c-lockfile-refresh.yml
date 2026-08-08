@@ -20,14 +20,37 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: migration/basoul-phase-3c-package-manifests
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22.13.1
-          cache: npm
-      - name: Use npm 11 lockfile semantics
-        run: npm install --global npm@11.6.2
-      - name: Regenerate npm lockfile
-        run: npm install --package-lock-only --ignore-scripts
+          fetch-depth: 0
+      - name: Restore canonical main lockfile and apply namespace-only replacements
+        shell: bash
+        run: |
+          git fetch origin main
+          git show origin/main:package-lock.json > package-lock.json
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('package-lock.json')
+          s = p.read_text()
+          replacements = {
+              'yosseuf-platform': 'basoul-platform',
+              '@yosseuf/platform': '@basoul/platform',
+              '@yosseuf/shared-types': '@basoul/shared-types',
+              '@yosseuf/decision-engine': '@basoul/decision-engine',
+              '@yosseuf/event-bus': '@basoul/event-bus',
+              '@yosseuf/core': '@basoul/core',
+              '@yosseuf/services': '@basoul/services',
+              '@yosseuf/intelligence': '@basoul/intelligence',
+              '@yosseuf/cognitive-core': '@basoul/cognitive-core',
+              '@yosseuf/architectural-intelligence': '@basoul/architectural-intelligence',
+          }
+          for old, new in replacements.items():
+              s = s.replace(old, new)
+          p.write_text(s)
+          PY
+      - name: Verify protected namespaces remain untouched
+        shell: bash
+        run: |
+          grep -q '"@yosseuf/yvl-tokens"' package-lock.json
+          grep -q '"@yosseuf/ui-tokens"' package-lock.json
       - name: Commit lockfile if changed
         run: |
           if git diff --quiet -- package-lock.json; then
@@ -37,5 +60,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package-lock.json
-          git commit -m "chore(lockfile): normalize BASOUL Phase 3C workspace names"
+          git commit -m "chore(lockfile): sync BASOUL Phase 3C namespace only"
           git push origin HEAD:migration/basoul-phase-3c-package-manifests
