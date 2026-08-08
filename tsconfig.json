@@ -47,6 +47,9 @@
       "@yosseuf/ui-tokens": [
         "packages/ui-tokens/src/index.ts"
       ],
+      "@yosseuf/yvl-tokens": [
+        "packages/yvl-tokens/src/index.ts"
+      ],
       "@yosseuf/cognitive-core": [
         "packages/cognitive-core/src/index.ts"
       ],

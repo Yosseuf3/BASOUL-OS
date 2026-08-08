@@ -1,0 +1,1 @@
+export const yvlTypography = {fontFamily:{display:"Sora, system-ui, sans-serif",body:"Inter, system-ui, sans-serif",mono:"ui-monospace, SFMono-Regular, monospace"},fontWeight:{regular:400,medium:500,semibold:600,bold:700},fontSize:{xs:12,sm:14,md:16,lg:20,xl:24,"2xl":32,"3xl":48},lineHeight:{tight:1.15,normal:1.5,relaxed:1.65}} as const;
