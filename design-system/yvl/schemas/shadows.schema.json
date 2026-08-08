@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"YVL shadows","type":"object","required":["version","shadow"],"additionalProperties":false,"properties":{"version":{"const":"1.0.0"},"shadow":{"type":"object","required":["subtle","raised","focus","glow"],"additionalProperties":false,"propertyValue":{"type":"string"}}}}
