@@ -8,6 +8,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "audit:production": "node ../scripts/audit-mobile-production.mjs",
     "typecheck": "tsc --noEmit",
     "doctor": "npx expo-doctor",
     "build:development": "eas build --profile development --platform all",
@@ -32,6 +33,7 @@
     "typescript": "~6.0.3"
   },
   "overrides": {
-    "brace-expansion": "5.0.9"
+    "brace-expansion": "5.0.9",
+    "image-size": "2.0.2"
   }
 }
