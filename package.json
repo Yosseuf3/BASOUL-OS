@@ -1,10 +1,8 @@
 {
-  "name": "yosseuf-platform",
+  "name": "basoul-platform",
   "version": "4.0.0-rc.1",
   "private": true,
-  "engines": {
-    "node": ">=20.9.0"
-  },
+  "engines": { "node": ">=20.9.0" },
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
@@ -43,9 +41,7 @@
     "eslint-config-next": "^16.2.12",
     "typescript": "5.7.2"
   },
-  "workspaces": [
-    "packages/*"
-  ],
+  "workspaces": ["packages/*"],
   "overrides": {
     "postcss": "8.5.25",
     "nanoid": "3.3.17",
