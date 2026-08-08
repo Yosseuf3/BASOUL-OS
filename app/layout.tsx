@@ -3,11 +3,11 @@ import "./globals.css";
 import "./foundation-architecture.css";
 
 export const metadata: Metadata = {
-  title: "YOSSEUF Platform",
-  description: "Unified organization-aware platform for YOSSEUF business modules.",
-  applicationName: "YOSSEUF Platform",
+  title: "BASOUL",
+  description: "Unified organization-aware platform for BASOUL business modules.",
+  applicationName: "BASOUL",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "YOSSEUF Platform", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "BASOUL", statusBarStyle: "black-translucent" },
   formatDetection: { telephone: false },
 };
 
