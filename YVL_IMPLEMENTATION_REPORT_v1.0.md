@@ -8,9 +8,21 @@ Created the complete `design-system/yvl/` authority corpus and the importable `p
 
 Canonical JSON defines color, typography, spacing, radii, shadows, and motion. The TypeScript package exposes immutable semantic values, a unified token object, and CSS-variable aliases. Semantic names describe purpose; products must not create competing primitive systems.
 
+### Schema validation
+
+Six Draft 2020-12 JSON Schemas validate canonical color, typography, spacing, radii, shadow, and motion files. `npm run validate:yvl` checks required keys, types, formats, version consistency, unknown properties, and generated-artifact parity without adding a runtime dependency.
+
+### Generated artifacts
+
+`npm run generate:yvl` deterministically produces CSS variables in `generated/yvl.css`, TypeScript/React tokens in `generated/tokens.ts`, React Native/Expo tokens in `generated/react-native.ts`, and a provenance manifest.
+
 ## Web and mobile compatibility
 
 Web consumers use typed exports or `yvlColorCssVariables`. React Native and Expo consume numeric spacing, radii, font sizes, durations, and raw color values. Font loading remains the responsibility of each host product and is intentionally not activated here.
+
+## Showcase architecture
+
+`design-system/yvl/showcase/` is a deterministic, script-free static review artifact. It is outside `app/`, `public/`, and `mobile/`, so it creates no Next.js or Expo route and is absent from production bundles. Stable `data-yvl-testid` selectors cover colors, typography, spacing, radii, shadows, motion, HUD, patterns, iconography, and accessibility states. Its documentation defines a future screenshot-test viewport and baseline policy.
 
 ## Migration strategy
 
@@ -31,14 +43,23 @@ Web consumers use typed exports or `yvlColorCssVariables`. React Native and Expo
 ## Intentionally deferred
 
 - Global style replacement or production UI changes
-- Runtime showcase/Storybook route
 - Font installation or loading
 - Logo artwork and rebranding
 - Product/platform renaming
 - Generated social, illustration, icon, or motion assets
 - Supabase, schema, auth, RLS, API, deployment, or business-logic changes
-- Automated token generation and visual-regression tooling
+- Automated screenshot capture and approved visual-regression baselines
+
+## Remaining blockers
+
+- Existing web and mobile dependency audit findings remain pre-existing debt and are not changed by this visual-foundation scope.
+- Expo Doctor reports the existing `expo` 57.0.10 versus `~57.0.11` patch mismatch.
+- Sora and Inter loading, approved logo artwork, production assets, and any product migration require separate review.
+
+## Production confirmation
+
+Production remains unchanged. The review layer does not modify application or mobile source, routes, styles, runtime imports, Supabase, schema, auth, RLS, APIs, deployment, business logic, or product naming.
 
 ## Next recommended phase
 
-Create a review-only YVL showcase outside production routes, add token schema validation and generated CSS/native artifacts, then pilot an accessibility-verified mapping on one low-risk internal surface.
+Approve screenshot baselines and token governance, then pilot an accessibility-verified mapping on one low-risk internal surface under a separate production-change review.

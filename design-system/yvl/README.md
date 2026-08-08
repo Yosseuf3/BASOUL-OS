@@ -11,3 +11,7 @@ Use tokens before product values. Prefer hierarchy, contrast, and generous space
 ## Adoption
 
 Consume `@yosseuf/yvl-tokens`. Product migration is opt-in and review-gated; YVL v1.0 does not replace existing styles.
+
+## Review layer
+
+Canonical token JSON is protected by schemas in `schemas/`. Run `npm run validate:yvl` to validate source and verify generated artifacts, or `npm run generate:yvl` after an approved token change. The static `showcase/` is a review-only visual reference outside every production route and bundle.

@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"YVL radii","type":"object","required":["version","radii"],"additionalProperties":false,"properties":{"version":{"const":"1.0.0"},"radii":{"type":"object","required":["none","sm","md","lg","xl","pill"],"additionalProperties":false,"propertyValue":{"type":"string","pattern":"^(0|[0-9.]+rem|[0-9]+px)$"}}}}
