@@ -22,7 +22,7 @@ export function LoginScreen() {
 
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
-      setMessage("Ã˜Â£Ã˜Â¯Ã˜Â®Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â±Ã™Å Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â¥Ã™â€žÃ™Æ’Ã˜ÂªÃ˜Â±Ã™Ë†Ã™â€ Ã™Å  Ã™â€žÃ˜Â¥Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â±Ã˜Â§Ã˜Â¨Ã˜Â· Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â®Ã™Ë†Ã™â€ž.");
+      setMessage("Ø£Ø¯Ø®Ù„ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ Ù„Ø¥Ø±Ø³Ø§Ù„ Ø±Ø§Ø¨Ø· Ø§Ù„Ø¯Ø®ÙˆÙ„.");
       return;
     }
 
@@ -48,14 +48,14 @@ export function LoginScreen() {
   return (
     <Screen>
       <View style={styles.hero}>
-        <Text style={styles.kicker}>YOSSEUF Platform Ã‚Â· MOBILE</Text>
-        <Text style={styles.title}>Ã™â€¦Ã˜Â±Ã™Æ’Ã˜Â² Ã˜Â§Ã™â€žÃ™â€šÃ™Å Ã˜Â§Ã˜Â¯Ã˜Â© Ã™â€¦Ã˜Â¹Ã™Æ’ Ã˜Â¯Ã˜Â§Ã˜Â¦Ã™â€¦Ã™â€¹Ã˜Â§</Text>
+        <Text style={styles.kicker}>BASOUL Â· MOBILE</Text>
+        <Text style={styles.title}>Ù…Ø±ÙƒØ² Ø§Ù„Ù‚ÙŠØ§Ø¯Ø© Ù…Ø¹Ùƒ Ø¯Ø§Ø¦Ù…Ù‹Ø§</Text>
         <Text style={styles.subtitle}>Ã˜Â§Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦ Ã˜Â±Ã˜Â§Ã˜Â¨Ã˜Â· Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â®Ã™Ë†Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¢Ã™â€¦Ã™â€  Ã™â€ Ã™ÂÃ˜Â³Ã™â€¡ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦ Ã™ÂÃ™Å  Ã™â€ Ã˜Â³Ã˜Â®Ã˜Â© Ã˜Â§Ã™â€žÃ™Ë†Ã™Å Ã˜Â¨.</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â®Ã™Ë†Ã™â€ž Ã˜Â¹Ã˜Â¨Ã˜Â± Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â±Ã™Å Ã˜Â¯</Text>
-        <Text style={styles.label}>Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â±Ã™Å Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â¥Ã™â€žÃ™Æ’Ã˜ÂªÃ˜Â±Ã™Ë†Ã™â€ Ã™Å </Text>
+        <Text style={styles.cardTitle}>Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø¹Ø¨Ø± Ø§Ù„Ø¨Ø±ÙŠØ¯</Text>
+        <Text style={styles.label}>Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ</Text>
         <TextInput
           value={email}
           onChangeText={setEmail}
@@ -72,10 +72,10 @@ export function LoginScreen() {
         />
         {message ? <Text style={sent ? styles.success : styles.error}>{message}</Text> : null}
         <TouchableOpacity style={[styles.button, loading && styles.disabled]} onPress={() => void sendMagicLink()} disabled={loading}>
-          {loading ? <ActivityIndicator color={tokens.colors.background} /> : <Text style={styles.buttonText}>Ã˜Â¥Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â±Ã˜Â§Ã˜Â¨Ã˜Â· Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â®Ã™Ë†Ã™â€ž</Text>}
+          {loading ? <ActivityIndicator color={tokens.colors.background} /> : <Text style={styles.buttonText}>Ø¥Ø±Ø³Ø§Ù„ Ø±Ø§Ø¨Ø· Ø§Ù„Ø¯Ø®ÙˆÙ„</Text>}
         </TouchableOpacity>
         <Text style={styles.help}>Ã˜Â§Ã™â€žÃ˜Â±Ã˜Â§Ã˜Â¨Ã˜Â· Ã˜ÂµÃ˜Â§Ã™â€žÃ˜Â­ Ã™â€žÃ™â€¦Ã˜Â±Ã˜Â© Ã™Ë†Ã˜Â§Ã˜Â­Ã˜Â¯Ã˜Â©. Ã™Å Ã˜Â¬Ã˜Â¨ Ã™ÂÃ˜ÂªÃ˜Â­Ã™â€¡ Ã˜Â¹Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ˜Â¬Ã™â€¡Ã˜Â§Ã˜Â² Ã˜Â§Ã™â€žÃ˜Â°Ã™Å  Ã™Å Ã˜Â­Ã˜ÂªÃ™Ë†Ã™Å  Ã˜Â¹Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â·Ã˜Â¨Ã™Å Ã™â€š.</Text>
-        <Text style={styles.config}>{isMobileConfigured ? "Ã˜Â§Ã™â€žÃ˜Â§Ã˜ÂªÃ˜ÂµÃ˜Â§Ã™â€ž Ã˜Â¨Ã˜Â§Ã™â€žÃ™â€¦Ã™â€ Ã˜ÂµÃ˜Â© Ã˜Â¬Ã˜Â§Ã™â€¡Ã˜Â²" : "Ã˜Â¥Ã˜Â¹Ã˜Â¯Ã˜Â§Ã˜Â¯ Supabase Ã™â€¦Ã˜Â·Ã™â€žÃ™Ë†Ã˜Â¨"}</Text>
+        <Text style={styles.config}>{isMobileConfigured ? "Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ù…Ù†ØµØ© Ø¬Ø§Ù‡Ø²" : "Ø¥Ø¹Ø¯Ø§Ø¯ Supabase Ù…Ø·Ù„ÙˆØ¨"}</Text>
       </View>
     </Screen>
   );

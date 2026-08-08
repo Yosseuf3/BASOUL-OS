@@ -12,11 +12,11 @@ export function TasksScreen({ tasks, projects, onBack, onCreate, onAdvance }: { 
   const [filter, setFilter] = useState<Filter>("Open");
   const today = new Date().toISOString().slice(0, 10);
   const filtered = useMemo(() => tasks.filter((task) => filter === "All" || (filter === "Open" ? task.status !== "Done" : task.status !== "Done" && Boolean(task.due_date && task.due_date < today))).sort((a, b) => (a.due_date || "9999").localeCompare(b.due_date || "9999")), [tasks, filter, today]);
-  const projectName = (id: string) => projects.find((project) => project.id === id)?.name || "Ù…Ø´Ø±ÙˆØ¹ ØºÙŠØ± Ù…ØªØ§Ø­";
+  const projectName = (id: string) => projects.find((project) => project.id === id)?.name || "مشروع غير متاح";
 
   return <Screen>
-    <View style={styles.header}><TouchableOpacity onPress={onBack} style={styles.outline}><Text style={styles.outlineText}>Ø¹ÙˆØ¯Ø©</Text></TouchableOpacity><Text style={styles.title}>Ø§Ù„Ù…Ù‡Ø§Ù…</Text></View>
-    <View style={styles.toolbar}><TouchableOpacity style={styles.create} onPress={onCreate}><Text style={styles.createText}>+ Ù…Ù‡Ù…Ø© Ø¬Ø¯ÙŠØ¯Ø©</Text></TouchableOpacity><Text style={styles.summary}>{filtered.length} Ù…Ù‡Ù…Ø©</Text></View>
+    <View style={styles.header}><TouchableOpacity onPress={onBack} style={styles.outline}><Text style={styles.outlineText}>عودة</Text></TouchableOpacity><Text style={styles.title}>المهام</Text></View>
+    <View style={styles.toolbar}><TouchableOpacity style={styles.create} onPress={onCreate}><Text style={styles.createText}>+ مهمة جديدة</Text></TouchableOpacity><Text style={styles.summary}>{filtered.length} مهمة</Text></View>
     <View style={styles.filters}>{(["Open", "Overdue", "All"] as Filter[]).map((item) => <TouchableOpacity key={item} onPress={() => setFilter(item)} style={[styles.filter, filter === item && styles.filterActive]}><Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item === "Open" ? "Ù…ÙØªÙˆØ­Ø©" : item === "Overdue" ? "Ù…ØªØ£Ø®Ø±Ø©" : "Ø§Ù„ÙƒÙ„"}</Text></TouchableOpacity>)}</View>
     {filtered.length === 0 ? <Text style={styles.empty}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ù‡Ø§Ù… Ø¶Ù…Ù† Ù‡Ø°Ø§ Ø§Ù„ØªØµÙ†ÙŠÙ.</Text> : filtered.map((task) => {
       const overdue = task.status !== "Done" && Boolean(task.due_date && task.due_date < today);
@@ -24,9 +24,9 @@ export function TasksScreen({ tasks, projects, onBack, onCreate, onAdvance }: { 
         <View style={styles.cardTop}><Text style={[styles.priority, task.priority === "Critical" && styles.critical]}>{priorityLabels[task.priority]}</Text><Text style={styles.status}>{statusLabels[task.status]}</Text></View>
         <Text style={styles.name}>{task.title}</Text>
         <Text style={styles.project}>{projectName(task.project_id)}</Text>
-        <View style={styles.metaRow}><Text style={[styles.date, overdue && styles.danger]}>{task.due_date ? (overdue ? `Ù…ØªØ£Ø®Ø±Ø© Â· ${task.due_date}` : `Ø§Ù„Ù…ÙˆØ¹Ø¯ Â· ${task.due_date}`) : "Ø¨Ø¯ÙˆÙ† Ù…ÙˆØ¹Ø¯"}</Text><Text style={styles.progress}>{task.progress}%</Text></View>
+        <View style={styles.metaRow}><Text style={[styles.date, overdue && styles.danger]}>{task.due_date ? (overdue ? `متأخرة · ${task.due_date}` : `الموعد · ${task.due_date}`) : "بدون موعد"}</Text><Text style={styles.progress}>{task.progress}%</Text></View>
         <View style={styles.track}><View style={[styles.fill, { width: `${Math.max(0, Math.min(100, task.progress))}%` }]} /></View>
-        {task.status !== "Done" ? <TouchableOpacity style={styles.advance} onPress={() => onAdvance(task)}><Text style={styles.advanceText}>ØªØ­Ø¯ÙŠØ« Ù„Ù„Ù…Ø±Ø­Ù„Ø© Ø§Ù„ØªØ§Ù„ÙŠØ©</Text></TouchableOpacity> : null}
+        {task.status !== "Done" ? <TouchableOpacity style={styles.advance} onPress={() => onAdvance(task)}><Text style={styles.advanceText}>تحديث للمرحلة التالية</Text></TouchableOpacity> : null}
       </View>;
     })}
   </Screen>;

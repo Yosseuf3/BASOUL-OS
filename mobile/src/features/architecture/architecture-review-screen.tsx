@@ -43,7 +43,7 @@ export function ArchitectureReviewScreen({
   const [message, setMessage] = useState("");
   const [elementFilter, setElementFilter] = useState<ArchitecturalPlanElement["element_type"] | "all">("all");
   const projectNames = new Map(data.projects.map((project) => [project.id, project.name]));
-  const drawingNames = new Map(data.drawings.map((drawing) => [drawing.id, `${drawing.name} Â· ${drawing.revision}`]));
+  const drawingNames = new Map(data.drawings.map((drawing) => [drawing.id, `${drawing.name} · ${drawing.revision}`]));
   const openFindings = data.reviews.flatMap((review) =>
     review.architectural_review_findings
       .filter((finding) => finding.status === "open" || finding.status === "accepted")
@@ -87,7 +87,7 @@ export function ArchitectureReviewScreen({
       });
       setSelectedFile(null);
       setMessage(result.analysisStatus === "completed"
-        ? `ØªÙ… ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ù…Ø®Ø·Ø· Ø¨ØµØ±ÙŠÙ‹Ø§ ÙˆØ§Ø³ØªØ®Ø±Ø§Ø¬ ${result.detectedElements} Ø¹Ù†ØµØ±Ù‹Ø§ Ù„Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©.`
+        ? `تم تحليل المخطط بصريًا واستخراج ${result.detectedElements} عنصرًا للمراجعة.`
         : result.failureCode === "quota_exceeded"
           ? "ØªÙ… Ø­ÙØ¸ Ø§Ù„Ù…Ø®Ø·Ø·. ÙØ¹Ù‘Ù„ Ø±ØµÙŠØ¯ OpenAI API Ø«Ù… Ø£Ø¹Ø¯ Ø§Ù„ØªØ­Ù„ÙŠÙ„ Ø¯ÙˆÙ† Ø±ÙØ¹ Ø§Ù„Ù…Ù„Ù Ù…Ø±Ø© Ø£Ø®Ø±Ù‰."
           : "ØªÙ… Ø­ÙØ¸ Ø§Ù„Ù…Ø®Ø·Ø·ØŒ Ù„ÙƒÙ† Ù„Ù… ØªÙÙƒØªØ´Ù Ø¹Ù†Ø§ØµØ± Ù…ÙˆØ«ÙˆÙ‚Ø©. Ø§Ø³ØªØ®Ø¯Ù… Ù…Ù„ÙÙ‹Ø§ Ø£ÙˆØ¶Ø­ Ø£Ùˆ PDF Ù…ØªØ¬Ù‡ÙŠÙ‹Ø§.");
@@ -106,26 +106,26 @@ export function ArchitectureReviewScreen({
           ? "Ø±ØµÙŠØ¯ OpenAI API ØºÙŠØ± Ù…ØªØ§Ø­ Ø¨Ø¹Ø¯. ÙŠÙ…ÙƒÙ†Ùƒ Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„Ù…Ø­Ø§ÙˆÙ„Ø© Ù„Ø§Ø­Ù‚Ù‹Ø§ Ø¯ÙˆÙ† Ø±ÙØ¹ Ø§Ù„Ù…Ù„Ù."
           : "Ø§ÙƒØªÙ…Ù„Øª Ø§Ù„Ù…Ø­Ø§ÙˆÙ„Ø©ØŒ Ù„ÙƒÙ† Ù„Ù… ØªÙÙƒØªØ´Ù Ø¹Ù†Ø§ØµØ± Ù…ÙˆØ«ÙˆÙ‚Ø©.");
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "ØªØ¹Ø°Ø±Øª Ø¥Ø¹Ø§Ø¯Ø© ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ù…Ø®Ø·Ø·.");
+      setMessage(cause instanceof Error ? cause.message : "تعذرت إعادة تحليل المخطط.");
     }
   }
 
   return (
     <Screen>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.back}><Text style={styles.backText}>Ø±Ø¬ÙˆØ¹</Text></TouchableOpacity>
-        <View><Text style={styles.kicker}>YAI Â· MOBILE REVIEW</Text><Text selectable style={styles.title}>Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø© Ø§Ù„Ù…Ø¹Ù…Ø§Ø±ÙŠØ©</Text></View>
+        <TouchableOpacity onPress={onBack} style={styles.back}><Text style={styles.backText}>رجوع</Text></TouchableOpacity>
+        <View><Text style={styles.kicker}>YAI · MOBILE REVIEW</Text><Text selectable style={styles.title}>المراجعة المعمارية</Text></View>
       </View>
 
       <View style={styles.metrics}>
-        <Metric value={String(openFindings.length)} label="ØªØ­ØªØ§Ø¬ Ù‚Ø±Ø§Ø±Ù‹Ø§" />
-        <Metric value={String(acceptedCount)} label="Ù…Ø¹ØªÙ…Ø¯Ø©" />
-        <Metric value={String(completedCount)} label="Ù…ØºÙ„Ù‚Ø©" />
+        <Metric value={String(openFindings.length)} label="تحتاج قرارًا" />
+        <Metric value={String(acceptedCount)} label="معتمدة" />
+        <Metric value={String(completedCount)} label="مغلقة" />
       </View>
 
       <View style={styles.uploadCard}>
         <Text selectable style={styles.sectionTitleInline}>Ø±ÙØ¹ Ù…Ø®Ø·Ø· Ù„Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©</Text>
-        <Text selectable style={styles.uploadHint}>PDF Ø£Ùˆ PNG Ø£Ùˆ JPG Ø£Ùˆ WebPØŒ Ø¨Ø­Ø¯ Ø£Ù‚ØµÙ‰ 50 MB.</Text>
+        <Text selectable style={styles.uploadHint}>PDF أو PNG أو JPG أو WebP، بحد أقصى 50 MB.</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectChoices}>
           {data.projects.map((project) => (
             <TouchableOpacity
@@ -142,7 +142,7 @@ export function ArchitectureReviewScreen({
             value={revision}
             onChangeText={setRevision}
             maxLength={12}
-            placeholder="Ø§Ù„Ø¥ØµØ¯Ø§Ø± A"
+            placeholder="الإصدار A"
             placeholderTextColor={tokens.colors.muted}
             style={styles.revisionInput}
             textAlign="right"
@@ -169,7 +169,7 @@ export function ArchitectureReviewScreen({
         <View key={drawing.id} style={styles.drawingCard}>
           <View style={styles.reviewInfo}>
             <Text selectable style={styles.reviewTitle}>{drawing.name}</Text>
-            <Text selectable style={styles.meta}>Ø§Ù„Ø¥ØµØ¯Ø§Ø± {drawing.revision} Â· {drawing.format.toUpperCase()}</Text>
+            <Text selectable style={styles.meta}>الإصدار {drawing.revision} · {drawing.format.toUpperCase()}</Text>
           </View>
           <TouchableOpacity
             disabled={Boolean(retryingDrawingId)}
@@ -184,22 +184,22 @@ export function ArchitectureReviewScreen({
       <Text style={styles.sectionTitle}>ÙÙ‡Ù… Ø¹Ù†Ø§ØµØ± Ø§Ù„Ù…Ø®Ø·Ø·</Text>
       <View style={styles.elementSummary}>
         <Metric value={String(data.planElements.length)} label="Ù…ÙƒØªØ´Ù" />
-        <Metric value={String(confirmedElementCount)} label="Ù…Ø¤ÙƒØ¯" />
+        <Metric value={String(confirmedElementCount)} label="مؤكد" />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.elementFilters}>
         {(["all", "room", "dimension", "wall", "opening", "label"] as const).map((filter) => (
           <TouchableOpacity key={filter} onPress={() => setElementFilter(filter)} style={[styles.elementFilter, elementFilter === filter && styles.elementFilterActive]}>
-            <Text style={[styles.elementFilterText, elementFilter === filter && styles.elementFilterTextActive]}>{filter === "all" ? "Ø§Ù„ÙƒÙ„" : planElementTypeLabels[filter]}</Text>
+            <Text style={[styles.elementFilterText, elementFilter === filter && styles.elementFilterTextActive]}>{filter === "all" ? "الكل" : planElementTypeLabels[filter]}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
       {data.planElements.length === 0 ? (
         <View style={styles.empty}>
-          <Text selectable style={styles.emptyTitle}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¹Ù†Ø§ØµØ± Ù…Ø®Ø·Ø· Ù…Ù†Ø¸Ù…Ø© Ø¨Ø¹Ø¯</Text>
+          <Text selectable style={styles.emptyTitle}>لا توجد عناصر مخطط منظمة بعد</Text>
           <Text selectable style={styles.emptyText}>Ø£Ø¶Ù Ø§Ù„Ø¹Ù†Ø§ØµØ± Ø£Ùˆ ØµØ­Ø­Ù‡Ø§ Ù…Ù† Ø§Ù„ÙˆÙŠØ¨ØŒ Ø«Ù… Ø§Ø¹ØªÙ…Ø¯ Ø§Ù„Ù†ØªØ§Ø¦Ø¬ Ù‡Ù†Ø§ Ø£Ø«Ù†Ø§Ø¡ Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø© Ø§Ù„Ù…ÙŠØ¯Ø§Ù†ÙŠØ©.</Text>
         </View>
       ) : visiblePlanElements.length === 0 ? (
-        <View style={styles.empty}><Text selectable style={styles.emptyTitle}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ù†ØªØ§Ø¦Ø¬ Ù…Ø·Ø§Ø¨Ù‚Ø©</Text><Text selectable style={styles.emptyText}>ØºÙŠÙ‘Ø± Ù†ÙˆØ¹ Ø§Ù„Ø¹Ù†ØµØ± Ù„Ø¹Ø±Ø¶ Ø¨Ù‚ÙŠØ© Ø§Ù„Ù†ØªØ§Ø¦Ø¬.</Text></View>
+        <View style={styles.empty}><Text selectable style={styles.emptyTitle}>لا توجد نتائج مطابقة</Text><Text selectable style={styles.emptyText}>غيّر نوع العنصر لعرض بقية النتائج.</Text></View>
       ) : visiblePlanElements.map((element) => (
         <View key={element.id} style={styles.elementCard}>
           <View style={styles.elementTop}>
@@ -207,13 +207,13 @@ export function ArchitectureReviewScreen({
             <Text selectable style={styles.elementTitle}>{element.label || planElementTypeLabels[element.element_type]}</Text>
           </View>
           <Text selectable style={styles.meta}>
-            {drawingNames.get(element.drawing_id) || "Ù…Ø®Ø·Ø· Ù…Ø¹Ù…Ø§Ø±ÙŠ"} Â· {planElementTypeLabels[element.element_type]}
+            {drawingNames.get(element.drawing_id) || "مخطط معماري"} · {planElementTypeLabels[element.element_type]}
           </Text>
           {element.value ? <Text selectable style={styles.elementValue}>{element.value}{element.unit ? ` ${element.unit}` : ""}</Text> : null}
           {element.geometry?.page ? <Text selectable style={styles.elementLocation}>
             Ø§Ù„ØµÙØ­Ø© {element.geometry.page}
-            {typeof element.geometry.x === "number" && typeof element.geometry.y === "number" ? ` Â· Ù…ÙˆØ¶Ø¹ ${Math.round(element.geometry.x)}, ${Math.round(element.geometry.y)}` : ""}
-            {typeof element.geometry.width === "number" && typeof element.geometry.height === "number" ? ` Â· Ø­Ø¬Ù… ${Math.round(element.geometry.width)}Ã—${Math.round(element.geometry.height)}` : ""}
+            {typeof element.geometry.x === "number" && typeof element.geometry.y === "number" ? ` · موضع ${Math.round(element.geometry.x)}, ${Math.round(element.geometry.y)}` : ""}
+            {typeof element.geometry.width === "number" && typeof element.geometry.height === "number" ? ` · حجم ${Math.round(element.geometry.width)}×${Math.round(element.geometry.height)}` : ""}
           </Text> : null}
           {element.geometry?.kind !== "wall_gap" && element.geometry?.start && element.geometry?.end ? (
             <Text selectable style={styles.elementGeometry}>
@@ -223,13 +223,13 @@ export function ArchitectureReviewScreen({
           {element.geometry?.kind === "paired_lines" && element.geometry.centerline ? (
             <Text selectable style={styles.elementGeometry}>
               Ù…Ø­ÙˆØ± Ø§Ù„Ø¬Ø¯Ø§Ø±: ({element.geometry.centerline.start.x}, {element.geometry.centerline.start.y}) â† ({element.geometry.centerline.end.x}, {element.geometry.centerline.end.y})
-              {"\n"}Ø§Ù„Ø³Ù…Ø§ÙƒØ© Ø§Ù„Ù…Ø±Ø´Ø­Ø©: {element.geometry.thickness} pt Â· Ø§Ù„ØªØ¯Ø§Ø®Ù„ {Math.round((element.geometry.overlapRatio ?? 0) * 100)}%
+              {"\n"}السماكة المرشحة: {element.geometry.thickness} pt · التداخل {Math.round((element.geometry.overlapRatio ?? 0) * 100)}%
             </Text>
           ) : null}
           {element.geometry?.kind === "wall_gap" && element.geometry.start && element.geometry.end ? (
             <Text selectable style={styles.elementGeometry}>
               ÙØ¬ÙˆØ© Ù…Ø±Ø´Ø­Ø©: ({element.geometry.start.x}, {element.geometry.start.y}) â† ({element.geometry.end.x}, {element.geometry.end.y})
-              {"\n"}Ø§Ù„Ø¹Ø±Ø¶ Ø§Ù„Ù…Ø±Ø´Ø­: {element.geometry.width} pt Â· Ø³Ù…Ø§ÙƒØ© Ø§Ù„Ø¬Ø¯Ø§Ø± Ø§Ù„Ù…Ø±Ø¬Ø¹ÙŠØ© {element.geometry.averageWallThickness} pt
+              {"\n"}العرض المرشح: {element.geometry.width} pt · سماكة الجدار المرجعية {element.geometry.averageWallThickness} pt
             </Text>
           ) : null}
           <Text selectable style={styles.elementEvidence}>
@@ -237,34 +237,34 @@ export function ArchitectureReviewScreen({
           </Text>
           {element.status === "detected" ? (
             <View style={styles.decisionRow}>
-              <TouchableOpacity disabled={updatingPlanElementId === element.id} style={[styles.decisionButton, styles.acceptButton]} onPress={() => onDecidePlanElement(element.id, "confirmed")}><Text style={styles.decisionText}>ØªØ£ÙƒÙŠØ¯</Text></TouchableOpacity>
-              <TouchableOpacity disabled={updatingPlanElementId === element.id} style={styles.decisionButton} onPress={() => onDecidePlanElement(element.id, "rejected")}><Text style={styles.decisionText}>Ø±ÙØ¶</Text></TouchableOpacity>
+              <TouchableOpacity disabled={updatingPlanElementId === element.id} style={[styles.decisionButton, styles.acceptButton]} onPress={() => onDecidePlanElement(element.id, "confirmed")}><Text style={styles.decisionText}>تأكيد</Text></TouchableOpacity>
+              <TouchableOpacity disabled={updatingPlanElementId === element.id} style={styles.decisionButton} onPress={() => onDecidePlanElement(element.id, "rejected")}><Text style={styles.decisionText}>رفض</Text></TouchableOpacity>
             </View>
           ) : null}
         </View>
       ))}
 
-      <Text style={styles.sectionTitle}>Ø³Ø¬Ù„ Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø© Ø§Ù„Ù…ÙƒØ§Ù†ÙŠØ©</Text>
+      <Text style={styles.sectionTitle}>سجل المراجعة المكانية</Text>
       {visibleReviewComments.length === 0 ? (
         <View style={styles.empty}>
-          <Text selectable style={styles.emptyTitle}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ù…ÙŠØ¯Ø§Ù†ÙŠØ© Ù„Ù‡Ø°Ø§ Ø§Ù„Ù…Ø´Ø±ÙˆØ¹</Text>
+          <Text selectable style={styles.emptyTitle}>لا توجد ملاحظات ميدانية لهذا المشروع</Text>
           <Text selectable style={styles.emptyText}>Ø£Ø¶Ù Ù…Ù„Ø§Ø­Ø¸Ø© Ù…Ù† Ø§Ù„Ù…Ø®Ø·Ø· Ø¹Ù„Ù‰ Ø§Ù„ÙˆÙŠØ¨ØŒ ÙˆØ³ØªØ¸Ù‡Ø± Ù‡Ù†Ø§ ÙÙˆØ± Ø§Ù„Ù…Ø²Ø§Ù…Ù†Ø© Ù„Ø§ØªØ®Ø§Ø° Ø§Ù„Ù‚Ø±Ø§Ø± ÙÙŠ Ø§Ù„Ù…ÙˆÙ‚Ø¹.</Text>
         </View>
       ) : visibleReviewComments.map((comment) => (
         <View key={comment.id} style={[styles.commentCard, comment.status === "resolved" && styles.commentResolved]}>
           <View style={styles.commentTop}>
             <Text style={[styles.commentStatus, comment.status === "resolved" && styles.commentStatusResolved]}>
-              {comment.status === "resolved" ? "ØªÙ…Øª Ø§Ù„Ù…Ø¹Ø§Ù„Ø¬Ø©" : "ØªØ­ØªØ§Ø¬ Ù…ØªØ§Ø¨Ø¹Ø©"}
+              {comment.status === "resolved" ? "تمت المعالجة" : "تحتاج متابعة"}
             </Text>
             <Text selectable style={styles.commentTitle}>
-              {drawingNames.get(comment.drawing_id) || "Ù…Ø®Ø·Ø· Ù…Ø¹Ù…Ø§Ø±ÙŠ"}
+              {drawingNames.get(comment.drawing_id) || "مخطط معماري"}
             </Text>
           </View>
           <Text selectable style={styles.commentBody}>{comment.body}</Text>
           <Text selectable style={styles.commentLocation}>
             {comment.page_number ? `Ø§Ù„ØµÙØ­Ø© ${comment.page_number}` : "Ø§Ù„Ù…Ø®Ø·Ø·"}
-            {comment.plan_element_id ? " Â· Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ø¹Ù†ØµØ±" : ""}
-            {comment.finding_id ? " Â· Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ù…Ù„Ø§Ø­Ø¸Ø© ØªØ­Ù„ÙŠÙ„" : ""}
+            {comment.plan_element_id ? " · مرتبطة بعنصر" : ""}
+            {comment.finding_id ? " · مرتبطة بملاحظة تحليل" : ""}
           </Text>
           <Text selectable style={styles.commentDate}>
             {new Date(comment.created_at).toLocaleString("ar-SA")}
@@ -283,32 +283,32 @@ export function ArchitectureReviewScreen({
         </View>
       ))}
 
-      <Text style={styles.sectionTitle}>Ø³Ø¬Ù„ Ø¬Ù„Ø³Ø§Øª Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©</Text>
+      <Text style={styles.sectionTitle}>سجل جلسات المراجعة</Text>
       {data.reviews.length === 0 ? (
         <View style={styles.empty}><Text selectable style={styles.emptyTitle}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¬Ù„Ø³Ø© Ù…Ø±Ø§Ø¬Ø¹Ø© Ø¨Ø¹Ø¯</Text><Text selectable style={styles.emptyText}>Ø§Ø±ÙØ¹ Ù…Ø®Ø·Ø·Ù‹Ø§ Ù…Ù† Ù…Ø´Ø±ÙˆØ¹ Ù†Ø´Ø· Ù„Ø¨Ø¯Ø¡ Ø§Ù„ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ù…Ø¹Ù…Ø§Ø±ÙŠ.</Text></View>
       ) : data.reviews.map((review) => (
         <View key={review.id} style={styles.reviewCard}>
           <View style={styles.reviewTop}>
-            <View><Text selectable style={styles.health}>{review.plan_health}%</Text><Text style={styles.healthLabel}>ØµØ­Ø© Ø§Ù„Ù…Ø®Ø·Ø·</Text></View>
+            <View><Text selectable style={styles.health}>{review.plan_health}%</Text><Text style={styles.healthLabel}>صحة المخطط</Text></View>
             <View style={styles.reviewInfo}>
-              <Text selectable style={styles.reviewTitle}>{projectNames.get(review.project_id) || "Ù…Ø´Ø±ÙˆØ¹"}</Text>
-              <Text selectable style={styles.meta}>{drawingNames.get(review.drawing_id) || "Ù…Ø®Ø·Ø· Ù…Ø¹Ù…Ø§Ø±ÙŠ"}</Text>
+              <Text selectable style={styles.reviewTitle}>{projectNames.get(review.project_id) || "مشروع"}</Text>
+              <Text selectable style={styles.meta}>{drawingNames.get(review.drawing_id) || "مخطط معماري"}</Text>
             </View>
           </View>
           <View style={styles.findings}>
             {review.architectural_review_findings.map((finding) => (
               <View key={finding.id} style={[styles.finding, finding.severity === "critical" && styles.critical]}>
-                <View style={styles.findingTop}><Text style={styles.confidence}>{finding.confidence_score}% Ø«Ù‚Ø©</Text><Text selectable style={styles.findingTitle}>{finding.title}</Text></View>
+                <View style={styles.findingTop}><Text style={styles.confidence}>{finding.confidence_score}% ثقة</Text><Text selectable style={styles.findingTitle}>{finding.title}</Text></View>
                 <Text selectable style={styles.findingDescription}>{finding.description}</Text>
-                <Text selectable style={styles.recommendation}>Ø§Ù„ØªÙˆØµÙŠØ©: {finding.recommendation}</Text>
-                {finding.evidence?.length ? <Text selectable style={styles.evidence}>Ø§Ù„Ø£Ø¯Ù„Ø©: {finding.evidence.map((item) => `${item.observation}${item.value == null ? "" : ` (${String(item.value)})`}`).join(" Â· ")}</Text> : null}
-                <Text selectable style={styles.statusLabel}>Ø§Ù„Ø­Ø§Ù„Ø©: {statusLabels[finding.status]}</Text>
+                <Text selectable style={styles.recommendation}>التوصية: {finding.recommendation}</Text>
+                {finding.evidence?.length ? <Text selectable style={styles.evidence}>الأدلة: {finding.evidence.map((item) => `${item.observation}${item.value == null ? "" : ` (${String(item.value)})`}`).join(" · ")}</Text> : null}
+                <Text selectable style={styles.statusLabel}>الحالة: {statusLabels[finding.status]}</Text>
                 {finding.status === "open" ? <View style={styles.decisionRow}>
-                  <TouchableOpacity disabled={decidingFindingId === finding.id} style={[styles.decisionButton, styles.acceptButton]} onPress={() => onDecideFinding(finding, "accepted")}><Text style={styles.decisionText}>Ø§Ø¹ØªÙ…Ø§Ø¯</Text></TouchableOpacity>
-                  <TouchableOpacity disabled={decidingFindingId === finding.id} style={styles.decisionButton} onPress={() => onDecideFinding(finding, "rejected")}><Text style={styles.decisionText}>Ø±ÙØ¶</Text></TouchableOpacity>
+                  <TouchableOpacity disabled={decidingFindingId === finding.id} style={[styles.decisionButton, styles.acceptButton]} onPress={() => onDecideFinding(finding, "accepted")}><Text style={styles.decisionText}>اعتماد</Text></TouchableOpacity>
+                  <TouchableOpacity disabled={decidingFindingId === finding.id} style={styles.decisionButton} onPress={() => onDecideFinding(finding, "rejected")}><Text style={styles.decisionText}>رفض</Text></TouchableOpacity>
                 </View> : null}
                 {finding.status === "accepted" ? <View style={styles.decisionRow}>
-                  <TouchableOpacity disabled={decidingFindingId === finding.id} style={[styles.decisionButton, styles.resolveButton]} onPress={() => onDecideFinding(finding, "resolved")}><Text style={styles.decisionText}>ØªÙ…Øª Ø§Ù„Ù…Ø¹Ø§Ù„Ø¬Ø©</Text></TouchableOpacity>
+                  <TouchableOpacity disabled={decidingFindingId === finding.id} style={[styles.decisionButton, styles.resolveButton]} onPress={() => onDecideFinding(finding, "resolved")}><Text style={styles.decisionText}>تمت المعالجة</Text></TouchableOpacity>
                 </View> : null}
                 <TouchableOpacity
                   style={[styles.taskButton, finding.status === "converted_to_task" && styles.taskButtonDone]}
@@ -329,25 +329,25 @@ export function ArchitectureReviewScreen({
 }
 
 const statusLabels: Record<ArchitecturalFinding["status"], string> = {
-  open: "Ø¨Ø§Ù†ØªØ¸Ø§Ø± Ø§Ù„Ù‚Ø±Ø§Ø±",
-  accepted: "Ù…Ø¹ØªÙ…Ø¯Ø©",
+  open: "بانتظار القرار",
+  accepted: "معتمدة",
   rejected: "Ù…Ø±ÙÙˆØ¶Ø©",
-  resolved: "ØªÙ…Øª Ø§Ù„Ù…Ø¹Ø§Ù„Ø¬Ø©",
-  converted_to_task: "ØªØ­ÙˆÙ„Øª Ø¥Ù„Ù‰ Ù…Ù‡Ù…Ø©",
+  resolved: "تمت المعالجة",
+  converted_to_task: "تحولت إلى مهمة",
 };
 
 const planElementTypeLabels: Record<ArchitecturalPlanElement["element_type"], string> = {
-  wall: "Ø¬Ø¯Ø§Ø±",
-  opening: "ÙØªØ­Ø©",
-  room: "ØºØ±ÙØ©",
-  label: "ØªØ³Ù…ÙŠØ©",
-  dimension: "Ø¨ÙØ¹Ø¯",
+  wall: "جدار",
+  opening: "فتحة",
+  room: "غرفة",
+  label: "تسمية",
+  dimension: "بُعد",
 };
 
 const planElementStatusLabels: Record<ArchitecturalPlanElement["status"], string> = {
-  detected: "Ø¨Ø§Ù†ØªØ¸Ø§Ø± Ø§Ù„ØªØ­Ù‚Ù‚",
-  confirmed: "Ù…Ø¤ÙƒØ¯",
-  corrected: "Ù…ØµØ­Ø­ Ø¨Ø´Ø±ÙŠÙ‹Ø§",
+  detected: "بانتظار التحقق",
+  confirmed: "مؤكد",
+  corrected: "مصحح بشريًا",
   rejected: "Ù…Ø±ÙÙˆØ¶",
 };
 

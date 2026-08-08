@@ -7,10 +7,10 @@ import type { MobileWorkspaceData } from "../../types/domain";
 type Props = { data: MobileWorkspaceData; onBack: () => void };
 
 const severityLabel: Record<SignalSeverity, string> = {
-  critical: "Ã˜Â­Ã˜Â±Ã˜Â¬",
-  warning: "Ã˜Â§Ã™â€ Ã˜ÂªÃ˜Â¨Ã˜Â§Ã™â€¡",
-  positive: "Ã™â€¦Ã˜Â³Ã˜ÂªÃ™â€šÃ˜Â±",
-  info: "Ã™â€¦Ã˜Â¹Ã™â€žÃ™Ë†Ã™â€¦Ã˜Â©",
+  critical: "Ø­Ø±Ø¬",
+  warning: "Ø§Ù†ØªØ¨Ø§Ù‡",
+  positive: "Ù…Ø³ØªÙ‚Ø±",
+  info: "Ù…Ø¹Ù„ÙˆÙ…Ø©",
 };
 
 export function CommandCenterScreen({ data, onBack }: Props) {
@@ -19,19 +19,19 @@ export function CommandCenterScreen({ data, onBack }: Props) {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack}><Text style={styles.back}>Ã˜Â±Ã˜Â¬Ã™Ë†Ã˜Â¹</Text></TouchableOpacity>
-        <View><Text style={styles.eyebrow}>YOSSEUF Platform Ã‚Â· EXECUTIVE KERNEL</Text><Text style={styles.title}>Ã™â€¦Ã˜Â±Ã™Æ’Ã˜Â² Ã˜Â§Ã™â€žÃ™â€šÃ™Å Ã˜Â§Ã˜Â¯Ã˜Â©</Text></View>
+        <TouchableOpacity onPress={onBack}><Text style={styles.back}>Ø±Ø¬ÙˆØ¹</Text></TouchableOpacity>
+        <View><Text style={styles.eyebrow}>BASOUL Â· EXECUTIVE KERNEL</Text><Text style={styles.title}>Ù…Ø±ÙƒØ² Ø§Ù„Ù‚ÙŠØ§Ø¯Ø©</Text></View>
       </View>
 
       <View style={styles.hero}>
         <Text style={styles.heroLabel}>Ã™â€¦Ã˜Â§Ã˜Â°Ã˜Â§ Ã™Å Ã˜Â¬Ã˜Â¨ Ã˜Â£Ã™â€  Ã˜ÂªÃ™ÂÃ˜Â¹Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¢Ã™â€ Ã˜Å¸</Text>
         <Text style={styles.heroTitle}>{snapshot.headline}</Text>
         <Text style={styles.heroBrief}>{snapshot.brief}</Text>
-        <Text style={styles.confidence}>Ã˜Â«Ã™â€šÃ˜Â© Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã™â€žÃ™Å Ã™â€ž {snapshot.confidence}%</Text>
+        <Text style={styles.confidence}>Ø«Ù‚Ø© Ø§Ù„ØªØ­Ù„ÙŠÙ„ {snapshot.confidence}%</Text>
       </View>
 
       <View style={styles.healthCard}>
-        <Text style={styles.sectionTitle}>Ã˜ÂµÃ˜Â­Ã˜Â© Ã™â€¦Ã˜Â³Ã˜Â§Ã˜Â­Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â¹Ã™â€¦Ã™â€ž</Text>
+        <Text style={styles.sectionTitle}>ØµØ­Ø© Ù…Ø³Ø§Ø­Ø© Ø§Ù„Ø¹Ù…Ù„</Text>
         <Text style={styles.healthScore}>{snapshot.health.score}%</Text>
         {snapshot.health.factors.map((factor) => (
           <View key={factor.id} style={styles.factor}>
@@ -47,15 +47,15 @@ export function CommandCenterScreen({ data, onBack }: Props) {
           <View style={styles.row}><Text style={styles.badge}>{severityLabel[signal.severity]}</Text><Text style={styles.rank}>#{index + 1}</Text></View>
           <Text style={styles.cardTitle}>{signal.title}</Text>
           <Text style={styles.explanation}>{signal.explanation}</Text>
-          <Text style={styles.action}>Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â¬Ã˜Â±Ã˜Â§Ã˜Â¡: {signal.recommendedAction}</Text>
+          <Text style={styles.action}>Ø§Ù„Ø¥Ø¬Ø±Ø§Ø¡: {signal.recommendedAction}</Text>
         </View>
       ))}
 
-      <Text style={styles.sectionTitle}>Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â®Ã˜Â§Ã˜Â·Ã˜Â± Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂªÃ™Ë†Ã™â€šÃ˜Â¹Ã˜Â©</Text>
-      {snapshot.risks.length === 0 ? <View style={styles.card}><Text style={styles.cardTitle}>Ã™â€žÃ˜Â§ Ã˜ÂªÃ™Ë†Ã˜Â¬Ã˜Â¯ Ã™â€¦Ã˜Â®Ã˜Â§Ã˜Â·Ã˜Â± Ã˜ÂªÃ™â€ Ã˜Â¨Ã˜Â¤Ã™Å Ã˜Â© Ã™Ë†Ã˜Â§Ã˜Â¶Ã˜Â­Ã˜Â© Ã˜Â­Ã˜Â§Ã™â€žÃ™Å Ã™â€¹Ã˜Â§</Text></View> : null}
+      <Text style={styles.sectionTitle}>Ø§Ù„Ù…Ø®Ø§Ø·Ø± Ø§Ù„Ù…ØªÙˆÙ‚Ø¹Ø©</Text>
+      {snapshot.risks.length === 0 ? <View style={styles.card}><Text style={styles.cardTitle}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ø®Ø§Ø·Ø± ØªÙ†Ø¨Ø¤ÙŠØ© ÙˆØ§Ø¶Ø­Ø© Ø­Ø§Ù„ÙŠÙ‹Ø§</Text></View> : null}
       {snapshot.risks.map((risk) => (
         <View key={risk.id} style={styles.card}>
-          <View style={styles.row}><Text style={styles.badge}>{risk.probability}%</Text><Text style={styles.rank}>Ã˜Â®Ã™â€žÃ˜Â§Ã™â€ž {risk.horizonDays} Ã˜Â£Ã™Å Ã˜Â§Ã™â€¦</Text></View>
+          <View style={styles.row}><Text style={styles.badge}>{risk.probability}%</Text><Text style={styles.rank}>Ø®Ù„Ø§Ù„ {risk.horizonDays} Ø£ÙŠØ§Ù…</Text></View>
           <Text style={styles.cardTitle}>{risk.title}</Text>
           <Text style={styles.explanation}>{risk.reason}</Text>
           <Text style={styles.action}>Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â®Ã™ÂÃ™Å Ã™Â: {risk.mitigation}</Text>

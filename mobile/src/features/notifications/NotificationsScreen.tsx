@@ -6,14 +6,14 @@ import type { Notification } from "../../types/domain";
 export function NotificationsScreen({ notifications, onBack, onRead }: { notifications: Notification[]; onBack: () => void; onRead: (id: string) => void }) {
   return (
     <Screen>
-      <View style={styles.header}><TouchableOpacity onPress={onBack} style={styles.back}><Text style={styles.backText}>Ø¹ÙˆØ¯Ø©</Text></TouchableOpacity><Text style={styles.title}>Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª</Text></View>
-      <Text style={styles.summary}>{notifications.filter((item) => !item.is_read).length} ØºÙŠØ± Ù…Ù‚Ø±ÙˆØ¡</Text>
-      {notifications.length === 0 ? <Text style={styles.empty}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¥Ø´Ø¹Ø§Ø±Ø§Øª Ø­Ø§Ù„ÙŠÙ‹Ø§.</Text> : notifications.map((item) => (
+      <View style={styles.header}><TouchableOpacity onPress={onBack} style={styles.back}><Text style={styles.backText}>عودة</Text></TouchableOpacity><Text style={styles.title}>الإشعارات</Text></View>
+      <Text style={styles.summary}>{notifications.filter((item) => !item.is_read).length} غير مقروء</Text>
+      {notifications.length === 0 ? <Text style={styles.empty}>لا توجد إشعارات حاليًا.</Text> : notifications.map((item) => (
         <TouchableOpacity key={item.id} style={[styles.card, !item.is_read && styles.unread]} onPress={() => !item.is_read && onRead(item.id)}>
-          <View style={styles.cardTop}><Text style={styles.priority}>{item.priority === "high" ? "Ø¹Ø§Ø¬Ù„" : item.priority === "medium" ? "Ù…Ù‡Ù…" : "Ù…Ø¹Ù„ÙˆÙ…Ø©"}</Text><Text style={styles.date}>{new Intl.DateTimeFormat("ar-SA", { month: "short", day: "numeric" }).format(new Date(item.created_at))}</Text></View>
+          <View style={styles.cardTop}><Text style={styles.priority}>{item.priority === "high" ? "عاجل" : item.priority === "medium" ? "مهم" : "معلومة"}</Text><Text style={styles.date}>{new Intl.DateTimeFormat("ar-SA", { month: "short", day: "numeric" }).format(new Date(item.created_at))}</Text></View>
           <Text style={styles.name}>{item.title}</Text>
           {item.message ? <Text style={styles.message}>{item.message}</Text> : null}
-          {!item.is_read ? <Text style={styles.hint}>Ø§Ø¶ØºØ· Ù„ØªØ­Ø¯ÙŠØ¯Ù‡ ÙƒÙ…Ù‚Ø±ÙˆØ¡</Text> : null}
+          {!item.is_read ? <Text style={styles.hint}>اضغط لتحديده كمقروء</Text> : null}
         </TouchableOpacity>
       ))}
     </Screen>
