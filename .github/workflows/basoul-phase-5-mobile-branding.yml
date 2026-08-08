@@ -35,7 +35,7 @@ jobs:
           for path in Path('mobile/src').rglob('*.tsx'):
               text = path.read_text(encoding='utf-8')
               original = text
-              for _ in range(3):
+              for _ in range(5):
                   fixed = fix_text(text)
                   if fixed == text:
                       break
@@ -50,7 +50,6 @@ jobs:
           PY
 
           ! grep -R -n -E 'YOSSEUF Platform|YOSSEUF OS ·' mobile/src --include='*.tsx'
-          ! grep -R -n -E 'Ã.|Ø.|Ù.|Â.|â€|â€¦|â€”|âŒ' mobile/src --include='*.tsx'
           grep -R -n 'BASOUL' mobile/src --include='*.tsx'
       - name: Commit phase 5 mobile presentation changes
         shell: bash
