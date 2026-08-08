@@ -7,10 +7,10 @@ import type { MobileWorkspaceData } from "../../types/domain";
 type Props = { data: MobileWorkspaceData; onBack: () => void };
 
 const severityLabel: Record<SignalSeverity, string> = {
-  critical: "Ø­Ø±Ø¬",
-  warning: "Ø§Ù†ØªØ¨Ø§Ù‡",
-  positive: "Ù…Ø³ØªÙ‚Ø±",
-  info: "Ù…Ø¹Ù„ÙˆÙ…Ø©",
+  critical: "حرج",
+  warning: "انتباه",
+  positive: "مستقر",
+  info: "معلومة",
 };
 
 export function CommandCenterScreen({ data, onBack }: Props) {
@@ -19,19 +19,19 @@ export function CommandCenterScreen({ data, onBack }: Props) {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack}><Text style={styles.back}>Ø±Ø¬ÙˆØ¹</Text></TouchableOpacity>
-        <View><Text style={styles.eyebrow}>BASOUL Â· EXECUTIVE KERNEL</Text><Text style={styles.title}>Ù…Ø±ÙƒØ² Ø§Ù„Ù‚ÙŠØ§Ø¯Ø©</Text></View>
+        <TouchableOpacity onPress={onBack}><Text style={styles.back}>رجوع</Text></TouchableOpacity>
+        <View><Text style={styles.eyebrow}>BASOUL · EXECUTIVE KERNEL</Text><Text style={styles.title}>مركز القيادة</Text></View>
       </View>
 
       <View style={styles.hero}>
         <Text style={styles.heroLabel}>Ã™â€¦Ã˜Â§Ã˜Â°Ã˜Â§ Ã™Å Ã˜Â¬Ã˜Â¨ Ã˜Â£Ã™â€  Ã˜ÂªÃ™ÂÃ˜Â¹Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¢Ã™â€ Ã˜Å¸</Text>
         <Text style={styles.heroTitle}>{snapshot.headline}</Text>
         <Text style={styles.heroBrief}>{snapshot.brief}</Text>
-        <Text style={styles.confidence}>Ø«Ù‚Ø© Ø§Ù„ØªØ­Ù„ÙŠÙ„ {snapshot.confidence}%</Text>
+        <Text style={styles.confidence}>ثقة التحليل {snapshot.confidence}%</Text>
       </View>
 
       <View style={styles.healthCard}>
-        <Text style={styles.sectionTitle}>ØµØ­Ø© Ù…Ø³Ø§Ø­Ø© Ø§Ù„Ø¹Ù…Ù„</Text>
+        <Text style={styles.sectionTitle}>صحة مساحة العمل</Text>
         <Text style={styles.healthScore}>{snapshot.health.score}%</Text>
         {snapshot.health.factors.map((factor) => (
           <View key={factor.id} style={styles.factor}>
@@ -47,15 +47,15 @@ export function CommandCenterScreen({ data, onBack }: Props) {
           <View style={styles.row}><Text style={styles.badge}>{severityLabel[signal.severity]}</Text><Text style={styles.rank}>#{index + 1}</Text></View>
           <Text style={styles.cardTitle}>{signal.title}</Text>
           <Text style={styles.explanation}>{signal.explanation}</Text>
-          <Text style={styles.action}>Ø§Ù„Ø¥Ø¬Ø±Ø§Ø¡: {signal.recommendedAction}</Text>
+          <Text style={styles.action}>الإجراء: {signal.recommendedAction}</Text>
         </View>
       ))}
 
-      <Text style={styles.sectionTitle}>Ø§Ù„Ù…Ø®Ø§Ø·Ø± Ø§Ù„Ù…ØªÙˆÙ‚Ø¹Ø©</Text>
-      {snapshot.risks.length === 0 ? <View style={styles.card}><Text style={styles.cardTitle}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ø®Ø§Ø·Ø± ØªÙ†Ø¨Ø¤ÙŠØ© ÙˆØ§Ø¶Ø­Ø© Ø­Ø§Ù„ÙŠÙ‹Ø§</Text></View> : null}
+      <Text style={styles.sectionTitle}>المخاطر المتوقعة</Text>
+      {snapshot.risks.length === 0 ? <View style={styles.card}><Text style={styles.cardTitle}>لا توجد مخاطر تنبؤية واضحة حاليًا</Text></View> : null}
       {snapshot.risks.map((risk) => (
         <View key={risk.id} style={styles.card}>
-          <View style={styles.row}><Text style={styles.badge}>{risk.probability}%</Text><Text style={styles.rank}>Ø®Ù„Ø§Ù„ {risk.horizonDays} Ø£ÙŠØ§Ù…</Text></View>
+          <View style={styles.row}><Text style={styles.badge}>{risk.probability}%</Text><Text style={styles.rank}>خلال {risk.horizonDays} أيام</Text></View>
           <Text style={styles.cardTitle}>{risk.title}</Text>
           <Text style={styles.explanation}>{risk.reason}</Text>
           <Text style={styles.action}>Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â®Ã™ÂÃ™Å Ã™Â: {risk.mitigation}</Text>

@@ -22,7 +22,7 @@ export function LoginScreen() {
 
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
-      setMessage("Ø£Ø¯Ø®Ù„ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ Ù„Ø¥Ø±Ø³Ø§Ù„ Ø±Ø§Ø¨Ø· Ø§Ù„Ø¯Ø®ÙˆÙ„.");
+      setMessage("أدخل البريد الإلكتروني لإرسال رابط الدخول.");
       return;
     }
 
@@ -48,14 +48,14 @@ export function LoginScreen() {
   return (
     <Screen>
       <View style={styles.hero}>
-        <Text style={styles.kicker}>BASOUL Â· MOBILE</Text>
-        <Text style={styles.title}>Ù…Ø±ÙƒØ² Ø§Ù„Ù‚ÙŠØ§Ø¯Ø© Ù…Ø¹Ùƒ Ø¯Ø§Ø¦Ù…Ù‹Ø§</Text>
+        <Text style={styles.kicker}>BASOUL · MOBILE</Text>
+        <Text style={styles.title}>مركز القيادة معك دائمًا</Text>
         <Text style={styles.subtitle}>Ã˜Â§Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦ Ã˜Â±Ã˜Â§Ã˜Â¨Ã˜Â· Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â®Ã™Ë†Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¢Ã™â€¦Ã™â€  Ã™â€ Ã™ÂÃ˜Â³Ã™â€¡ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦ Ã™ÂÃ™Å  Ã™â€ Ã˜Â³Ã˜Â®Ã˜Â© Ã˜Â§Ã™â€žÃ™Ë†Ã™Å Ã˜Â¨.</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø¹Ø¨Ø± Ø§Ù„Ø¨Ø±ÙŠØ¯</Text>
-        <Text style={styles.label}>Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ</Text>
+        <Text style={styles.cardTitle}>الدخول عبر البريد</Text>
+        <Text style={styles.label}>البريد الإلكتروني</Text>
         <TextInput
           value={email}
           onChangeText={setEmail}
@@ -72,10 +72,10 @@ export function LoginScreen() {
         />
         {message ? <Text style={sent ? styles.success : styles.error}>{message}</Text> : null}
         <TouchableOpacity style={[styles.button, loading && styles.disabled]} onPress={() => void sendMagicLink()} disabled={loading}>
-          {loading ? <ActivityIndicator color={tokens.colors.background} /> : <Text style={styles.buttonText}>Ø¥Ø±Ø³Ø§Ù„ Ø±Ø§Ø¨Ø· Ø§Ù„Ø¯Ø®ÙˆÙ„</Text>}
+          {loading ? <ActivityIndicator color={tokens.colors.background} /> : <Text style={styles.buttonText}>إرسال رابط الدخول</Text>}
         </TouchableOpacity>
         <Text style={styles.help}>Ã˜Â§Ã™â€žÃ˜Â±Ã˜Â§Ã˜Â¨Ã˜Â· Ã˜ÂµÃ˜Â§Ã™â€žÃ˜Â­ Ã™â€žÃ™â€¦Ã˜Â±Ã˜Â© Ã™Ë†Ã˜Â§Ã˜Â­Ã˜Â¯Ã˜Â©. Ã™Å Ã˜Â¬Ã˜Â¨ Ã™ÂÃ˜ÂªÃ˜Â­Ã™â€¡ Ã˜Â¹Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ˜Â¬Ã™â€¡Ã˜Â§Ã˜Â² Ã˜Â§Ã™â€žÃ˜Â°Ã™Å  Ã™Å Ã˜Â­Ã˜ÂªÃ™Ë†Ã™Å  Ã˜Â¹Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â·Ã˜Â¨Ã™Å Ã™â€š.</Text>
-        <Text style={styles.config}>{isMobileConfigured ? "Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ù…Ù†ØµØ© Ø¬Ø§Ù‡Ø²" : "Ø¥Ø¹Ø¯Ø§Ø¯ Supabase Ù…Ø·Ù„ÙˆØ¨"}</Text>
+        <Text style={styles.config}>{isMobileConfigured ? "الاتصال بالمنصة جاهز" : "إعداد Supabase مطلوب"}</Text>
       </View>
     </Screen>
   );
