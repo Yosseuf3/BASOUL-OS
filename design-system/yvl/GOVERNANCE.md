@@ -5,3 +5,5 @@ YVL is the visual source of truth. New visual primitives require a proposal desc
 Products consume semantic aliases and may not fork core palettes, spacing, radii, typography, or motion. Exceptions must be documented, time-bounded, and assigned an owner. Changes follow semantic versioning: patch for corrections, minor for additive tokens, major for breaking semantics.
 
 Every adoption PR must show token usage, RTL and responsive behavior, keyboard focus, reduced motion, contrast evidence, and rollback scope.
+
+Canonical JSON is authoritative. Generated artifacts must never be edited directly and must remain byte-for-byte reproducible. Product aliases may narrow a semantic role but may not redefine its meaning. Adoption is reversible: keep legacy tokens until parity is verified, migrate bounded surfaces, and document the rollback commit or flag before release.

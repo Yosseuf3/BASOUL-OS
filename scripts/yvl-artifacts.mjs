@@ -24,7 +24,7 @@ export function artifacts(tokens) {
   return {
     "packages/yvl-tokens/generated/yvl.css": css.join("\n"),
     "packages/yvl-tokens/generated/tokens.ts": `${banner}export const yvlGeneratedTokens = ${JSON.stringify(tokenMap, null, 2)} as const;\n`,
-    "packages/yvl-tokens/generated/react-native.ts": `${banner}import { yvlGeneratedTokens } from "./tokens";\nexport const yvlNativeTokens = { color: yvlGeneratedTokens.color, typography: yvlGeneratedTokens.typography, spacing: yvlGeneratedTokens.spacing, radii: yvlGeneratedTokens.radii, motion: yvlGeneratedTokens.motion } as const;\n`,
+    "packages/yvl-tokens/generated/react-native.ts": `${banner}import { yvlGeneratedTokens } from "./tokens";\nexport const yvlNativeTokens = { color: yvlGeneratedTokens.color, typography: yvlGeneratedTokens.typography, spacing: yvlGeneratedTokens.spacing, radii: yvlGeneratedTokens.radii, shadows: yvlGeneratedTokens.shadows, motion: yvlGeneratedTokens.motion } as const;\n`,
     "packages/yvl-tokens/generated/manifest.json": `${JSON.stringify({ version: colors.version, source: "design-system/yvl/tokens", artifacts: ["yvl.css", "tokens.ts", "react-native.ts"] }, null, 2)}\n`,
   };
 }
