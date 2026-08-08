@@ -26,42 +26,48 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          roots = [Path('mobile/src')]
-          markers = ('Ã', 'Ø', 'Ù', 'Â', 'â€')
-          repaired = 0
+          markers = ('Ã', 'Ø', 'Ù', 'Â', 'â€', 'â€¦', 'â€”')
+
+          def marker_score(s: str) -> int:
+              return sum(s.count(m) for m in markers)
+
+          def repair_line(line: str) -> str:
+              current = line
+              for _ in range(4):
+                  if marker_score(current) == 0:
+                      break
+                  best = current
+                  best_score = marker_score(current)
+                  for enc in ('latin1', 'cp1252'):
+                      try:
+                          candidate = current.encode(enc).decode('utf-8')
+                      except (UnicodeEncodeError, UnicodeDecodeError):
+                          continue
+                      score = marker_score(candidate)
+                      if score < best_score:
+                          best, best_score = candidate, score
+                  if best == current:
+                      break
+                  current = best
+              return current
+
           changed = 0
+          for path in Path('mobile/src').rglob('*.tsx'):
+              text = path.read_text(encoding='utf-8')
+              original = text
+              text = ''.join(repair_line(line) for line in text.splitlines(keepends=True))
+              text = text.replace('YOSSEUF Platform · MOBILE', 'BASOUL · MOBILE')
+              text = text.replace('YOSSEUF Platform', 'BASOUL')
+              text = text.replace('YOSSEUF OS ·', 'BASOUL ·')
+              if text != original:
+                  path.write_text(text, encoding='utf-8')
+                  changed += 1
 
-          for root in roots:
-              for path in root.rglob('*.tsx'):
-                  text = path.read_text(encoding='utf-8')
-                  original = text
-                  out = []
-                  for line in text.splitlines(keepends=True):
-                      candidate = line
-                      if any(m in line for m in markers):
-                          for enc in ('latin1', 'cp1252'):
-                              try:
-                                  decoded = line.encode(enc).decode('utf-8')
-                                  if decoded != line:
-                                      candidate = decoded
-                                      repaired += 1
-                                      break
-                              except (UnicodeEncodeError, UnicodeDecodeError):
-                                  pass
-                      out.append(candidate)
-                  text = ''.join(out)
-                  text = text.replace('YOSSEUF Platform · MOBILE', 'BASOUL · MOBILE')
-                  text = text.replace('YOSSEUF Platform', 'BASOUL')
-                  text = text.replace('YOSSEUF OS ·', 'BASOUL ·')
-                  if text != original:
-                      path.write_text(text, encoding='utf-8')
-                      changed += 1
-
-          print(f'changed files: {changed}; repaired lines: {repaired}')
+          print(f'changed files: {changed}')
           PY
 
           ! grep -R -n -E 'YOSSEUF Platform|YOSSEUF OS ·' mobile/src --include='*.tsx'
-          ! grep -R -n -E 'Ã.|Ø.|Ù.|Â.|â€' mobile/src --include='*.tsx'
+          ! grep -R -n -E 'Ã.|Ø.|Ù.|Â.|â€|â€¦|â—' mobile/src --include='*.tsx'
           grep -R -n 'BASOUL' mobile/src --include='*.tsx'
       - name: Commit phase 5 mobile presentation changes
         shell: bash
