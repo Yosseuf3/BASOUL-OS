@@ -1,0 +1,39 @@
+name: BASOUL Phase 3C Lockfile Refresh
+
+on:
+  push:
+    branches:
+      - migration/basoul-phase-3c-package-manifests
+    paths:
+      - package.json
+      - packages/**/package.json
+      - .github/workflows/basoul-phase3c-lockfile-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lockfile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: migration/basoul-phase-3c-package-manifests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+          cache: npm
+      - name: Regenerate npm lockfile
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Commit lockfile if changed
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json already synchronized"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore(lockfile): sync BASOUL Phase 3C workspace names"
+          git push origin HEAD:migration/basoul-phase-3c-package-manifests
