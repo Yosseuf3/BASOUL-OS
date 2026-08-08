@@ -52,6 +52,8 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
       - run: npm install
+      - run: git diff -- mobile/package-lock.json
+        working-directory: .
       - run: npm run audit:production
       - run: npm run typecheck
       - run: npm run doctor
