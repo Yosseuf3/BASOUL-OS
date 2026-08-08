@@ -3,7 +3,7 @@ import { Screen } from "../../components/Screen";
 import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
 import type { Project } from "../../types/domain";
 
-const statusLabels: Record<Project["status"], string> = { Planning: "ØªØ®Ø·ÙŠØ·", Active: "Ù†Ø´Ø·", "On Hold": "Ù…ØªÙˆÙ‚Ù Ù…Ø¤Ù‚ØªÙ‹Ø§", Completed: "Ù…ÙƒØªÙ…Ù„" };
+const statusLabels: Record<Project["status"], string> = { Planning: "تخطيط", Active: "نشط", "On Hold": "متوقف مؤقتًا", Completed: "مكتمل" };
 
 export function ProjectsScreen({ projects, onBack }: { projects: Project[]; onBack: () => void }) {
   return (

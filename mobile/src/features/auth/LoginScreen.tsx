@@ -16,7 +16,7 @@ export function LoginScreen() {
     setSent(false);
 
     if (!supabase) {
-      setMessage("Ã˜Â£Ã˜Â¶Ã™Â Ã™â€¦Ã™ÂÃ˜Â§Ã˜ÂªÃ™Å Ã˜Â­ Supabase Ã˜Â¯Ã˜Â§Ã˜Â®Ã™â€ž Ã™â€¦Ã™â€žÃ™Â .env Ã˜Â£Ã™Ë†Ã™â€žÃ™â€¹Ã˜Â§.");
+      setMessage("أضف مفاتيح Supabase داخل ملف .env أولًا.");
       return;
     }
 
@@ -42,7 +42,7 @@ export function LoginScreen() {
     }
 
     setSent(true);
-    setMessage("Ã˜ÂªÃ™â€¦ Ã˜Â¥Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â±Ã˜Â§Ã˜Â¨Ã˜Â· Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â®Ã™Ë†Ã™â€ž. Ã˜Â§Ã™ÂÃ˜ÂªÃ˜Â­ Ã˜Â§Ã™â€žÃ˜Â±Ã˜Â³Ã˜Â§Ã™â€žÃ˜Â© Ã™â€¦Ã™â€  Ã™â€¡Ã˜Â°Ã˜Â§ Ã˜Â§Ã™â€žÃ˜Â¬Ã™â€¡Ã˜Â§Ã˜Â² Ã™Ë†Ã˜Â§Ã˜Â¶Ã˜ÂºÃ˜Â· Ã˜Â§Ã™â€žÃ˜Â±Ã˜Â§Ã˜Â¨Ã˜Â· Ã™â€žÃ™â€žÃ˜Â¹Ã™Ë†Ã˜Â¯Ã˜Â© Ã˜Â¥Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â·Ã˜Â¨Ã™Å Ã™â€š.");
+    setMessage("تم إرسال رابط الدخول. افتح الرسالة من هذا الجهاز واضغط الرابط للعودة إلى التطبيق.");
   }
 
   return (
@@ -50,7 +50,7 @@ export function LoginScreen() {
       <View style={styles.hero}>
         <Text style={styles.kicker}>BASOUL · MOBILE</Text>
         <Text style={styles.title}>مركز القيادة معك دائمًا</Text>
-        <Text style={styles.subtitle}>Ã˜Â§Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦ Ã˜Â±Ã˜Â§Ã˜Â¨Ã˜Â· Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â®Ã™Ë†Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¢Ã™â€¦Ã™â€  Ã™â€ Ã™ÂÃ˜Â³Ã™â€¡ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦ Ã™ÂÃ™Å  Ã™â€ Ã˜Â³Ã˜Â®Ã˜Â© Ã˜Â§Ã™â€žÃ™Ë†Ã™Å Ã˜Â¨.</Text>
+        <Text style={styles.subtitle}>استخدم رابط الدخول الآمن نفسه المستخدم في نسخة الويب.</Text>
       </View>
 
       <View style={styles.card}>
@@ -74,7 +74,7 @@ export function LoginScreen() {
         <TouchableOpacity style={[styles.button, loading && styles.disabled]} onPress={() => void sendMagicLink()} disabled={loading}>
           {loading ? <ActivityIndicator color={tokens.colors.background} /> : <Text style={styles.buttonText}>إرسال رابط الدخول</Text>}
         </TouchableOpacity>
-        <Text style={styles.help}>Ã˜Â§Ã™â€žÃ˜Â±Ã˜Â§Ã˜Â¨Ã˜Â· Ã˜ÂµÃ˜Â§Ã™â€žÃ˜Â­ Ã™â€žÃ™â€¦Ã˜Â±Ã˜Â© Ã™Ë†Ã˜Â§Ã˜Â­Ã˜Â¯Ã˜Â©. Ã™Å Ã˜Â¬Ã˜Â¨ Ã™ÂÃ˜ÂªÃ˜Â­Ã™â€¡ Ã˜Â¹Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ˜Â¬Ã™â€¡Ã˜Â§Ã˜Â² Ã˜Â§Ã™â€žÃ˜Â°Ã™Å  Ã™Å Ã˜Â­Ã˜ÂªÃ™Ë†Ã™Å  Ã˜Â¹Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â·Ã˜Â¨Ã™Å Ã™â€š.</Text>
+        <Text style={styles.help}>الرابط صالح لمرة واحدة. يجب فتحه على الجهاز الذي يحتوي على التطبيق.</Text>
         <Text style={styles.config}>{isMobileConfigured ? "الاتصال بالمنصة جاهز" : "إعداد Supabase مطلوب"}</Text>
       </View>
     </Screen>

@@ -13,13 +13,13 @@ export function GlobalSearchScreen({ data, onBack }: { data: MobileWorkspaceData
     if (!needle) return [];
     const projects = data.projects.filter((item) => [item.name, item.client_name, item.project_number, item.location].some((value) => value?.toLocaleLowerCase().includes(needle))).map((item) => ({ id: `p-${item.id}`, type: "مشروع" as const, title: item.name, subtitle: `${item.status} · ${item.progress}%` }));
     const tasks = data.tasks.filter((item) => item.title.toLocaleLowerCase().includes(needle)).map((item) => ({ id: `t-${item.id}`, type: "مهمة" as const, title: item.title, subtitle: `${item.priority} · ${item.status}` }));
-    const notifications = data.notifications.filter((item) => `${item.title} ${item.message || ""}`.toLocaleLowerCase().includes(needle)).map((item) => ({ id: `n-${item.id}`, type: "ØªÙ†Ø¨ÙŠÙ‡" as const, title: item.title, subtitle: item.message || "Ø¨Ø¯ÙˆÙ† ØªÙØ§ØµÙŠÙ„" }));
+    const notifications = data.notifications.filter((item) => `${item.title} ${item.message || ""}`.toLocaleLowerCase().includes(needle)).map((item) => ({ id: `n-${item.id}`, type: "تنبيه" as const, title: item.title, subtitle: item.message || "بدون تفاصيل" }));
     return [...projects, ...tasks, ...notifications].slice(0, 30);
   }, [data, query]);
 
   return <Screen>
     <View style={styles.header}><TouchableOpacity onPress={onBack} style={styles.back}><Text style={styles.backText}>عودة</Text></TouchableOpacity><View><Text style={styles.kicker}>GLOBAL SEARCH</Text><Text style={styles.title}>بحث شامل</Text></View></View>
-    <TextInput autoFocus value={query} onChangeText={setQuery} style={styles.input} placeholder="Ø§Ø¨Ø­Ø« ÙÙŠ Ø§Ù„Ù…Ø´Ø§Ø±ÙŠØ¹ ÙˆØ§Ù„Ù…Ù‡Ø§Ù… ÙˆØ§Ù„ØªÙ†Ø¨ÙŠÙ‡Ø§Øª" placeholderTextColor={tokens.colors.muted} textAlign="right" />
+    <TextInput autoFocus value={query} onChangeText={setQuery} style={styles.input} placeholder="ابحث في المشاريع والمهام والتنبيهات" placeholderTextColor={tokens.colors.muted} textAlign="right" />
     {!query.trim() ? <Text style={styles.hint}>اكتب اسم مشروع، عميل، مهمة أو كلمة من تنبيه.</Text> : results.length === 0 ? <Text style={styles.hint}>لا توجد نتائج مطابقة.</Text> : results.map((result) => <View key={result.id} style={styles.card}><View style={styles.top}><Text style={styles.badge}>{result.type}</Text><Text style={styles.resultTitle}>{result.title}</Text></View><Text style={styles.subtitle}>{result.subtitle}</Text></View>)}
   </Screen>;
 }

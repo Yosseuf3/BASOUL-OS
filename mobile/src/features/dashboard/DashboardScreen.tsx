@@ -12,27 +12,27 @@ export function DashboardScreen({ data, onNavigate, onRefresh, refreshing }: { d
   return <Screen>
     <View style={styles.headerRow}><TouchableOpacity onPress={onRefresh} style={styles.refresh}><Text style={styles.refreshText}>{refreshing ? "…" : "تحديث"}</Text></TouchableOpacity><View><Text style={styles.kicker}>BASOUL · EXECUTIVE WORKSPACE</Text><Text style={styles.title}>مركز القيادة</Text></View></View>
 
-    <TouchableOpacity style={styles.search} onPress={() => onNavigate("search")}><Text style={styles.searchIcon}>Ã¢Å’â€¢</Text><Text style={styles.searchText}>Ã˜Â¨Ã˜Â­Ã˜Â« Ã˜Â´Ã˜Â§Ã™â€¦Ã™â€ž Ã™ÂÃ™Å  Ã™â€¦Ã˜Â³Ã˜Â§Ã˜Â­Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â¹Ã™â€¦Ã™â€ž</Text></TouchableOpacity>
+    <TouchableOpacity style={styles.search} onPress={() => onNavigate("search")}><Text style={styles.searchIcon}>⌕</Text><Text style={styles.searchText}>بحث شامل في مساحة العمل</Text></TouchableOpacity>
 
-    <View style={styles.brief}><View style={styles.briefTop}><Text style={styles.confidence}>Ã˜Â«Ã™â€šÃ˜Â© Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã™â€žÃ™Å Ã™â€ž {snapshot.confidence}%</Text><Text style={styles.label}>Ã™â€¦Ã˜Â§Ã˜Â°Ã˜Â§ Ã˜Â£Ã™ÂÃ˜Â¹Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¢Ã™â€ Ã˜Å¸</Text></View><Text style={styles.briefTitle}>{snapshot.headline}</Text><Text style={styles.body}>{snapshot.summary}</Text></View>
+    <View style={styles.brief}><View style={styles.briefTop}><Text style={styles.confidence}>ثقة التحليل {snapshot.confidence}%</Text><Text style={styles.label}>ماذا أفعل الآن؟</Text></View><Text style={styles.briefTitle}>{snapshot.headline}</Text><Text style={styles.body}>{snapshot.summary}</Text></View>
 
     <View style={styles.healthCard}><View><Text style={styles.healthDelta}>{healthDelta} منذ آخر مراجعة</Text><Text style={styles.healthReason}>{snapshot.overdueTasks === 0 ? "لا توجد مهام متأخرة" : `${snapshot.overdueTasks} مهمة متأخرة تؤثر على الأداء`}</Text></View><View><Text style={styles.healthValue}>{snapshot.health}%</Text><Text style={styles.healthLabel}>صحة مساحة العمل</Text></View></View>
 
-    <View style={styles.metrics}><Metric value={String(snapshot.activeProjects)} label="Ã™â€¦Ã˜Â´Ã˜Â§Ã˜Â±Ã™Å Ã˜Â¹ Ã™â€ Ã˜Â´Ã˜Â·Ã˜Â©" /><Metric value={String(snapshot.openTasks)} label="Ã™â€¦Ã™â€¡Ã˜Â§Ã™â€¦ Ã™â€¦Ã™ÂÃ˜ÂªÃ™Ë†Ã˜Â­Ã˜Â©" /></View>
+    <View style={styles.metrics}><Metric value={String(snapshot.activeProjects)} label="مشاريع نشطة" /><Metric value={String(snapshot.openTasks)} label="مهام مفتوحة" /></View>
 
     <Text style={styles.sectionTitle}>إجراءات سريعة</Text>
-    <View style={styles.quickGrid}><Quick title="+ Ã™â€¦Ã™â€¡Ã™â€¦Ã˜Â©" meta="Ã˜Â¥Ã™â€ Ã˜Â´Ã˜Â§Ã˜Â¡ Ã™Ë†Ã˜ÂªÃ™â€ Ã™ÂÃ™Å Ã˜Â°" onPress={() => onNavigate("createTask")} /><Quick title="Ã˜Â§Ã™â€žÃ˜Â®Ã˜Â· Ã˜Â§Ã™â€žÃ˜Â²Ã™â€¦Ã™â€ Ã™Å " meta="Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã˜Â§Ã˜Â¹Ã™Å Ã˜Â¯ Ã™Ë†Ã˜Â§Ã™â€žÃ˜Â£Ã˜Â­Ã˜Â¯Ã˜Â§Ã˜Â«" onPress={() => onNavigate("timeline")} /></View>
+    <View style={styles.quickGrid}><Quick title="+ مهمة" meta="إنشاء وتنفيذ" onPress={() => onNavigate("createTask")} /><Quick title="الخط الزمني" meta="المواعيد والأحداث" onPress={() => onNavigate("timeline")} /></View>
 
     <View style={styles.sectionHeader}><TouchableOpacity onPress={() => onNavigate("tasks")}><Text style={styles.link}>عرض المهام</Text></TouchableOpacity><Text style={styles.sectionTitleInline}>تركيز اليوم</Text></View>
-    {snapshot.focusTasks.length === 0 ? <Text style={styles.empty}>Ã™â€žÃ˜Â§ Ã˜ÂªÃ™Ë†Ã˜Â¬Ã˜Â¯ Ã™â€¦Ã™â€¡Ã˜Â§Ã™â€¦ Ã™â€¦Ã™ÂÃ˜ÂªÃ™Ë†Ã˜Â­Ã˜Â©.</Text> : snapshot.focusTasks.map((task, index) => <TouchableOpacity key={task.id} style={styles.focus} onPress={() => onNavigate("tasks")}><Text style={styles.focusRank}>0{index + 1}</Text><View style={styles.focusBody}><Text style={styles.focusTitle}>{task.title}</Text><Text style={styles.focusMeta}>{task.priority} Ã‚Â· {task.status} Ã‚Â· {task.due_date || "Ã˜Â¨Ã˜Â¯Ã™Ë†Ã™â€  Ã™â€¦Ã™Ë†Ã˜Â¹Ã˜Â¯"}</Text></View></TouchableOpacity>)}
+    {snapshot.focusTasks.length === 0 ? <Text style={styles.empty}>لا توجد مهام مفتوحة.</Text> : snapshot.focusTasks.map((task, index) => <TouchableOpacity key={task.id} style={styles.focus} onPress={() => onNavigate("tasks")}><Text style={styles.focusRank}>0{index + 1}</Text><View style={styles.focusBody}><Text style={styles.focusTitle}>{task.title}</Text><Text style={styles.focusMeta}>{task.priority} · {task.status} · {task.due_date || "بدون موعد"}</Text></View></TouchableOpacity>)}
 
-    <Text style={styles.sectionTitle}>Ã˜ÂªÃ™Ë†Ã˜ÂµÃ™Å Ã˜Â§Ã˜Âª Ã˜ÂªÃ™â€ Ã™ÂÃ™Å Ã˜Â°Ã™Å Ã˜Â©</Text>
+    <Text style={styles.sectionTitle}>توصيات تنفيذية</Text>
     {snapshot.recommendations.map((item) => <View key={item.id} style={[styles.recommendation, item.severity === "critical" && styles.critical]}><Text style={styles.recommendationTitle}>{item.title}</Text><Text style={styles.recommendationReason}>{item.reason}</Text><Text style={styles.recommendationAction}>الإجراء: {item.action}</Text></View>)}
 
-    <TouchableOpacity style={styles.commandCenter} onPress={() => onNavigate("intelligence")}><Text style={styles.commandKicker}>EXECUTIVE KERNEL</Text><Text style={styles.commandTitle}>Ã™ÂÃ˜ÂªÃ˜Â­ Ã™â€¦Ã˜Â±Ã™Æ’Ã˜Â² Ã˜Â§Ã™â€žÃ™â€šÃ™Å Ã˜Â§Ã˜Â¯Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â°Ã™Æ’Ã™Å </Text><Text style={styles.actionMeta}>Ã™â€šÃ˜Â±Ã˜Â§Ã˜Â±Ã˜Â§Ã˜Âª Ã™â€¦Ã˜Â±Ã˜ÂªÃ˜Â¨Ã˜Â©Ã˜Å’ Ã˜ÂµÃ˜Â­Ã˜Â© Ã™â€¦Ã˜Â³Ã˜Â§Ã˜Â­Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â¹Ã™â€¦Ã™â€žÃ˜Å’ Ã™Ë†Ã™â€¦Ã˜Â®Ã˜Â§Ã˜Â·Ã˜Â± Ã™â€¦Ã˜ÂªÃ™Ë†Ã™â€šÃ˜Â¹Ã˜Â©.</Text></TouchableOpacity>
+    <TouchableOpacity style={styles.commandCenter} onPress={() => onNavigate("intelligence")}><Text style={styles.commandKicker}>EXECUTIVE KERNEL</Text><Text style={styles.commandTitle}>فتح مركز القيادة الذكي</Text><Text style={styles.actionMeta}>قرارات مرتبة، صحة مساحة العمل، ومخاطر متوقعة.</Text></TouchableOpacity>
 
     <Text style={styles.sectionTitle}>وصول سريع</Text><View style={styles.quickGrid}><Quick title="المشاريع" meta={`${data.projects.length} مشروع`} onPress={() => onNavigate("projects")} /><Quick title="الذكاء المعماري" meta={`${data.reviews.length} مراجعات`} onPress={() => onNavigate("architecture")} /></View>
-    <TouchableOpacity style={styles.action} onPress={() => onNavigate("architecture")}><Text style={styles.actionTitle}>Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â®Ã˜Â·Ã˜Â·Ã˜Â§Ã˜Âª Ã™Ë†Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â±Ã˜Â§Ã˜Â¬Ã˜Â¹Ã˜Â§Ã˜Âª</Text><Text style={styles.actionMeta}>{data.drawings.length} Ã™â€¦Ã˜Â®Ã˜Â·Ã˜Â·Ã˜Â§Ã˜Âª Ã™â€¦Ã˜Â­Ã™ÂÃ™Ë†Ã˜Â¸Ã˜Â© Ã‚Â· {data.reviews.length} Ã˜Â¬Ã™â€žÃ˜Â³Ã˜Â§Ã˜Âª Ã™â€šÃ˜Â§Ã˜Â¨Ã™â€žÃ˜Â© Ã™â€žÃ™â€žÃ˜ÂªÃ™â€ Ã™ÂÃ™Å Ã˜Â°</Text></TouchableOpacity>
+    <TouchableOpacity style={styles.action} onPress={() => onNavigate("architecture")}><Text style={styles.actionTitle}>المخططات والمراجعات</Text><Text style={styles.actionMeta}>{data.drawings.length} مخططات محفوظة · {data.reviews.length} جلسات قابلة للتنفيذ</Text></TouchableOpacity>
     <TouchableOpacity style={styles.action} onPress={() => onNavigate("notifications")}><Text style={styles.actionTitle}>الإشعارات</Text><Text style={styles.actionMeta}>{snapshot.unreadAlerts ? `${snapshot.unreadAlerts} غير مقروءة` : "كل الإشعارات تمت مراجعتها"}</Text></TouchableOpacity>
   </Screen>;
 }

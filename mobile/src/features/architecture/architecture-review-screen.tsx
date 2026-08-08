@@ -73,7 +73,7 @@ export function ArchitectureReviewScreen({
 
   async function uploadDrawing() {
     if (!projectId || !selectedFile) {
-      setMessage("Ø§Ø®ØªØ± Ø§Ù„Ù…Ø´Ø±ÙˆØ¹ ÙˆØ§Ù„Ù…Ù„Ù Ø£ÙˆÙ„Ù‹Ø§.");
+      setMessage("اختر المشروع والملف أولًا.");
       return;
     }
     try {
@@ -89,10 +89,10 @@ export function ArchitectureReviewScreen({
       setMessage(result.analysisStatus === "completed"
         ? `تم تحليل المخطط بصريًا واستخراج ${result.detectedElements} عنصرًا للمراجعة.`
         : result.failureCode === "quota_exceeded"
-          ? "ØªÙ… Ø­ÙØ¸ Ø§Ù„Ù…Ø®Ø·Ø·. ÙØ¹Ù‘Ù„ Ø±ØµÙŠØ¯ OpenAI API Ø«Ù… Ø£Ø¹Ø¯ Ø§Ù„ØªØ­Ù„ÙŠÙ„ Ø¯ÙˆÙ† Ø±ÙØ¹ Ø§Ù„Ù…Ù„Ù Ù…Ø±Ø© Ø£Ø®Ø±Ù‰."
-          : "ØªÙ… Ø­ÙØ¸ Ø§Ù„Ù…Ø®Ø·Ø·ØŒ Ù„ÙƒÙ† Ù„Ù… ØªÙÙƒØªØ´Ù Ø¹Ù†Ø§ØµØ± Ù…ÙˆØ«ÙˆÙ‚Ø©. Ø§Ø³ØªØ®Ø¯Ù… Ù…Ù„ÙÙ‹Ø§ Ø£ÙˆØ¶Ø­ Ø£Ùˆ PDF Ù…ØªØ¬Ù‡ÙŠÙ‹Ø§.");
+          ? "تم حفظ المخطط. فعّل رصيد OpenAI API ثم أعد التحليل دون رفع الملف مرة أخرى."
+          : "تم حفظ المخطط، لكن لم تُكتشف عناصر موثوقة. استخدم ملفًا أوضح أو PDF متجهيًا.");
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "ØªØ¹Ø°Ø± Ø±ÙØ¹ Ø§Ù„Ù…Ø®Ø·Ø·.");
+      setMessage(cause instanceof Error ? cause.message : "تعذر رفع المخطط.");
     }
   }
 
@@ -101,10 +101,10 @@ export function ArchitectureReviewScreen({
     try {
       const result = await onRetryDrawing(drawingId);
       setMessage(result.analysisStatus === "completed"
-        ? `Ø§ÙƒØªÙ…Ù„ Ø§Ù„ØªØ­Ù„ÙŠÙ„ ÙˆØ§ÙƒØªÙØ´Ù ${result.detectedElements} Ø¹Ù†ØµØ±Ù‹Ø§ Ù„Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©.`
+        ? `اكتمل التحليل واكتُشف ${result.detectedElements} عنصرًا للمراجعة.`
         : result.failureCode === "quota_exceeded"
-          ? "Ø±ØµÙŠØ¯ OpenAI API ØºÙŠØ± Ù…ØªØ§Ø­ Ø¨Ø¹Ø¯. ÙŠÙ…ÙƒÙ†Ùƒ Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„Ù…Ø­Ø§ÙˆÙ„Ø© Ù„Ø§Ø­Ù‚Ù‹Ø§ Ø¯ÙˆÙ† Ø±ÙØ¹ Ø§Ù„Ù…Ù„Ù."
-          : "Ø§ÙƒØªÙ…Ù„Øª Ø§Ù„Ù…Ø­Ø§ÙˆÙ„Ø©ØŒ Ù„ÙƒÙ† Ù„Ù… ØªÙÙƒØªØ´Ù Ø¹Ù†Ø§ØµØ± Ù…ÙˆØ«ÙˆÙ‚Ø©.");
+          ? "رصيد OpenAI API غير متاح بعد. يمكنك إعادة المحاولة لاحقًا دون رفع الملف."
+          : "اكتملت المحاولة، لكن لم تُكتشف عناصر موثوقة.");
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "تعذرت إعادة تحليل المخطط.");
     }
@@ -124,7 +124,7 @@ export function ArchitectureReviewScreen({
       </View>
 
       <View style={styles.uploadCard}>
-        <Text selectable style={styles.sectionTitleInline}>Ø±ÙØ¹ Ù…Ø®Ø·Ø· Ù„Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©</Text>
+        <Text selectable style={styles.sectionTitleInline}>رفع مخطط للمراجعة</Text>
         <Text selectable style={styles.uploadHint}>PDF أو PNG أو JPG أو WebP، بحد أقصى 50 MB.</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectChoices}>
           {data.projects.map((project) => (
@@ -148,7 +148,7 @@ export function ArchitectureReviewScreen({
             textAlign="right"
           />
           <TouchableOpacity style={styles.fileButton} onPress={() => void chooseDrawing()}>
-            <Text style={styles.fileButtonText}>{selectedFile ? "ØªØºÙŠÙŠØ± Ø§Ù„Ù…Ù„Ù" : "Ø§Ø®ØªÙŠØ§Ø± Ù…Ù„Ù"}</Text>
+            <Text style={styles.fileButtonText}>{selectedFile ? "تغيير الملف" : "اختيار ملف"}</Text>
           </TouchableOpacity>
         </View>
         {selectedFile ? <Text selectable style={styles.fileName}>{selectedFile.name}</Text> : null}
@@ -157,14 +157,14 @@ export function ArchitectureReviewScreen({
           disabled={!projectId || !selectedFile || uploadingDrawing}
           onPress={() => void uploadDrawing()}
         >
-          <Text style={styles.uploadButtonText}>{uploadingDrawing ? "Ø¬Ø§Ø±Ù Ø§Ù„Ø±ÙØ¹ ÙˆØ§Ù„ØªØ­Ù„ÙŠÙ„" : "Ø±ÙØ¹ ÙˆØªØ­Ù„ÙŠÙ„ Ø§Ù„Ù…Ø®Ø·Ø·"}</Text>
+          <Text style={styles.uploadButtonText}>{uploadingDrawing ? "جارٍ الرفع والتحليل" : "رفع وتحليل المخطط"}</Text>
         </TouchableOpacity>
         {message ? <Text selectable style={styles.uploadMessage}>{message}</Text> : null}
       </View>
 
-      <Text style={styles.sectionTitle}>Ø§Ù„Ù…Ø®Ø·Ø·Ø§Øª Ø§Ù„Ù…Ø­ÙÙˆØ¸Ø©</Text>
+      <Text style={styles.sectionTitle}>المخططات المحفوظة</Text>
       {data.drawings.length === 0 ? (
-        <View style={styles.empty}><Text selectable style={styles.emptyTitle}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ø®Ø·Ø·Ø§Øª Ù…Ø­ÙÙˆØ¸Ø©</Text><Text selectable style={styles.emptyText}>Ø§Ø±ÙØ¹ Ø£ÙˆÙ„ Ù…Ø®Ø·Ø· Ù„ØªØ´ØºÙŠÙ„ Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø© Ø§Ù„Ù…Ø¹Ù…Ø§Ø±ÙŠØ©.</Text></View>
+        <View style={styles.empty}><Text selectable style={styles.emptyTitle}>لا توجد مخططات محفوظة</Text><Text selectable style={styles.emptyText}>ارفع أول مخطط لتشغيل المراجعة المعمارية.</Text></View>
       ) : data.drawings.map((drawing) => (
         <View key={drawing.id} style={styles.drawingCard}>
           <View style={styles.reviewInfo}>
@@ -176,14 +176,14 @@ export function ArchitectureReviewScreen({
             style={[styles.retryButton, retryingDrawingId === drawing.id && styles.uploadButtonDisabled]}
             onPress={() => void retryDrawing(drawing.id)}
           >
-            <Text style={styles.retryButtonText}>{retryingDrawingId === drawing.id ? "Ø¬Ø§Ø±Ù Ø§Ù„ØªØ­Ù„ÙŠÙ„" : "Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„ØªØ­Ù„ÙŠÙ„"}</Text>
+            <Text style={styles.retryButtonText}>{retryingDrawingId === drawing.id ? "جارٍ التحليل" : "إعادة التحليل"}</Text>
           </TouchableOpacity>
         </View>
       ))}
 
-      <Text style={styles.sectionTitle}>ÙÙ‡Ù… Ø¹Ù†Ø§ØµØ± Ø§Ù„Ù…Ø®Ø·Ø·</Text>
+      <Text style={styles.sectionTitle}>فهم عناصر المخطط</Text>
       <View style={styles.elementSummary}>
-        <Metric value={String(data.planElements.length)} label="Ù…ÙƒØªØ´Ù" />
+        <Metric value={String(data.planElements.length)} label="مكتشف" />
         <Metric value={String(confirmedElementCount)} label="مؤكد" />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.elementFilters}>
@@ -196,7 +196,7 @@ export function ArchitectureReviewScreen({
       {data.planElements.length === 0 ? (
         <View style={styles.empty}>
           <Text selectable style={styles.emptyTitle}>لا توجد عناصر مخطط منظمة بعد</Text>
-          <Text selectable style={styles.emptyText}>Ø£Ø¶Ù Ø§Ù„Ø¹Ù†Ø§ØµØ± Ø£Ùˆ ØµØ­Ø­Ù‡Ø§ Ù…Ù† Ø§Ù„ÙˆÙŠØ¨ØŒ Ø«Ù… Ø§Ø¹ØªÙ…Ø¯ Ø§Ù„Ù†ØªØ§Ø¦Ø¬ Ù‡Ù†Ø§ Ø£Ø«Ù†Ø§Ø¡ Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø© Ø§Ù„Ù…ÙŠØ¯Ø§Ù†ÙŠØ©.</Text>
+          <Text selectable style={styles.emptyText}>أضف العناصر أو صححها من الويب، ثم اعتمد النتائج هنا أثناء المراجعة الميدانية.</Text>
         </View>
       ) : visiblePlanElements.length === 0 ? (
         <View style={styles.empty}><Text selectable style={styles.emptyTitle}>لا توجد نتائج مطابقة</Text><Text selectable style={styles.emptyText}>غيّر نوع العنصر لعرض بقية النتائج.</Text></View>
@@ -211,29 +211,29 @@ export function ArchitectureReviewScreen({
           </Text>
           {element.value ? <Text selectable style={styles.elementValue}>{element.value}{element.unit ? ` ${element.unit}` : ""}</Text> : null}
           {element.geometry?.page ? <Text selectable style={styles.elementLocation}>
-            Ø§Ù„ØµÙØ­Ø© {element.geometry.page}
+            الصفحة {element.geometry.page}
             {typeof element.geometry.x === "number" && typeof element.geometry.y === "number" ? ` · موضع ${Math.round(element.geometry.x)}, ${Math.round(element.geometry.y)}` : ""}
             {typeof element.geometry.width === "number" && typeof element.geometry.height === "number" ? ` · حجم ${Math.round(element.geometry.width)}×${Math.round(element.geometry.height)}` : ""}
           </Text> : null}
           {element.geometry?.kind !== "wall_gap" && element.geometry?.start && element.geometry?.end ? (
             <Text selectable style={styles.elementGeometry}>
-              ({element.geometry.start.x}, {element.geometry.start.y}) â† ({element.geometry.end.x}, {element.geometry.end.y})
+              ({element.geometry.start.x}, {element.geometry.start.y}) ← ({element.geometry.end.x}, {element.geometry.end.y})
             </Text>
           ) : null}
           {element.geometry?.kind === "paired_lines" && element.geometry.centerline ? (
             <Text selectable style={styles.elementGeometry}>
-              Ù…Ø­ÙˆØ± Ø§Ù„Ø¬Ø¯Ø§Ø±: ({element.geometry.centerline.start.x}, {element.geometry.centerline.start.y}) â† ({element.geometry.centerline.end.x}, {element.geometry.centerline.end.y})
+              محور الجدار: ({element.geometry.centerline.start.x}, {element.geometry.centerline.start.y}) ← ({element.geometry.centerline.end.x}, {element.geometry.centerline.end.y})
               {"\n"}السماكة المرشحة: {element.geometry.thickness} pt · التداخل {Math.round((element.geometry.overlapRatio ?? 0) * 100)}%
             </Text>
           ) : null}
           {element.geometry?.kind === "wall_gap" && element.geometry.start && element.geometry.end ? (
             <Text selectable style={styles.elementGeometry}>
-              ÙØ¬ÙˆØ© Ù…Ø±Ø´Ø­Ø©: ({element.geometry.start.x}, {element.geometry.start.y}) â† ({element.geometry.end.x}, {element.geometry.end.y})
+              فجوة مرشحة: ({element.geometry.start.x}, {element.geometry.start.y}) ← ({element.geometry.end.x}, {element.geometry.end.y})
               {"\n"}العرض المرشح: {element.geometry.width} pt · سماكة الجدار المرجعية {element.geometry.averageWallThickness} pt
             </Text>
           ) : null}
           <Text selectable style={styles.elementEvidence}>
-            Ø§Ù„Ù…ØµØ¯Ø±: {element.source === "manual" ? "Ø¥Ø¯Ø®Ø§Ù„ Ø¨Ø´Ø±ÙŠ" : "Ø§ÙƒØªØ´Ø§Ù Ø¢Ù„ÙŠ"} Â· Ø§Ù„Ø«Ù‚Ø© {element.confidence_score}%
+            المصدر: {element.source === "manual" ? "إدخال بشري" : "اكتشاف آلي"} · الثقة {element.confidence_score}%
           </Text>
           {element.status === "detected" ? (
             <View style={styles.decisionRow}>
@@ -248,7 +248,7 @@ export function ArchitectureReviewScreen({
       {visibleReviewComments.length === 0 ? (
         <View style={styles.empty}>
           <Text selectable style={styles.emptyTitle}>لا توجد ملاحظات ميدانية لهذا المشروع</Text>
-          <Text selectable style={styles.emptyText}>Ø£Ø¶Ù Ù…Ù„Ø§Ø­Ø¸Ø© Ù…Ù† Ø§Ù„Ù…Ø®Ø·Ø· Ø¹Ù„Ù‰ Ø§Ù„ÙˆÙŠØ¨ØŒ ÙˆØ³ØªØ¸Ù‡Ø± Ù‡Ù†Ø§ ÙÙˆØ± Ø§Ù„Ù…Ø²Ø§Ù…Ù†Ø© Ù„Ø§ØªØ®Ø§Ø° Ø§Ù„Ù‚Ø±Ø§Ø± ÙÙŠ Ø§Ù„Ù…ÙˆÙ‚Ø¹.</Text>
+          <Text selectable style={styles.emptyText}>أضف ملاحظة من المخطط على الويب، وستظهر هنا فور المزامنة لاتخاذ القرار في الموقع.</Text>
         </View>
       ) : visibleReviewComments.map((comment) => (
         <View key={comment.id} style={[styles.commentCard, comment.status === "resolved" && styles.commentResolved]}>
@@ -262,7 +262,7 @@ export function ArchitectureReviewScreen({
           </View>
           <Text selectable style={styles.commentBody}>{comment.body}</Text>
           <Text selectable style={styles.commentLocation}>
-            {comment.page_number ? `Ø§Ù„ØµÙØ­Ø© ${comment.page_number}` : "Ø§Ù„Ù…Ø®Ø·Ø·"}
+            {comment.page_number ? `الصفحة ${comment.page_number}` : "المخطط"}
             {comment.plan_element_id ? " · مرتبطة بعنصر" : ""}
             {comment.finding_id ? " · مرتبطة بملاحظة تحليل" : ""}
           </Text>
@@ -276,8 +276,8 @@ export function ArchitectureReviewScreen({
           >
             <Text style={styles.commentActionText}>
               {updatingReviewCommentId === comment.id
-                ? "Ø¬Ø§Ø±Ù Ø§Ù„Ø­ÙØ¸"
-                : comment.status === "open" ? "ØªØ¹Ù„ÙŠÙ… ÙƒÙ…Ø¹Ø§Ù„Ø¬Ø©" : "Ø¥Ø¹Ø§Ø¯Ø© ÙØªØ­"}
+                ? "جارٍ الحفظ"
+                : comment.status === "open" ? "تعليم كمعالجة" : "إعادة فتح"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -285,7 +285,7 @@ export function ArchitectureReviewScreen({
 
       <Text style={styles.sectionTitle}>سجل جلسات المراجعة</Text>
       {data.reviews.length === 0 ? (
-        <View style={styles.empty}><Text selectable style={styles.emptyTitle}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¬Ù„Ø³Ø© Ù…Ø±Ø§Ø¬Ø¹Ø© Ø¨Ø¹Ø¯</Text><Text selectable style={styles.emptyText}>Ø§Ø±ÙØ¹ Ù…Ø®Ø·Ø·Ù‹Ø§ Ù…Ù† Ù…Ø´Ø±ÙˆØ¹ Ù†Ø´Ø· Ù„Ø¨Ø¯Ø¡ Ø§Ù„ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ù…Ø¹Ù…Ø§Ø±ÙŠ.</Text></View>
+        <View style={styles.empty}><Text selectable style={styles.emptyTitle}>لا توجد جلسة مراجعة بعد</Text><Text selectable style={styles.emptyText}>ارفع مخططًا من مشروع نشط لبدء التحليل المعماري.</Text></View>
       ) : data.reviews.map((review) => (
         <View key={review.id} style={styles.reviewCard}>
           <View style={styles.reviewTop}>
@@ -316,7 +316,7 @@ export function ArchitectureReviewScreen({
                   onPress={() => onConvertFinding(finding, review.project_id)}
                 >
                   <Text style={styles.taskButtonText}>
-                    {finding.status === "converted_to_task" ? "ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ù…Ù‡Ù…Ø©" : convertingFindingId === finding.id ? "Ø¬Ø§Ø±Ù Ø§Ù„Ø¥Ù†Ø´Ø§Ø¡" : "ØªØ­ÙˆÙŠÙ„ Ø¥Ù„Ù‰ Ù…Ù‡Ù…Ø©"}
+                    {finding.status === "converted_to_task" ? "تم إنشاء مهمة" : convertingFindingId === finding.id ? "جارٍ الإنشاء" : "تحويل إلى مهمة"}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -331,7 +331,7 @@ export function ArchitectureReviewScreen({
 const statusLabels: Record<ArchitecturalFinding["status"], string> = {
   open: "بانتظار القرار",
   accepted: "معتمدة",
-  rejected: "Ù…Ø±ÙÙˆØ¶Ø©",
+  rejected: "مرفوضة",
   resolved: "تمت المعالجة",
   converted_to_task: "تحولت إلى مهمة",
 };
@@ -348,7 +348,7 @@ const planElementStatusLabels: Record<ArchitecturalPlanElement["status"], string
   detected: "بانتظار التحقق",
   confirmed: "مؤكد",
   corrected: "مصحح بشريًا",
-  rejected: "Ù…Ø±ÙÙˆØ¶",
+  rejected: "مرفوض",
 };
 
 function Metric({ value, label }: { value: string; label: string }) {

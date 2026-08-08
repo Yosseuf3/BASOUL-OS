@@ -24,7 +24,7 @@ export function CommandCenterScreen({ data, onBack }: Props) {
       </View>
 
       <View style={styles.hero}>
-        <Text style={styles.heroLabel}>Ã™â€¦Ã˜Â§Ã˜Â°Ã˜Â§ Ã™Å Ã˜Â¬Ã˜Â¨ Ã˜Â£Ã™â€  Ã˜ÂªÃ™ÂÃ˜Â¹Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¢Ã™â€ Ã˜Å¸</Text>
+        <Text style={styles.heroLabel}>ماذا يجب أن تفعل الآن؟</Text>
         <Text style={styles.heroTitle}>{snapshot.headline}</Text>
         <Text style={styles.heroBrief}>{snapshot.brief}</Text>
         <Text style={styles.confidence}>ثقة التحليل {snapshot.confidence}%</Text>
@@ -41,7 +41,7 @@ export function CommandCenterScreen({ data, onBack }: Props) {
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>Ã˜Â§Ã™â€žÃ™â€šÃ˜Â±Ã˜Â§Ã˜Â±Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ˜ÂªÃ™â€ Ã™ÂÃ™Å Ã˜Â°Ã™Å Ã˜Â©</Text>
+      <Text style={styles.sectionTitle}>القرارات التنفيذية</Text>
       {snapshot.signals.map((signal, index) => (
         <View key={signal.id} style={styles.card}>
           <View style={styles.row}><Text style={styles.badge}>{severityLabel[signal.severity]}</Text><Text style={styles.rank}>#{index + 1}</Text></View>
@@ -58,7 +58,7 @@ export function CommandCenterScreen({ data, onBack }: Props) {
           <View style={styles.row}><Text style={styles.badge}>{risk.probability}%</Text><Text style={styles.rank}>خلال {risk.horizonDays} أيام</Text></View>
           <Text style={styles.cardTitle}>{risk.title}</Text>
           <Text style={styles.explanation}>{risk.reason}</Text>
-          <Text style={styles.action}>Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â®Ã™ÂÃ™Å Ã™Â: {risk.mitigation}</Text>
+          <Text style={styles.action}>التخفيف: {risk.mitigation}</Text>
         </View>
       ))}
     </ScrollView>

@@ -5,8 +5,8 @@ import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
 import type { Project, Task } from "../../types/domain";
 
 type Filter = "Open" | "Overdue" | "All";
-const statusLabels: Record<Task["status"], string> = { "To Do": "Ù„Ù„Ø¹Ù…Ù„", "In Progress": "Ù‚ÙŠØ¯ Ø§Ù„ØªÙ†ÙÙŠØ°", Review: "Ù…Ø±Ø§Ø¬Ø¹Ø©", Done: "Ù…ÙƒØªÙ…Ù„Ø©" };
-const priorityLabels: Record<Task["priority"], string> = { Low: "Ù…Ù†Ø®ÙØ¶Ø©", Medium: "Ù…ØªÙˆØ³Ø·Ø©", High: "Ø¹Ø§Ù„ÙŠØ©", Critical: "Ø­Ø±Ø¬Ø©" };
+const statusLabels: Record<Task["status"], string> = { "To Do": "للعمل", "In Progress": "قيد التنفيذ", Review: "مراجعة", Done: "مكتملة" };
+const priorityLabels: Record<Task["priority"], string> = { Low: "منخفضة", Medium: "متوسطة", High: "عالية", Critical: "حرجة" };
 
 export function TasksScreen({ tasks, projects, onBack, onCreate, onAdvance }: { tasks: Task[]; projects: Project[]; onBack: () => void; onCreate: () => void; onAdvance: (task: Task) => void }) {
   const [filter, setFilter] = useState<Filter>("Open");
@@ -17,8 +17,8 @@ export function TasksScreen({ tasks, projects, onBack, onCreate, onAdvance }: { 
   return <Screen>
     <View style={styles.header}><TouchableOpacity onPress={onBack} style={styles.outline}><Text style={styles.outlineText}>عودة</Text></TouchableOpacity><Text style={styles.title}>المهام</Text></View>
     <View style={styles.toolbar}><TouchableOpacity style={styles.create} onPress={onCreate}><Text style={styles.createText}>+ مهمة جديدة</Text></TouchableOpacity><Text style={styles.summary}>{filtered.length} مهمة</Text></View>
-    <View style={styles.filters}>{(["Open", "Overdue", "All"] as Filter[]).map((item) => <TouchableOpacity key={item} onPress={() => setFilter(item)} style={[styles.filter, filter === item && styles.filterActive]}><Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item === "Open" ? "Ù…ÙØªÙˆØ­Ø©" : item === "Overdue" ? "Ù…ØªØ£Ø®Ø±Ø©" : "Ø§Ù„ÙƒÙ„"}</Text></TouchableOpacity>)}</View>
-    {filtered.length === 0 ? <Text style={styles.empty}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ù‡Ø§Ù… Ø¶Ù…Ù† Ù‡Ø°Ø§ Ø§Ù„ØªØµÙ†ÙŠÙ.</Text> : filtered.map((task) => {
+    <View style={styles.filters}>{(["Open", "Overdue", "All"] as Filter[]).map((item) => <TouchableOpacity key={item} onPress={() => setFilter(item)} style={[styles.filter, filter === item && styles.filterActive]}><Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item === "Open" ? "مفتوحة" : item === "Overdue" ? "متأخرة" : "الكل"}</Text></TouchableOpacity>)}</View>
+    {filtered.length === 0 ? <Text style={styles.empty}>لا توجد مهام ضمن هذا التصنيف.</Text> : filtered.map((task) => {
       const overdue = task.status !== "Done" && Boolean(task.due_date && task.due_date < today);
       return <View key={task.id} style={[styles.card, overdue && styles.cardDanger]}>
         <View style={styles.cardTop}><Text style={[styles.priority, task.priority === "Critical" && styles.critical]}>{priorityLabels[task.priority]}</Text><Text style={styles.status}>{statusLabels[task.status]}</Text></View>

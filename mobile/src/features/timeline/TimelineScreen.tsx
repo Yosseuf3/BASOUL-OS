@@ -16,14 +16,14 @@ export function TimelineScreen({ data, onBack }: { data: MobileWorkspaceData; on
     const today = new Date().toISOString().slice(0, 10);
     const taskItems = data.tasks.filter((task) => task.status !== "Done" && task.due_date).map((task) => ({ id: `task-${task.id}`, date: task.due_date!, time: "موعد", title: task.title, meta: `${task.priority} · ${task.status}`, kind: "task" as const, urgent: task.due_date! <= today }));
     const projectItems = data.projects.filter((project) => project.due_date && project.status !== "Completed").map((project) => ({ id: `project-${project.id}`, date: project.due_date!, time: "تسليم", title: project.name, meta: `${project.status} · ${project.progress}%`, kind: "project" as const, urgent: project.due_date! <= today }));
-    const notificationItems = data.notifications.slice(0, 8).map((item) => ({ id: `notification-${item.id}`, date: item.created_at.slice(0, 10), time: new Date(item.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }), title: item.title, meta: item.message || "ØªÙ†Ø¨ÙŠÙ‡ ØªÙ†ÙÙŠØ°ÙŠ", kind: "notification" as const, urgent: item.priority === "high" && !item.is_read }));
+    const notificationItems = data.notifications.slice(0, 8).map((item) => ({ id: `notification-${item.id}`, date: item.created_at.slice(0, 10), time: new Date(item.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }), title: item.title, meta: item.message || "تنبيه تنفيذي", kind: "notification" as const, urgent: item.priority === "high" && !item.is_read }));
     return [...taskItems, ...projectItems, ...notificationItems].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 30);
   }, [data]);
 
   return <Screen>
     <View style={styles.header}><TouchableOpacity onPress={onBack} style={styles.back}><Text style={styles.backText}>عودة</Text></TouchableOpacity><View><Text style={styles.kicker}>EXECUTIVE TIMELINE</Text><Text style={styles.title}>الخط الزمني</Text></View></View>
-    <Text style={styles.summary}>Ø§Ù„Ù…ÙˆØ§Ø¹ÙŠØ¯ ÙˆØ§Ù„ØªØ³Ù„ÙŠÙ…Ø§Øª ÙˆØ§Ù„ØªÙ†Ø¨ÙŠÙ‡Ø§Øª ÙÙŠ Ù…Ø³Ø§Ø± ÙˆØ§Ø­Ø¯.</Text>
-    {items.length === 0 ? <View style={styles.emptyCard}><Text style={styles.emptyTitle}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ø£Ø­Ø¯Ø§Ø« Ù‚Ø§Ø¯Ù…Ø©</Text><Text style={styles.empty}>Ø£Ø¶Ù Ù…ÙˆØ§Ø¹ÙŠØ¯ Ù„Ù„Ù…Ù‡Ø§Ù… ÙˆØ§Ù„Ù…Ø´Ø§Ø±ÙŠØ¹ Ù„ØªØ¸Ù‡Ø± Ù‡Ù†Ø§.</Text></View> : items.map((item, index) => <View key={item.id} style={styles.row}>
+    <Text style={styles.summary}>المواعيد والتسليمات والتنبيهات في مسار واحد.</Text>
+    {items.length === 0 ? <View style={styles.emptyCard}><Text style={styles.emptyTitle}>لا توجد أحداث قادمة</Text><Text style={styles.empty}>أضف مواعيد للمهام والمشاريع لتظهر هنا.</Text></View> : items.map((item, index) => <View key={item.id} style={styles.row}>
       <View style={styles.rail}><View style={[styles.dot, item.urgent && styles.dotUrgent]} />{index < items.length - 1 ? <View style={styles.line} /> : null}</View>
       <View style={[styles.card, item.urgent && styles.cardUrgent]}><View style={styles.cardTop}><Text style={styles.time}>{item.time}</Text><Text style={styles.date}>{displayDate(item.date)}</Text></View><Text style={styles.itemTitle}>{item.title}</Text><Text style={styles.meta}>{item.kind === "task" ? "مهمة" : item.kind === "project" ? "مشروع" : "تنبيه"} · {item.meta}</Text></View>
     </View>)}
