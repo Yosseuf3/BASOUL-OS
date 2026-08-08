@@ -2,9 +2,9 @@
 
 ## FOUNDATION_STATUS
 
-**READY FOR APPROVAL**
+**APPROVED**
 
-The final architecture review verified semantic naming, web/native category parity, Draft 2020-12 schema structure and canonical references, deterministic generated artifacts, governance and rollback rules, accessibility/RTL/reduced-motion requirements, and showcase isolation. There are no remaining YVL-specific blockers. Approval records remain intentionally pending in the formal checklist.
+The formal approval record is complete for commit `072e2df62d7e93179242f3fc2f56e7d2186c7c5e`. The final architecture review verified semantic naming, web/native category parity, Draft 2020-12 schema structure and canonical references, deterministic generated artifacts, governance and rollback rules, accessibility/RTL/reduced-motion requirements, and showcase isolation. There are no remaining YVL-specific blockers.
 
 ## Scope and files
 
