@@ -2,13 +2,13 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "YOSSEUF Platform",
-    short_name: "YOSSEUF",
-    description: "Unified organization-aware platform for YOSSEUF business modules.",
+    name: "BASOUL OS",
+    short_name: "BASOUL",
+    description: "Unified organization-aware platform for BASOUL business modules.",
     start_url: "/",
     display: "standalone",
     background_color: "#080b0d",
-    theme_color: "#d7ad43",
+    theme_color: "#2563EB",
     orientation: "portrait-primary",
     lang: "ar",
     dir: "rtl",
