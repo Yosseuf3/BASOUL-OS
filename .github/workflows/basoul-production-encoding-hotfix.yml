@@ -18,29 +18,55 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: hotfix/basoul-production-encoding
-          fetch-depth: 0
-      - name: Restore known-good UTF-8 web shell and reapply BASOUL label byte-safely
+      - name: Repair mojibake without rolling back current features
         shell: bash
         run: |
           set -euo pipefail
-          # Phase 4 base commit was the last known-good production shell before
-          # app/page.tsx was rewritten during branding automation.
-          git checkout 8b9451cdbbc9e8eeb73f085d6045002e6551bd8c -- app/page.tsx
-          LC_ALL=C perl -0pi -e 's/YOSSEUF Platform/BASOUL/g' app/page.tsx
+          python - <<'PY'
+          from pathlib import Path
 
-          # Guard against mojibake signatures seen in production after promotion.
-          if grep -q 'Â·' app/page.tsx || grep -q 'Ø§' app/page.tsx || grep -q 'Ù„' app/page.tsx; then
-            echo 'Mojibake signature remains in app/page.tsx' >&2
-            exit 1
-          fi
+          path = Path('app/page.tsx')
+          text = path.read_text(encoding='utf-8')
+          markers = ('Ø', 'Ù', 'Â', 'â€', 'Ã')
+          fixed_lines = []
+          repaired = 0
 
-          grep -q 'BASOUL' app/page.tsx
-          ! grep -q 'YOSSEUF Platform' app/page.tsx
+          for line in text.splitlines(keepends=True):
+              candidate = line
+              if any(marker in line for marker in markers):
+                  try:
+                      decoded = line.encode('cp1252').decode('utf-8')
+                      if decoded != line:
+                          candidate = decoded
+                          repaired += 1
+                  except (UnicodeEncodeError, UnicodeDecodeError):
+                      pass
+              fixed_lines.append(candidate)
+
+          text = ''.join(fixed_lines)
+          text = text.replace('YOSSEUF Platform', 'BASOUL')
+          text = text.replace('YOSSEUF OS ·', 'BASOUL ·')
+          text = text.replace('BASOUL Â·', 'BASOUL ·')
+          path.write_text(text, encoding='utf-8')
+          print(f'Repaired lines: {repaired}')
+          PY
+
+          # Production-visible encoding regression guards.
+          ! grep -q 'BASOUL Â·' app/page.tsx
+          ! grep -q 'Ø§' app/page.tsx
+          ! grep -q 'Ù„' app/page.tsx
+          grep -q 'لوحة القيادة' app/page.tsx
+          grep -q 'تابع أعمالك من مكان واحد' app/page.tsx
+          grep -q 'BASOUL ·' app/page.tsx
       - name: Commit repaired shell
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/page.tsx
-          git commit -m "fix(web): restore Arabic UTF-8 after BASOUL production rebrand"
+          if git diff --cached --quiet; then
+            echo 'No encoding changes required'
+            exit 0
+          fi
+          git commit -m "fix(web): repair Arabic encoding in BASOUL production shell"
           git push origin HEAD:hotfix/basoul-production-encoding
