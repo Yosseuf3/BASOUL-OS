@@ -29,22 +29,43 @@
       "@yosseuf/shared-types": [
         "packages/shared-types/src/index.ts"
       ],
+      "@basoul/shared-types": [
+        "packages/shared-types/src/index.ts"
+      ],
       "@yosseuf/decision-engine": [
+        "packages/decision-engine/src/index.ts"
+      ],
+      "@basoul/decision-engine": [
         "packages/decision-engine/src/index.ts"
       ],
       "@yosseuf/event-bus": [
         "packages/event-bus/src/index.ts"
       ],
+      "@basoul/event-bus": [
+        "packages/event-bus/src/index.ts"
+      ],
       "@yosseuf/core": [
+        "packages/core/src/index.ts"
+      ],
+      "@basoul/core": [
         "packages/core/src/index.ts"
       ],
       "@yosseuf/services": [
         "packages/services/src/index.ts"
       ],
+      "@basoul/services": [
+        "packages/services/src/index.ts"
+      ],
       "@yosseuf/intelligence": [
         "packages/intelligence/src/index.ts"
       ],
+      "@basoul/intelligence": [
+        "packages/intelligence/src/index.ts"
+      ],
       "@yosseuf/ui-tokens": [
+        "packages/ui-tokens/src/index.ts"
+      ],
+      "@basoul/ui-tokens": [
         "packages/ui-tokens/src/index.ts"
       ],
       "@yosseuf/yvl-tokens": [
@@ -53,10 +74,19 @@
       "@yosseuf/cognitive-core": [
         "packages/cognitive-core/src/index.ts"
       ],
+      "@basoul/cognitive-core": [
+        "packages/cognitive-core/src/index.ts"
+      ],
       "@yosseuf/architectural-intelligence": [
         "packages/architectural-intelligence/src/index.ts"
       ],
+      "@basoul/architectural-intelligence": [
+        "packages/architectural-intelligence/src/index.ts"
+      ],
       "@yosseuf/platform": [
+        "packages/platform/src/index.ts"
+      ],
+      "@basoul/platform": [
         "packages/platform/src/index.ts"
       ]
     },

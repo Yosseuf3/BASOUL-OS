@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { platformModule, platformResource, type PlatformModuleId } from "@yosseuf/platform";
+import { platformModule, platformResource, type PlatformModuleId } from "@basoul/platform";
 
 export async function listPlatformModuleRows(input: {
   database: SupabaseClient;

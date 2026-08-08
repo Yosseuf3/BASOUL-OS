@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiMeta, isPlatformModuleId, platformResource, type PlatformApiEnvelope } from "@yosseuf/platform";
+import { apiMeta, isPlatformModuleId, platformResource, type PlatformApiEnvelope } from "@basoul/platform";
 import { authenticatedDatabase } from "@/lib/auth/authorized-workspace";
 import { requestedOrganization } from "@/lib/organizations/context";
 import { hasOrganizationPermission } from "@/lib/organizations/rbac";

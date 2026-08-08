@@ -1,4 +1,4 @@
-import type { ActivityEvent } from "@yosseuf/shared-types";
+import type { ActivityEvent } from "@basoul/shared-types";
 import type { DecisionInput, DecisionTarget } from "./types";
 
 export type ExecutiveTimelineItem = {

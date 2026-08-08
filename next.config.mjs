@@ -2,13 +2,21 @@
 const nextConfig = {
   transpilePackages: [
     "@yosseuf/shared-types",
+    "@basoul/shared-types",
     "@yosseuf/decision-engine",
+    "@basoul/decision-engine",
     "@yosseuf/event-bus",
+    "@basoul/event-bus",
     "@yosseuf/core",
+    "@basoul/core",
     "@yosseuf/services",
+    "@basoul/services",
     "@yosseuf/intelligence",
+    "@basoul/intelligence",
     "@yosseuf/ui-tokens",
+    "@basoul/ui-tokens",
     "@yosseuf/platform",
+    "@basoul/platform",
   ],
   async headers() {
     return [{
