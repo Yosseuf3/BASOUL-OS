@@ -1,0 +1,46 @@
+name: BASOUL Production Encoding Hotfix
+
+on:
+  push:
+    branches:
+      - hotfix/basoul-production-encoding
+    paths:
+      - .github/workflows/basoul-production-encoding-hotfix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hotfix/basoul-production-encoding
+          fetch-depth: 0
+      - name: Restore known-good UTF-8 web shell and reapply BASOUL label byte-safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Phase 4 base commit was the last known-good production shell before
+          # app/page.tsx was rewritten during branding automation.
+          git checkout 8b9451cdbbc9e8eeb73f085d6045002e6551bd8c -- app/page.tsx
+          LC_ALL=C perl -0pi -e 's/YOSSEUF Platform/BASOUL/g' app/page.tsx
+
+          # Guard against mojibake signatures seen in production after promotion.
+          if grep -q 'Â·' app/page.tsx || grep -q 'Ø§' app/page.tsx || grep -q 'Ù„' app/page.tsx; then
+            echo 'Mojibake signature remains in app/page.tsx' >&2
+            exit 1
+          fi
+
+          grep -q 'BASOUL' app/page.tsx
+          ! grep -q 'YOSSEUF Platform' app/page.tsx
+      - name: Commit repaired shell
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/page.tsx
+          git commit -m "fix(web): restore Arabic UTF-8 after BASOUL production rebrand"
+          git push origin HEAD:hotfix/basoul-production-encoding
