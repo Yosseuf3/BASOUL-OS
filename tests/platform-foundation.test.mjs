@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFile } from "node:fs/promises";
 
-test("Platform manifest preserves OS compatibility", async () => {
+test("Platform manifest exposes BASOUL identity while preserving OS compatibility", async () => {
   const source = await readFile(new URL("../packages/platform/src/manifest.ts", import.meta.url), "utf8");
-  assert.match(source, /name: "YOSSEUF Platform"/);
+  assert.match(source, /id: "basoul-platform"/);
+  assert.match(source, /name: "BASOUL"/);
+  assert.match(source, /authority: "YOSSEUF HQ"/);
   assert.match(source, /product: "YOSSEUF OS"/);
   assert.match(source, /minimumVersion: "3\.1\.0"/);
   assert.match(source, /production: "read-only-unless-approved"/);

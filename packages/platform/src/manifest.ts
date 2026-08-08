@@ -1,7 +1,7 @@
 export const PLATFORM_MANIFEST = {
   schemaVersion: 1,
-  id: "yosseuf-platform",
-  name: "YOSSEUF Platform",
+  id: "basoul-platform",
+  name: "BASOUL",
   version: "4.0.0-rc.1",
   channel: "release-candidate",
   authority: "YOSSEUF HQ",
