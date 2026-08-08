@@ -1,0 +1,9 @@
+{
+  "version": "1.0.0",
+  "source": "design-system/yvl/tokens",
+  "artifacts": [
+    "yvl.css",
+    "tokens.ts",
+    "react-native.ts"
+  ]
+}

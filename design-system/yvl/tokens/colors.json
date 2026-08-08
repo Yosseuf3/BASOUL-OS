@@ -1,0 +1,19 @@
+{
+  "$schema": "../schemas/colors.schema.json",
+  "version": "1.0.0",
+  "color": {
+    "background": "#05070A",
+    "surface": "#0B1017",
+    "surface-elevated": "#111A24",
+    "electric-blue": "#1976FF",
+    "cyan": "#24D6FF",
+    "silver": "#B8C3D1",
+    "white": "#F7FAFC",
+    "text-muted": "#8391A3",
+    "border": "#253244",
+    "focus": "#69E4FF",
+    "success": "#31D19A",
+    "warning": "#F4B740",
+    "danger": "#FF5D73"
+  }
+}
