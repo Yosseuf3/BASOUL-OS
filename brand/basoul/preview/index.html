@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BASOUL — Non-Production Visual Preview</title>
+  <style>
+    :root{--bg:#0B1020;--panel:#121B30;--blue:#2563EB;--cyan:#38B2F6;--aqua:#06B6D4;--violet:#7C3AED;--text:#F8FAFC;--muted:#A9B4C8}
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 50% 15%,#122451 0,#0B1020 42%,#070B14 100%);color:var(--text);font-family:Inter,Arial,sans-serif;min-height:100vh}
+    main{max-width:1180px;margin:auto;padding:64px 28px 80px}
+    .eyebrow{letter-spacing:.24em;color:var(--cyan);font-size:12px;text-transform:uppercase;margin-bottom:18px}
+    .hero{display:grid;grid-template-columns:1.25fr .75fr;gap:24px;align-items:stretch}
+    .card{background:linear-gradient(180deg,rgba(18,27,48,.94),rgba(9,15,29,.94));border:1px solid rgba(56,178,246,.18);border-radius:24px;padding:32px;box-shadow:0 24px 80px rgba(0,0,0,.28)}
+    .logo{width:min(690px,100%);display:block;margin:28px 0 10px}.tag{letter-spacing:.36em;color:#9DB6FF;font-size:13px;margin:12px 0 30px}.lead{max-width:720px;color:var(--muted);line-height:1.7;font-size:18px}
+    .icon{width:180px;height:180px;border-radius:36px;display:block;margin:14px auto 26px;object-fit:contain}.status{text-align:center;color:var(--muted);line-height:1.6}
+    .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}.chip{border:1px solid rgba(255,255,255,.12);padding:9px 13px;border-radius:999px;color:#C9D4EA;font-size:13px}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:22px}.product{width:100%;display:block;border-radius:16px;background:#0B1020;padding:10px}
+    .palette{display:flex;gap:12px;margin-top:22px}.sw{height:54px;flex:1;border-radius:14px}.b{background:#2563EB}.c{background:#38B2F6}.a{background:#06B6D4}.v{background:#7C3AED}
+    footer{color:#7E8BA6;margin-top:34px;font-size:13px;line-height:1.6}
+    @media(max-width:820px){.hero,.grid{grid-template-columns:1fr}.tag{letter-spacing:.22em}.card{padding:24px}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Phase 2 · isolated preview · not production</div>
+  <section class="hero">
+    <div class="card">
+      <img class="logo" src="../assets/primary-logo/BASOUL_Primary_Logo_Master.png" alt="BASOUL primary logo" />
+      <div class="tag">THINK · BUILD · BEYOND</div>
+      <p class="lead">BASOUL is the technology masterbrand. This static page is an isolated visual QA surface only. It is not connected to the application runtime, production routes, deployment identity, authentication, database, packages, domains, or mobile identifiers.</p>
+      <div class="chips"><span class="chip">Technology Masterbrand</span><span class="chip">Approved Visual Foundation</span><span class="chip">Preview / Staging Only</span><span class="chip">Founder: YOSSEUF RADWAN</span></div>
+    </div>
+    <div class="card">
+      <img class="icon" src="../assets/app-icons/BASOUL_App_Icon_256.png" alt="BASOUL app icon" />
+      <div class="status"><strong>Source of truth locked</strong><br/>Approved raster assets are referenced directly and are not regenerated, redrawn, recolored, stretched, or modified.</div>
+      <div class="palette"><div class="sw b" title="#2563EB"></div><div class="sw c" title="#38B2F6"></div><div class="sw a" title="#06B6D4"></div><div class="sw v" title="#7C3AED"></div></div>
+    </div>
+  </section>
+  <section class="grid">
+    <div class="card"><img class="product" src="../assets/product-lockups/BASOUL_AI_Lockup.png" alt="BASOUL AI" /></div>
+    <div class="card"><img class="product" src="../assets/product-lockups/BASOUL_OS_Lockup.png" alt="BASOUL OS" /></div>
+    <div class="card"><img class="product" src="../assets/product-lockups/BASOUL_ONE_Lockup.png" alt="BASOUL ONE" /></div>
+    <div class="card"><img class="product" src="../assets/product-lockups/BASOUL_LABS_Lockup.png" alt="BASOUL LABS" /></div>
+  </section>
+  <footer>NON-PRODUCTION VISUAL QA SURFACE · No runtime wiring · No production rebrand · YOSSEUF RADWAN remains Founder / Personal Brand.</footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,3 @@
+id,current_value,future_basoul_value,file_path_system,category,migration_phase,dependency_risk,rollback_method,requires_downtime,requires_external_account_action,requires_manual_approval
+P2-001,no isolated BASOUL preview showcase,static non-production BASOUL preview showcase,brand/basoul/preview/index.html,RENAME,Phase 2,low: repository-only static preview not wired to runtime,delete preview file,no,no,yes
+P2-002,no phase 2 visual QA record,phase 2 visual QA and source-of-truth verification,brand/basoul/migration/PHASE_2_EXECUTION_REPORT.md,PRESERVE,Phase 2,low: documentation only,revert report commit,no,no,yes
