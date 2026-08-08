@@ -1,10 +1,10 @@
 {
-  "name": "@yosseuf/architectural-intelligence",
+  "name": "@basoul/architectural-intelligence",
   "version": "2.2.0",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@yosseuf/cognitive-core": "*" }
+  "dependencies": { "@basoul/cognitive-core": "*" }
 }
