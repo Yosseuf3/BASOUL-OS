@@ -1,4 +1,4 @@
-# YOSSEUF OS — Platform Health Check
+# BASOUL OS — Platform Health Check
 
 Release target: **v1.5.1 Cross Platform Stabilization**
 

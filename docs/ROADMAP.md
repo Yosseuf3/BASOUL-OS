@@ -1,4 +1,4 @@
-# YOSSEUF OS Roadmap
+# BASOUL OS Roadmap
 
 ## v1.5.1 — Cross Platform Stabilization
 Stable web/mobile validation, EAS profiles, environment guidance, and automated quality gates.
