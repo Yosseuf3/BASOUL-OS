@@ -82,4 +82,3 @@ grant execute on function public.set_organization_membership(uuid,uuid,text,text
 grant execute on function public.remove_organization_membership(uuid,uuid) to authenticated;
 
 commit;
-
