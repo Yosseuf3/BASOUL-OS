@@ -1,5 +1,6 @@
 import { Activity, Bell, BrainCircuit, BriefcaseBusiness, ChevronLeft, CircleDollarSign, FolderKanban, LayoutDashboard, Search, Sparkles, Target, Users, WalletCards } from "lucide-react";
 import "./review.css";
+import "./brand-lockup.css";
 
 const APPROVED_ASSET_REF = "3122092e9bc18acd696911aeb54eee7a3dcc26e2";
 const APPROVED_ASSET_ROOT = `https://raw.githubusercontent.com/Yosseuf3/YOSSEUF--OS/${APPROVED_ASSET_REF}/brand/basoul/assets`;
