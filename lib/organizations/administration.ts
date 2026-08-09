@@ -32,4 +32,3 @@ export async function removeMembership(organizationId: string, userId: string) {
   const { error } = await supabase.rpc("remove_organization_membership", { target_organization: organizationId, target_user: userId });
   if (error) throw error;
 }
-
