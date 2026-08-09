@@ -1,70 +1,256 @@
 "use client";
-import { Activity, AlertTriangle, ArrowDownLeft, ArrowUpRight, BookOpen, CalendarDays, CheckCircle2, ChevronLeft, ClipboardList, Clock3, Film, FolderKanban, Plus, Sparkles, Users, Wallet } from "lucide-react";
-import type { ActivityEvent, Client, FinanceTransaction, Notification, Project, Task } from "@/lib/types";
-import { buildExecutiveInsight, buildExecutiveTimeline, getExecutiveDecision, type DecisionSignal, type DecisionTarget } from "@yosseuf/decision-engine";
 
-type QuickAction = "project"|"task"|"client"|"finance"|"knowledge"|"content";
-type Props={projects:Project[];tasks:Task[];clients:Client[];financeItems:FinanceTransaction[];activityEvents:ActivityEvent[];notifications:Notification[];userName?:string;onNavigate:(target:DecisionTarget)=>void;onQuickAction:(action:QuickAction)=>void};
-const money=new Intl.NumberFormat("en-US",{maximumFractionDigits:2});
+import Image from "next/image";
+import {
+  Activity,
+  BookOpen,
+  ChevronLeft,
+  ClipboardList,
+  Film,
+  FolderKanban,
+  Plus,
+  Sparkles,
+  Target,
+  Users,
+  Wallet,
+} from "lucide-react";
+import type {
+  ActivityEvent,
+  Client,
+  FinanceTransaction,
+  Notification,
+  Project,
+  Task,
+} from "@/lib/types";
+import {
+  buildExecutiveInsight,
+  buildExecutiveTimeline,
+  getExecutiveDecision,
+  type DecisionSignal,
+  type DecisionTarget,
+} from "@yosseuf/decision-engine";
+import "./dashboard-visual-truth.css";
 
-export function DashboardView(props:Props){
- const {projects,tasks,clients,financeItems,activityEvents,notifications,userName="Yosseuf",onNavigate,onQuickAction}=props;
- const decisionInput={projects,tasks,clients,financeItems,activityEvents,notifications};
- const state=getExecutiveDecision(decisionInput,userName); const s=state.stats;
- const insight=buildExecutiveInsight(decisionInput,state);
- const timeline=buildExecutiveTimeline(decisionInput);
- const health=state.health;
- const recent=activityEvents.slice(0,5);
- const focus=state.priorities.slice(0,3);
- const healthNotes=[
-  s.overdueTasks?`${s.overdueTasks} مهام متأخرة تحتاج معالجة`:"لا توجد مهام متأخرة",
-  s.stalledProjects?`${s.stalledProjects} مشاريع متوقفة`:"المشاريع تسير دون توقف",
-  s.pendingPayments?`${s.pendingPayments} معاملات مالية معلقة`:"المعاملات المالية محدثة"
- ];
- return <div className="dashboard-v2 executive-dashboard">
-  <section className="executive-hero panel">
-   <div className="executive-greeting"><span className="section-kicker"><Sparkles size={14}/> الملخص التنفيذي</span><h2>{state.brief.headline}</h2><p>{state.brief.message}</p><strong>{state.brief.priorityLine}</strong></div>
-   <div className="hero-focus"><span className="hero-label">تركيز اليوم</span>{focus.length?<ol>{focus.map(item=><li key={item.id}><button onClick={()=>onNavigate(item.action.target)}><span>{item.title}</span><ChevronLeft size={14}/></button></li>)}</ol>:<div className="hero-empty"><CheckCircle2 size={17}/><span>لا توجد أولويات حرجة</span><button onClick={()=>onQuickAction("task")}>إضافة مهمة</button></div>}</div>
-   <div className="hero-meta"><span><CalendarDays size={17}/>{new Intl.DateTimeFormat("ar-SA",{weekday:"long",day:"numeric",month:"long"}).format(new Date())}</span><button className="hero-health-link" onClick={()=>onNavigate("dashboard")}><small>صحة مساحة العمل</small><b>{health.score}%</b><em>{health.label}</em></button></div>
- </section>
+type QuickAction = "project" | "task" | "client" | "finance" | "knowledge" | "content";
 
-  <section className={`panel executive-insight executive-insight-${insight.status}`}>
-   <div className="executive-insight-copy"><span className="section-kicker"><Sparkles size={14}/> الرؤية التنفيذية</span><h2>{insight.title}</h2><p>{insight.summary}</p><div className="executive-evidence">{insight.evidence.map(item=><span key={item}>{item}</span>)}</div></div>
-   <div className="executive-confidence"><small>درجة الثقة</small><strong>{insight.confidence}%</strong><span>مبنية على البيانات الحية</span></div>
-   <button onClick={()=>onNavigate(insight.nextAction.target)}>{insight.nextActionLabel}<ChevronLeft size={16}/></button>
-  </section>
+type Props = {
+  projects: Project[];
+  tasks: Task[];
+  clients: Client[];
+  financeItems: FinanceTransaction[];
+  activityEvents: ActivityEvent[];
+  notifications: Notification[];
+  userName?: string;
+  onNavigate: (target: DecisionTarget) => void;
+  onQuickAction: (action: QuickAction) => void;
+};
 
-  <section className="panel executive-timeline">
-   <PanelHead kicker="الخط الزمني التنفيذي" title="ما حدث وما يستحق المتابعة" action="كل النشاط" onClick={()=>onNavigate("activity")}/>
-   <div className="activity-v2-list">{timeline.length?timeline.map(item=><button key={item.id} onClick={()=>onNavigate(item.target)}><span className={`activity-dot timeline-${item.kind}`}><Activity size={14}/></span><span><b>{item.title}</b><small>{item.detail} · {relativeTime(item.at)}</small></span><ChevronLeft size={15}/></button>):<SmartEmpty icon={<Activity/>} title="لا يوجد نشاط بعد" text="يعتمد الخط الزمني فقط على بيانات مساحة العمل الحية، وسيظهر عند بدء العمل." actions={[{label:"إنشاء مشروع",onClick:()=>onQuickAction("project")}]} />}</div>
-  </section>
+const money = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
-  <section className="dashboard-v2-grid executive-primary">
-   <article className="panel focus-panel"><PanelHead kicker="أولويات اليوم" title="ما الذي يحتاج انتباهك الآن؟" action="كل المهام" onClick={()=>onNavigate("tasks")}/><div className="decision-list">{state.priorities.length?state.priorities.map((i,n)=><DecisionRow key={i.id} item={i} index={n+1} onClick={()=>onNavigate(i.action.target)}/>):<SmartEmpty icon={<CheckCircle2/>} title="لا توجد أولويات حرجة" text="ابدأ بإضافة عنصر عمل، وسيرتبه محرك القرار تلقائيًا." actions={[{label:"مهمة",onClick:()=>onQuickAction("task")},{label:"مشروع",onClick:()=>onQuickAction("project")},{label:"عميل",onClick:()=>onQuickAction("client")}]} />}</div></article>
-   <article className="panel health-card"><div className="health-card-head"><div><span className="section-kicker">Workspace Health 2.0</span><h2>حالة مساحة العمل</h2></div><span className={`health-status health-${health.score>=90?"excellent":health.score>=70?"good":"attention"}`}>{health.label}</span></div><div className="health-main"><div className="health-ring" style={{"--health-score":`${health.score*3.6}deg`} as React.CSSProperties}><div><strong>{health.score}%</strong><small>الصحة العامة</small></div></div><div className="health-insights">{healthNotes.map((note)=><span key={note} className={note.includes("متأخرة")||note.includes("متوقفة")||note.includes("معلقة")?"issue":"ok"}>{note.includes("متأخرة")||note.includes("متوقفة")||note.includes("معلقة")?<AlertTriangle size={14}/>:<CheckCircle2 size={14}/>} {note}</span>)}</div></div><button className="health-action" onClick={()=>onNavigate(state.alerts.length?"notifications":"dashboard")}>{state.alerts.length?"راجع نقاط التحسين":"كل الأنظمة مستقرة"}<ChevronLeft size={15}/></button></article>
-  </section>
+export function DashboardView(props: Props) {
+  const {
+    projects,
+    tasks,
+    clients,
+    financeItems,
+    activityEvents,
+    notifications,
+    userName = "Yosseuf",
+    onNavigate,
+    onQuickAction,
+  } = props;
 
-  <section className="decision-kpis executive-kpis">
-   <Kpi icon={<FolderKanban/>} label="المشاريع" value={`${s.activeProjects} نشط`} context={s.stalledProjects?`${s.stalledProjects} متوقف`:`${projects.length} إجمالي`} tone={s.stalledProjects?"warning":"positive"} onClick={()=>onNavigate("projects")}/>
-   <Kpi icon={<ClipboardList/>} label="التنفيذ" value={`${s.completion}%`} context={s.overdueTasks?`${s.overdueTasks} متأخرة`:`${s.doneTasks} مكتملة`} tone={s.overdueTasks?"critical":"positive"} onClick={()=>onNavigate("tasks")}/>
-   <Kpi icon={<Users/>} label="العملاء" value={`${s.activeClients} نشط`} context={s.followUps?`${s.followUps} متابعة مطلوبة`:`${clients.length} إجمالي`} tone={s.followUps?"warning":"neutral"} onClick={()=>onNavigate("clients")}/>
-   <Kpi icon={<Wallet/>} label="التدفق المالي" value={financeItems.length?`${money.format(s.net)} ${s.currency}`:"—"} context={s.pendingPayments?`${s.pendingPayments} معلقة`:"محدث"} tone={s.net<0?"critical":"positive"} onClick={()=>onNavigate("finance")}/>
-  </section>
+  const decisionInput = { projects, tasks, clients, financeItems, activityEvents, notifications };
+  const state = getExecutiveDecision(decisionInput, userName);
+  const s = state.stats;
+  const health = state.health;
+  const insight = buildExecutiveInsight(decisionInput, state);
+  const timeline = buildExecutiveTimeline(decisionInput).slice(0, 4);
+  const priorities = state.priorities.slice(0, 3);
+  const netValue = financeItems.length ? `${money.format(s.net)} ${s.currency}` : "—";
+  const healthAngle = `${Math.max(0, Math.min(100, health.score)) * 3.6}deg`;
 
-  <section className="dashboard-v2-grid lower">
-   <article className="panel finance-v2"><PanelHead kicker="الملخص المالي" title="الموقف المالي الحالي" action="فتح المالية" onClick={()=>onNavigate("finance")}/><div className="finance-v2-balance"><small>صافي التدفق</small><strong className={s.net<0?"negative":""}>{financeItems.length?`${money.format(s.net)} ${s.currency}`:"—"}</strong><span>{s.pendingPayments?`${s.pendingPayments} معاملات معلقة تحتاج مراجعة`:"جميع المعاملات محدثة"}</span></div><div className="finance-v2-breakdown"><span><ArrowUpRight/><small>الدخل</small><b>{financeItems.length?money.format(s.income):"—"}</b></span><span><ArrowDownLeft/><small>المصروف</small><b>{financeItems.length?money.format(s.expense):"—"}</b></span><span><Clock3/><small>المعلق</small><b>{s.pendingPayments}</b></span></div></article>
-   <article className="panel activity-v2"><PanelHead kicker="آخر النشاطات" title="آخر التحديثات" action="كل النشاط" onClick={()=>onNavigate("activity")}/><div className="activity-v2-list">{recent.length?recent.map(e=><button key={e.id} onClick={()=>onNavigate("activity")}><span className="activity-dot"><Activity size={14}/></span><span><b>{e.title}</b><small>{e.module} · {relativeTime(e.created_at)}</small></span><ChevronLeft size={15}/></button>):<SmartEmpty icon={<Activity/>} title="لا يوجد نشاط بعد" text="سيظهر هنا أثر كل عملية تنفذها داخل النظام." actions={[{label:"إنشاء مشروع",onClick:()=>onQuickAction("project")}]} />}</div></article>
-  </section>
-  <section className="dashboard-v2-grid lower executive-recommendations">
-   <article className="panel focus-panel"><PanelHead kicker="توصيات تنفيذية" title="الخطوة الذكية التالية" action="فتح النشاط" onClick={()=>onNavigate("activity")}/><div className="decision-list">{state.recommendations.length?state.recommendations.map((i,n)=><DecisionRow key={i.id} item={i} index={n+1} onClick={()=>onNavigate(i.action.target)}/>):<SmartEmpty icon={<CheckCircle2/>} title="لا توجد توصيات عاجلة" text="مساحة العمل متوازنة حاليًا." />}</div></article>
-   <article className="panel health-card"><div className="health-card-head"><div><span className="section-kicker">EXPLAINABLE HEALTH</span><h2>لماذا هذه الدرجة؟</h2></div></div><div className="health-insights">{health.factors.filter(f=>f.id!=="base").map(f=><span key={f.id} className={f.impact<0?"issue":"ok"}>{f.impact<0?<AlertTriangle size={14}/>:<CheckCircle2 size={14}/>} {f.label}: {f.impact>0?"+":""}{f.impact} — {f.reason}</span>)}</div></article>
-  </section>
-  <section className="panel quick-actions-v2"><div><span className="section-kicker">إجراءات سريعة</span><h2>ابدأ الإجراء مباشرة من لوحة القيادة</h2></div><div className="quick-actions-grid"><Quick icon={<FolderKanban/>} label="مشروع" onClick={()=>onQuickAction("project")}/><Quick icon={<ClipboardList/>} label="مهمة" onClick={()=>onQuickAction("task")}/><Quick icon={<Users/>} label="عميل" onClick={()=>onQuickAction("client")}/><Quick icon={<Wallet/>} label="معاملة" onClick={()=>onQuickAction("finance")}/><Quick icon={<BookOpen/>} label="معرفة" onClick={()=>onQuickAction("knowledge")}/><Quick icon={<Film/>} label="محتوى" onClick={()=>onQuickAction("content")}/></div></section>
- </div>
+  return (
+    <div className="basoul-executive" dir="rtl">
+      <section className="bx-hero">
+        <div>
+          <span className="bx-kicker">BASOUL · EXECUTIVE PULSE</span>
+          <h2>{state.brief.headline}</h2>
+          <p>{state.brief.message}</p>
+          <div className="bx-hero-tags">
+            <span className="bx-chip">{String(s.activeProjects).padStart(2, "0")} مشاريع نشطة</span>
+            <span className="bx-chip">{String(state.alerts.length).padStart(2, "0")} إشارات تحتاج متابعة</span>
+            <span className="bx-chip">{health.score}% صحة مساحة العمل</span>
+          </div>
+        </div>
+        <div className="bx-health" style={{ "--health-angle": healthAngle } as React.CSSProperties}>
+          <div>
+            <strong>{health.score}%</strong>
+            <span>WORKSPACE HEALTH</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="bx-grid-3">
+        <MetricCard
+          tone="blue"
+          icon={<Target size={20} />}
+          kicker="FOCUS"
+          value={state.priorities.length || 0}
+          title="أولويات اليوم"
+          text={state.priorities.length ? state.brief.priorityLine : "لا توجد أولويات حرجة الآن."}
+        />
+        <MetricCard
+          tone="cyan"
+          icon={<FolderKanban size={20} />}
+          kicker="PROJECTS"
+          value={s.activeProjects}
+          title="مشاريع نشطة"
+          text={s.stalledProjects ? `${s.stalledProjects} مشروع يحتاج استعادة الإيقاع.` : "المشاريع النشطة تسير دون توقف حرج."}
+        />
+        <MetricCard
+          tone="violet"
+          icon={<Wallet size={20} />}
+          kicker="FINANCE"
+          value={netValue}
+          title="صافي التدفق"
+          text={s.pendingPayments ? `${s.pendingPayments} معاملات معلقة تحتاج مراجعة.` : "جميع المعاملات المالية محدثة."}
+        />
+      </section>
+
+      <section className="bx-grid-2">
+        <article className="bx-panel">
+          <PanelHead kicker="EXECUTION" title="ما يحتاج انتباهك الآن" action="كل المهام" onClick={() => onNavigate("tasks")} />
+          {priorities.length ? (
+            <div className="bx-list">
+              {priorities.map((item, index) => (
+                <PriorityRow key={item.id} item={item} index={index + 1} onClick={() => onNavigate(item.action.target)} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              text="مساحة العمل مستقرة. يمكنك إضافة عنصر جديد وسيقوم محرك القرار بترتيبه تلقائيًا."
+              actions={[
+                { label: "مهمة", onClick: () => onQuickAction("task") },
+                { label: "مشروع", onClick: () => onQuickAction("project") },
+              ]}
+            />
+          )}
+        </article>
+
+        <article className="bx-panel bx-signal">
+          <PanelHead kicker="AI SIGNAL" title="إشارة BASOUL" />
+          <div className="bx-signal-visual">
+            <span className="bx-ring r1" />
+            <span className="bx-ring r2" />
+            <span className="bx-ring r3" />
+            <Image
+              src="/brand/basoul/BASOUL_Symbol_Master.png"
+              width={58}
+              height={70}
+              alt="BASOUL"
+              priority
+            />
+          </div>
+          <p>{insight.summary}</p>
+        </article>
+      </section>
+
+      <section className="bx-grid-2">
+        <article className="bx-panel">
+          <PanelHead kicker="EXECUTIVE TIMELINE" title="ما حدث وما يستحق المتابعة" action="كل النشاط" onClick={() => onNavigate("activity")} />
+          {timeline.length ? (
+            <div className="bx-timeline">
+              {timeline.map((item) => (
+                <button key={item.id} onClick={() => onNavigate(item.target)}>
+                  <span className="bx-timeline-icon"><Activity size={14} /></span>
+                  <span><b>{item.title}</b><small>{item.detail} · {relativeTime(item.at)}</small></span>
+                  <ChevronLeft size={15} />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <EmptyState text="سيظهر هنا أثر العمليات الحية بمجرد بدء العمل داخل BASOUL." />
+          )}
+        </article>
+
+        <article className="bx-panel">
+          <PanelHead kicker="FINANCE" title="الموقف المالي الحالي" action="فتح المالية" onClick={() => onNavigate("finance")} />
+          <p>{s.pendingPayments ? `${s.pendingPayments} معاملات معلقة تحتاج مراجعة.` : "لا توجد معاملات معلقة حاليًا."}</p>
+          <div className="bx-finance">
+            <div><small>الدخل</small><b>{financeItems.length ? money.format(s.income) : "—"}</b></div>
+            <div><small>المصروف</small><b>{financeItems.length ? money.format(s.expense) : "—"}</b></div>
+            <div><small>الصافي</small><b>{netValue}</b></div>
+          </div>
+        </article>
+      </section>
+
+      <section className="bx-panel">
+        <PanelHead kicker="QUICK ACTIONS" title="ابدأ الإجراء مباشرة" />
+        <div className="bx-quick">
+          <QuickActionButton icon={<FolderKanban size={17} />} label="مشروع" onClick={() => onQuickAction("project")} />
+          <QuickActionButton icon={<ClipboardList size={17} />} label="مهمة" onClick={() => onQuickAction("task")} />
+          <QuickActionButton icon={<Users size={17} />} label="عميل" onClick={() => onQuickAction("client")} />
+          <QuickActionButton icon={<Wallet size={17} />} label="معاملة" onClick={() => onQuickAction("finance")} />
+          <QuickActionButton icon={<BookOpen size={17} />} label="معرفة" onClick={() => onQuickAction("knowledge")} />
+          <QuickActionButton icon={<Film size={17} />} label="محتوى" onClick={() => onQuickAction("content")} />
+        </div>
+      </section>
+    </div>
+  );
 }
-function PanelHead({kicker,title,action,onClick}:{kicker:string;title:string;action:string;onClick:()=>void}){return <div className="panel-head"><div><span className="section-kicker">{kicker}</span><h2>{title}</h2></div><button className="text-link" onClick={onClick}>{action}<ChevronLeft size={15}/></button></div>}
-function DecisionRow({item,index,onClick}:{item:DecisionSignal;index:number;onClick:()=>void}){return <button className={`decision-row ${item.severity}`} onClick={onClick}><span className="decision-rank">{index}</span><span><b>{item.title}</b><small>{item.detail}</small></span><span className="decision-score">{item.score}</span><ChevronLeft size={16}/></button>}
-function Kpi({icon,label,value,context,tone,onClick}:{icon:React.ReactNode;label:string;value:string|number;context:string;tone:string;onClick:()=>void}){return <button className={`decision-kpi panel ${tone}`} onClick={onClick}><span className="kpi-icon">{icon}</span><span><small>{label}</small><strong>{value}</strong><p>{context}</p></span><ChevronLeft size={17}/></button>}
-function Quick({icon,label,onClick}:{icon:React.ReactNode;label:string;onClick:()=>void}){return <button onClick={onClick}><span>{icon}</span><b>{label}</b><Plus size={15}/></button>}
-function SmartEmpty({icon,title,text,actions=[]}:{icon:React.ReactNode;title:string;text:string;actions?:Array<{label:string;onClick:()=>void}>}){return <div className="smart-empty"><span>{icon}</span><h3>{title}</h3><p>{text}</p>{actions.length>0&&<div className="smart-empty-actions">{actions.map(action=><button key={action.label} onClick={action.onClick}><Plus size={14}/>{action.label}</button>)}</div>}</div>}
-function relativeTime(value:string){const diff=Date.now()-new Date(value).getTime();const min=Math.floor(diff/60000);if(min<1)return"الآن";if(min<60)return`منذ ${min} د`;const h=Math.floor(min/60);if(h<24)return`منذ ${h} س`;return new Intl.DateTimeFormat("ar-SA",{day:"numeric",month:"short"}).format(new Date(value));}
+
+function MetricCard({ tone, icon, kicker, value, title, text }: { tone: "blue" | "cyan" | "violet"; icon: React.ReactNode; kicker: string; value: React.ReactNode; title: string; text: string }) {
+  return (
+    <article className={`bx-card ${tone}`}>
+      <div className="bx-icon">{icon}</div>
+      <span className="bx-kicker">{kicker}</span>
+      <strong>{value}</strong>
+      <h3>{title}</h3>
+      <p>{text}</p>
+    </article>
+  );
+}
+
+function PanelHead({ kicker, title, action, onClick }: { kicker: string; title: string; action?: string; onClick?: () => void }) {
+  return (
+    <header className="bx-panel-head">
+      <div><span className="bx-kicker">{kicker}</span><h3>{title}</h3></div>
+      {action && onClick ? <button onClick={onClick}>{action}</button> : <Sparkles size={18} color="#38B2F6" />}
+    </header>
+  );
+}
+
+function PriorityRow({ item, index, onClick }: { item: DecisionSignal; index: number; onClick: () => void }) {
+  const tone = item.severity === "critical" ? "danger" : item.severity === "warning" ? "warn" : "good";
+  return (
+    <button className="bx-row" onClick={onClick}>
+      <span className="bx-rank">{String(index).padStart(2, "0")}</span>
+      <span><b>{item.title}</b><small>{item.detail}</small></span>
+      <span className={`bx-dot ${tone}`} />
+    </button>
+  );
+}
+
+function EmptyState({ text, actions = [] }: { text: string; actions?: Array<{ label: string; onClick: () => void }> }) {
+  return (
+    <div className="bx-empty">
+      <p>{text}</p>
+      {actions.length > 0 && <div className="bx-actions">{actions.map((action) => <button key={action.label} onClick={action.onClick}><Plus size={14} /> {action.label}</button>)}</div>}
+    </div>
+  );
+}
+
+function QuickActionButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return <button onClick={onClick}>{icon}<b>{label}</b></button>;
+}
+
+function relativeTime(value: string) {
+  const diff = Date.now() - new Date(value).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "الآن";
+  if (min < 60) return `منذ ${min} د`;
+  const hours = Math.floor(min / 60);
+  if (hours < 24) return `منذ ${hours} س`;
+  return new Intl.DateTimeFormat("ar-SA", { day: "numeric", month: "short" }).format(new Date(value));
+}
