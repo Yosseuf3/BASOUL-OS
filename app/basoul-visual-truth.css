@@ -1,0 +1,211 @@
+/* BASOUL Visual Truth correction layer.
+   Scope: first production-facing migration surface, Executive Dashboard.
+   Identity authority: approved BASOUL Brand Identity System Board.
+   YVL remains the mechanics layer for spacing, radii, motion, accessibility and RTL. */
+
+:root {
+  --basoul-panel-border: color-mix(in srgb, var(--basoul-sky) 18%, transparent);
+  --basoul-panel-border-strong: color-mix(in srgb, var(--basoul-sky) 36%, transparent);
+  --basoul-panel-fill: linear-gradient(145deg, rgb(17 24 42 / .94), rgb(11 16 32 / .96));
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 78% 2%, rgb(56 178 246 / .12), transparent 30%),
+    radial-gradient(circle at 12% 94%, rgb(139 92 246 / .10), transparent 32%),
+    linear-gradient(180deg, #0B1020 0%, #090E1B 100%);
+}
+
+/* Executive Dashboard: visual migration slice */
+.executive-dashboard {
+  display: grid;
+  gap: var(--yvl-space-4);
+  color: var(--basoul-text-primary);
+}
+
+.executive-dashboard .panel,
+.executive-dashboard .decision-kpi {
+  position: relative;
+  overflow: hidden;
+  background: var(--basoul-panel-fill);
+  border: 1px solid var(--basoul-panel-border);
+  border-radius: var(--yvl-radius-xl);
+  box-shadow: 0 14px 42px rgb(2 6 23 / .26);
+}
+
+.executive-dashboard .panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgb(56 178 246 / .04), transparent 36%, rgb(139 92 246 / .035));
+}
+
+.executive-dashboard .executive-hero {
+  min-height: 190px;
+  padding: var(--yvl-space-6);
+  border-color: var(--basoul-panel-border-strong);
+  background:
+    radial-gradient(circle at 82% 18%, rgb(56 178 246 / .16), transparent 32%),
+    radial-gradient(circle at 18% 90%, rgb(139 92 246 / .09), transparent 34%),
+    linear-gradient(135deg, #11182A 0%, #0B1020 76%);
+  box-shadow: var(--basoul-glow-soft);
+}
+
+.executive-dashboard .executive-greeting h2,
+.executive-dashboard .panel-head h2,
+.executive-dashboard .health-card-head h2,
+.executive-dashboard .quick-actions-v2 h2,
+.executive-dashboard .executive-insight h2 {
+  color: #FFFFFF;
+  font-weight: 700;
+  letter-spacing: -.025em;
+}
+
+.executive-dashboard .executive-greeting p,
+.executive-dashboard .executive-insight p,
+.executive-dashboard .panel small,
+.executive-dashboard .panel p {
+  color: var(--basoul-text-muted);
+}
+
+.executive-dashboard .section-kicker,
+.executive-dashboard .hero-label,
+.executive-dashboard .panel-head .section-kicker {
+  color: var(--basoul-sky);
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+.executive-dashboard .executive-greeting strong {
+  color: var(--basoul-sky);
+}
+
+.executive-dashboard .hero-focus,
+.executive-dashboard .hero-meta,
+.executive-dashboard .executive-confidence,
+.executive-dashboard .finance-v2-breakdown,
+.executive-dashboard .executive-evidence span {
+  background: rgb(11 16 32 / .54);
+  border: 1px solid var(--basoul-panel-border);
+  border-radius: var(--yvl-radius-lg);
+}
+
+.executive-dashboard button {
+  border-color: var(--basoul-panel-border);
+}
+
+.executive-dashboard button:hover {
+  border-color: var(--basoul-panel-border-strong);
+}
+
+.executive-dashboard .text-link,
+.executive-dashboard .health-action,
+.executive-dashboard .quick-actions-grid button,
+.executive-dashboard .smart-empty-actions button {
+  color: var(--basoul-sky);
+}
+
+.executive-dashboard .quick-actions-grid button,
+.executive-dashboard .smart-empty-actions button,
+.executive-dashboard .hero-empty button {
+  background: rgb(37 99 235 / .10);
+  border: 1px solid rgb(56 178 246 / .22);
+  border-radius: var(--yvl-radius-md);
+}
+
+.executive-dashboard .quick-actions-grid button:hover,
+.executive-dashboard .smart-empty-actions button:hover,
+.executive-dashboard .hero-empty button:hover {
+  background: rgb(37 99 235 / .18);
+  box-shadow: 0 0 22px rgb(37 99 235 / .12);
+}
+
+.executive-dashboard .decision-kpi .kpi-icon,
+.executive-dashboard .activity-dot {
+  color: var(--basoul-sky);
+  background: rgb(37 99 235 / .10);
+  border: 1px solid rgb(56 178 246 / .18);
+}
+
+.executive-dashboard .decision-kpi strong,
+.executive-dashboard .finance-v2-balance strong,
+.executive-dashboard .health-ring strong,
+.executive-dashboard .executive-confidence strong {
+  color: #FFFFFF;
+}
+
+.executive-dashboard .health-ring {
+  filter: drop-shadow(0 0 16px rgb(37 99 235 / .16));
+}
+
+.executive-dashboard .decision-row,
+.executive-dashboard .activity-v2-list > button {
+  background: rgb(11 16 32 / .48);
+  border-color: transparent;
+  border-bottom-color: rgb(56 178 246 / .09);
+}
+
+.executive-dashboard .decision-row:hover,
+.executive-dashboard .activity-v2-list > button:hover {
+  background: rgb(37 99 235 / .08);
+  border-color: rgb(56 178 246 / .18);
+}
+
+.executive-dashboard .decision-score,
+.executive-dashboard .decision-rank {
+  color: var(--basoul-sky);
+}
+
+.executive-dashboard .executive-evidence span {
+  color: var(--basoul-text-secondary);
+}
+
+/* Amber is not a global BASOUL accent. Restrict it to warning semantics. */
+.executive-dashboard .warning,
+.executive-dashboard .timeline-warning,
+.executive-dashboard .health-attention {
+  --local-status-color: var(--basoul-amber);
+}
+
+.executive-dashboard .positive,
+.executive-dashboard .timeline-positive,
+.executive-dashboard .health-excellent,
+.executive-dashboard .health-good {
+  --local-status-color: var(--basoul-success);
+}
+
+.executive-dashboard .critical,
+.executive-dashboard .timeline-critical {
+  --local-status-color: var(--basoul-danger);
+}
+
+/* BASOUL product visual signature, deliberately subtle. */
+.executive-dashboard::before {
+  content: "";
+  height: 2px;
+  width: min(320px, 38vw);
+  border-radius: 999px;
+  background: var(--basoul-gradient-violet);
+  box-shadow: 0 0 24px rgb(37 99 235 / .25);
+}
+
+@media (max-width: 900px) {
+  .executive-dashboard .executive-hero {
+    padding: var(--yvl-space-5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .executive-dashboard *,
+  .executive-dashboard *::before,
+  .executive-dashboard *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
