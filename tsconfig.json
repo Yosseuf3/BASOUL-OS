@@ -71,6 +71,12 @@
       "@yosseuf/yvl-tokens": [
         "packages/yvl-tokens/src/index.ts"
       ],
+      "@basoul/yvl-adapter": [
+        "packages/basoul-yvl-adapter/src/index.ts"
+      ],
+      "@basoul/yvl-adapter/native": [
+        "packages/basoul-yvl-adapter/src/native.ts"
+      ],
       "@yosseuf/cognitive-core": [
         "packages/cognitive-core/src/index.ts"
       ],

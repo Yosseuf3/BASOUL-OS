@@ -1,0 +1,64 @@
+@import "../../yvl-tokens/generated/yvl.css";
+
+:root {
+  --basoul-background: var(--yvl-color-background);
+  --basoul-surface: var(--yvl-color-surface);
+  --basoul-surface-raised: var(--yvl-color-surface-elevated);
+  --basoul-text-primary: var(--yvl-color-white);
+  --basoul-text-secondary: var(--yvl-color-silver);
+  --basoul-border: var(--yvl-color-border);
+  --basoul-accent: var(--ys-action-primary);
+  --basoul-success: var(--yvl-color-success);
+  --basoul-warning: var(--yvl-color-warning);
+  --basoul-danger: var(--yvl-color-danger);
+  --basoul-focus: var(--yvl-color-focus);
+  --basoul-disabled: var(--yvl-color-text-muted);
+
+  /* Compatibility aliases let untouched product surfaces migrate incrementally. */
+  --ys-surface-canvas: var(--basoul-background);
+  --ys-surface-base: var(--basoul-surface);
+  --ys-surface-subtle: var(--basoul-surface);
+  --ys-surface-raised: var(--basoul-surface-raised);
+  --ys-text-primary: var(--basoul-text-primary);
+  --ys-text-secondary: var(--basoul-text-secondary);
+  --ys-text-muted: var(--basoul-disabled);
+  --ys-border-default: var(--basoul-border);
+  --ys-border-strong: color-mix(in srgb, var(--basoul-border) 68%, var(--basoul-text-secondary));
+  --ys-status-success: var(--basoul-success);
+  --ys-status-warning: var(--basoul-warning);
+  --ys-status-danger: var(--basoul-danger);
+  --ys-status-danger-border: color-mix(in srgb, var(--basoul-danger) 58%, var(--basoul-border));
+  --ys-status-danger-subtle: color-mix(in srgb, var(--basoul-danger) 10%, var(--basoul-surface));
+  --ys-status-info: var(--yvl-color-cyan);
+  --ys-focus-ring: var(--basoul-focus);
+  --ys-space-2: var(--yvl-space-2);
+  --ys-space-4: var(--yvl-space-3);
+  --ys-space-6: var(--yvl-space-4);
+  --ys-space-8: var(--yvl-space-5);
+  --ys-space-10: var(--yvl-space-6);
+  --ys-radius-sm: var(--yvl-radius-sm);
+  --ys-radius-md: var(--yvl-radius-md);
+  --ys-radius-lg: var(--yvl-radius-lg);
+  --ys-radius-xl: var(--yvl-radius-xl);
+  --ys-motion-duration-fast: var(--yvl-duration-fast);
+  --ys-motion-duration-normal: var(--yvl-duration-normal);
+  --ys-motion-duration-slow: var(--yvl-duration-slow);
+  --ys-shadow-overlay: var(--yvl-shadow-raised);
+  --surface: var(--basoul-surface);
+  --surface-2: var(--basoul-surface-raised);
+}
+
+body {
+  font-family: var(--yvl-font-body);
+  line-height: var(--yvl-line-height-normal);
+}
+
+h1, h2, h3, .logo strong {
+  font-family: var(--yvl-font-display);
+  line-height: var(--yvl-line-height-tight);
+}
+
+button, input, select, textarea {
+  transition-duration: var(--yvl-duration-fast);
+  transition-timing-function: var(--yvl-easing-standard);
+}

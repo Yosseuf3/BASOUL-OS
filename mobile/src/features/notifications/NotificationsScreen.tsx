@@ -1,6 +1,6 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Screen } from "../../components/Screen";
-import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
+import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import type { Notification } from "../../types/domain";
 
 export function NotificationsScreen({ notifications, onBack, onRead }: { notifications: Notification[]; onBack: () => void; onRead: (id: string) => void }) {

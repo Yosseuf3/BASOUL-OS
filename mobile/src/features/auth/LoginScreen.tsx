@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { Screen } from "../../components/Screen";
+import { YvlButton, YvlTextInput } from "../../components/yvl-primitives";
 import { isMobileConfigured, supabase } from "../../config/supabase";
-import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
+import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import { MOBILE_AUTH_CALLBACK } from "./mobileAuth";
 
 export function LoginScreen() {
@@ -56,7 +57,7 @@ export function LoginScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>الدخول عبر البريد</Text>
         <Text style={styles.label}>البريد الإلكتروني</Text>
-        <TextInput
+        <YvlTextInput
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -71,9 +72,9 @@ export function LoginScreen() {
           returnKeyType="send"
         />
         {message ? <Text style={sent ? styles.success : styles.error}>{message}</Text> : null}
-        <TouchableOpacity style={[styles.button, loading && styles.disabled]} onPress={() => void sendMagicLink()} disabled={loading}>
+        <YvlButton style={[styles.button, loading && styles.disabled]} onPress={() => void sendMagicLink()} disabled={loading}>
           {loading ? <ActivityIndicator color={tokens.colors.background} /> : <Text style={styles.buttonText}>إرسال رابط الدخول</Text>}
-        </TouchableOpacity>
+        </YvlButton>
         <Text style={styles.help}>الرابط صالح لمرة واحدة. يجب فتحه على الجهاز الذي يحتوي على التطبيق.</Text>
         <Text style={styles.config}>{isMobileConfigured ? "الاتصال بالمنصة جاهز" : "إعداد Supabase مطلوب"}</Text>
       </View>

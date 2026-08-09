@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Screen } from "../../components/Screen";
-import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
+import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import type { Project, Task } from "../../types/domain";
 
 type Filter = "Open" | "Overdue" | "All";

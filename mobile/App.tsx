@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { StatusBar } from "expo-status-bar";
-import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
+import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import { LoginScreen } from "./src/features/auth/LoginScreen";
 import { completeMobileAuthUrl, getInitialAuthUrl } from "./src/features/auth/mobileAuth";
 import { DashboardScreen } from "./src/features/dashboard/DashboardScreen";

@@ -1,0 +1,431 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-09T19:20:02.619Z",
+  "scope": [
+    "app",
+    "components",
+    "features",
+    "mobile"
+  ],
+  "sourceOfTruth": [
+    "packages/yvl-tokens/**",
+    "design-system/yvl/**"
+  ],
+  "adapter": "packages/basoul-yvl-adapter",
+  "categories": {
+    "alreadyYvlCompliant": "References YVL or the BASOUL YVL adapter.",
+    "legacyTokens": "References compatibility variables or @yosseuf/ui-tokens.",
+    "brandSpecific": "References BASOUL identity only.",
+    "hardcoded": "Raw color or layout metric values requiring incremental migration."
+  },
+  "totals": {
+    "yvlCompliantReferences": 113,
+    "legacyTokenReferences": 831,
+    "brandSpecificReferences": 233,
+    "hardcodedColors": 27,
+    "hardcodedMetrics": 844
+  },
+  "missingSemanticMappings": [],
+  "files": [
+    {
+      "path": "app/api/platform/gateways/[gateway]/route.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "app/api/platform/modules/[module]/route.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "app/api/platform/organizations/route.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "app/api/platform/workspaces/route.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "app/api/workspace/[resource]/route.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "app/error.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 1,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "app/foundation-architecture.css",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 98,
+      "brandSpecificReferences": 23,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 65
+    },
+    {
+      "path": "app/globals.css",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 731,
+      "brandSpecificReferences": 192,
+      "hardcodedColors": 25,
+      "hardcodedMetrics": 507
+    },
+    {
+      "path": "app/layout.tsx",
+      "yvlCompliantReferences": 1,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 4,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "app/manifest.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 3,
+      "hardcodedColors": 2,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "app/page.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 1,
+      "brandSpecificReferences": 3,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "app/yvl-review/page.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 2,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "components/commands/quick-create.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "components/shell/platform-navigation.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "components/shell/workspace-switcher.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "components/ui/yvl-primitives.css",
+      "yvlCompliantReferences": 84,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 2
+    },
+    {
+      "path": "components/ui/yvl-primitives.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "features/activity/activity-view.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "features/administration/administration-view.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "features/architecture/architecture-review-view.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 1,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "features/architecture/plan-overlay-viewer.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 1,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "features/dashboard/dashboard-view.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "features/finance/finance-view.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "features/global-search.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "features/notifications/notifications-view.tsx",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "mobile/App.tsx",
+      "yvlCompliantReferences": 2,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 7
+    },
+    {
+      "path": "mobile/src/components/Screen.tsx",
+      "yvlCompliantReferences": 2,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "mobile/src/components/yvl-primitives.tsx",
+      "yvlCompliantReferences": 2,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 1
+    },
+    {
+      "path": "mobile/src/config/supabase.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "mobile/src/decision/executive.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "mobile/src/executive/decisionEngine.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "mobile/src/executive/executiveKernel.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "mobile/src/executive/healthEngine.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "mobile/src/executive/predictiveEngine.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "mobile/src/executive/types.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "mobile/src/features/administration/AdministrationScreen.tsx",
+      "yvlCompliantReferences": 2,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 1,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 1
+    },
+    {
+      "path": "mobile/src/features/architecture/architecture-review-screen.tsx",
+      "yvlCompliantReferences": 2,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 98
+    },
+    {
+      "path": "mobile/src/features/auth/LoginScreen.tsx",
+      "yvlCompliantReferences": 2,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 1,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 12
+    },
+    {
+      "path": "mobile/src/features/auth/mobileAuth.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "mobile/src/features/command-center/CommandCenterScreen.tsx",
+      "yvlCompliantReferences": 2,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 1,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 25
+    },
+    {
+      "path": "mobile/src/features/create/CreateTaskScreen.tsx",
+      "yvlCompliantReferences": 2,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 14
+    },
+    {
+      "path": "mobile/src/features/dashboard/DashboardScreen.tsx",
+      "yvlCompliantReferences": 2,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 1,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 43
+    },
+    {
+      "path": "mobile/src/features/notifications/NotificationsScreen.tsx",
+      "yvlCompliantReferences": 2,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 8
+    },
+    {
+      "path": "mobile/src/features/projects/ProjectsScreen.tsx",
+      "yvlCompliantReferences": 2,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 9
+    },
+    {
+      "path": "mobile/src/features/search/GlobalSearchScreen.tsx",
+      "yvlCompliantReferences": 2,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 15
+    },
+    {
+      "path": "mobile/src/features/tasks/TasksScreen.tsx",
+      "yvlCompliantReferences": 2,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 18
+    },
+    {
+      "path": "mobile/src/features/timeline/TimelineScreen.tsx",
+      "yvlCompliantReferences": 2,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 19
+    },
+    {
+      "path": "mobile/src/permissions/organization.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "mobile/src/services/workspace.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    },
+    {
+      "path": "mobile/src/types/domain.ts",
+      "yvlCompliantReferences": 0,
+      "legacyTokenReferences": 0,
+      "brandSpecificReferences": 0,
+      "hardcodedColors": 0,
+      "hardcodedMetrics": 0
+    }
+  ]
+}

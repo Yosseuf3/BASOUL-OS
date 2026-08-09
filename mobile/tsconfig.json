@@ -4,7 +4,10 @@
     "strict": true,
     "types": ["node"],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@basoul/yvl-adapter/native": ["../packages/basoul-yvl-adapter/src/native.ts"],
+      "@yosseuf/ui-tokens": ["../packages/ui-tokens/src/index.ts"],
+      "@yosseuf/yvl-tokens/react-native": ["../packages/yvl-tokens/generated/react-native.ts"]
     }
   }
 }

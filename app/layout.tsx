@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./foundation-architecture.css";
+import "@basoul/yvl-adapter/web.css";
+import "@/components/ui/yvl-primitives.css";
 
 export const metadata: Metadata = {
   title: "BASOUL",

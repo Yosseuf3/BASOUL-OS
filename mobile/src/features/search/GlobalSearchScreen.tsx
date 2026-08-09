@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Screen } from "../../components/Screen";
-import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
+import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import type { MobileWorkspaceData } from "../../types/domain";
 
 type Result = { id: string; type: "مشروع" | "مهمة" | "تنبيه"; title: string; subtitle: string };
