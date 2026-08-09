@@ -13,12 +13,6 @@ export async function loadMobileOrganizationRole(userId: string): Promise<Mobile
   return (data?.role ?? "viewer") as MobileOrganizationRole;
 }
 
-export async function acceptMobileOrganizationInvitations(): Promise<void> {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  const { data, error } = await supabase.functions.invoke("organization-admin", { body: { action: "accept" } });
-  if (error || data?.error) throw error ?? new Error(String(data.error));
-}
-
 export type MobileDrawingFile = {
   uri: string;
   name: string;
