@@ -1,0 +1,58 @@
+name: BASOUL iOS Simulator Build Status
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/basoul-ios-simulator-status.yml
+      - .github/workflows/basoul-ios-simulator-build.yml
+      - mobile/eas.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-eas-build:
+    runs-on: ubuntu-24.04
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_BUILD_ID: ebfb7811-7634-45c4-8811-3ae855226064
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+      - name: Verify Expo authentication
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          test -n "${EXPO_TOKEN:-}"
+          npx eas-cli@latest whoami --non-interactive
+      - name: Wait for simulator build terminal status
+        working-directory: mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 40); do
+            npx eas-cli@latest build:view "$EAS_BUILD_ID" --json > /tmp/build.json
+            STATUS=$(node -e "const b=require('/tmp/build.json'); console.log(b.status || '')")
+            echo "Attempt $attempt: EAS build status = $STATUS"
+            case "$STATUS" in
+              FINISHED)
+                node -e "const b=require('/tmp/build.json'); console.log('Build ID: '+b.id); console.log('Platform: '+b.platform); console.log('Status: '+b.status); console.log('Simulator: '+b.isForIosSimulator); if (b.artifacts && b.artifacts.buildUrl) console.log('Artifact URL: '+b.artifacts.buildUrl); if (b.buildDetailsPageUrl) console.log('Build page: '+b.buildDetailsPageUrl);"
+                exit 0
+                ;;
+              ERRORED|CANCELED)
+                cat /tmp/build.json
+                exit 1
+                ;;
+              *)
+                sleep 15
+                ;;
+            esac
+          done
+          echo "Timed out waiting for EAS simulator build."
+          cat /tmp/build.json
+          exit 1

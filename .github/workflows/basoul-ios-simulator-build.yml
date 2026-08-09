@@ -1,0 +1,72 @@
+name: BASOUL iOS Simulator Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios-simulator:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify Expo authentication
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${EXPO_TOKEN:-}"
+          npx eas-cli@latest whoami --non-interactive
+      - name: Validate BASOUL identity boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const app = require('./app.json').expo;
+          const expected = {
+            name: 'BASOUL',
+            slug: 'yosseuf-os',
+            scheme: 'yosseufos',
+            iosBundle: 'com.yosseufradwan.os',
+            easProjectId: '6f770730-8c8e-49b0-81b9-f9773faf567a',
+          };
+          if (app.name !== expected.name) throw new Error(`Unexpected app name: ${app.name}`);
+          if (app.slug !== expected.slug) throw new Error(`Unexpected slug: ${app.slug}`);
+          if (app.scheme !== expected.scheme) throw new Error(`Unexpected scheme: ${app.scheme}`);
+          if (app.ios?.bundleIdentifier !== expected.iosBundle) throw new Error(`Unexpected iOS bundle id: ${app.ios?.bundleIdentifier}`);
+          if (app.extra?.eas?.projectId !== expected.easProjectId) throw new Error(`Unexpected EAS projectId: ${app.extra?.eas?.projectId}`);
+          console.log('BASOUL identity boundary verified.');
+          NODE
+      - name: Run Expo Doctor
+        run: npm run doctor
+      - name: Queue iOS simulator build on EAS
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx eas-cli@latest build \
+            --platform ios \
+            --profile development-simulator \
+            --non-interactive \
+            --no-wait \
+            --json | tee /tmp/eas-build.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const raw = fs.readFileSync('/tmp/eas-build.json', 'utf8').trim();
+          const data = JSON.parse(raw);
+          const build = Array.isArray(data) ? data[0] : data;
+          console.log(`EAS build id: ${build.id ?? 'unknown'}`);
+          console.log(`EAS build status: ${build.status ?? 'queued'}`);
+          if (build.buildDetailsPageUrl) console.log(`Build URL: ${build.buildDetailsPageUrl}`);
+          NODE

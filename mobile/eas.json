@@ -16,6 +16,14 @@
       "distribution": "internal",
       "environment": "development"
     },
+    "development-simulator": {
+      "extends": "base",
+      "developmentClient": true,
+      "environment": "development",
+      "ios": {
+        "simulator": true
+      }
+    },
     "preview": {
       "extends": "base",
       "distribution": "internal",
