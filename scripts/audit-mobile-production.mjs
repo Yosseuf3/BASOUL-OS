@@ -7,10 +7,14 @@ const allowedAdvisories = new Set([
   "GHSA-w3rx-r6r6-pgpr",
 ]);
 
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+const npmCli = process.env.npm_execpath;
+const npmCommand = npmCli ? process.execPath : process.platform === "win32" ? "npm.cmd" : "npm";
+const npmArgs = npmCli
+  ? [npmCli, "audit", "--omit=dev", "--audit-level=high", "--json"]
+  : ["audit", "--omit=dev", "--audit-level=high", "--json"];
 const audit = spawnSync(
   npmCommand,
-  ["audit", "--omit=dev", "--audit-level=high", "--json"],
+  npmArgs,
   { encoding: "utf8", shell: false },
 );
 
