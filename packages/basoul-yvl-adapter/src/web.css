@@ -1,35 +1,54 @@
 @import "../../yvl-tokens/generated/yvl.css";
 
 :root {
-  --basoul-background: var(--yvl-color-background);
-  --basoul-surface: var(--yvl-color-surface);
-  --basoul-surface-raised: var(--yvl-color-surface-elevated);
-  --basoul-text-primary: var(--yvl-color-white);
-  --basoul-text-secondary: var(--yvl-color-silver);
-  --basoul-border: var(--yvl-color-border);
-  --basoul-accent: var(--ys-action-primary);
+  /* BASOUL approved identity board is the visual authority. */
+  --basoul-background: #0B1020;
+  --basoul-surface: #11182A;
+  --basoul-surface-raised: #1B2230;
+  --basoul-text-primary: #FFFFFF;
+  --basoul-text-secondary: #E5E7EB;
+  --basoul-text-muted: #94A3B8;
+  --basoul-border: color-mix(in srgb, #38B2F6 18%, #1B2230);
+  --basoul-electric: #2563EB;
+  --basoul-sky: #38B2F6;
+  --basoul-violet: #8B5CF6;
+  --basoul-cyan: #00E0D1;
+  --basoul-amber: #F59E0B;
   --basoul-success: var(--yvl-color-success);
   --basoul-warning: var(--yvl-color-warning);
   --basoul-danger: var(--yvl-color-danger);
-  --basoul-focus: var(--yvl-color-focus);
-  --basoul-disabled: var(--yvl-color-text-muted);
+  --basoul-focus: #38B2F6;
+  --basoul-disabled: #64748B;
+  --basoul-gradient-electric: linear-gradient(135deg, #2563EB 0%, #38B2F6 100%);
+  --basoul-gradient-violet: linear-gradient(135deg, #8B5CF6 0%, #2563EB 100%);
+  --basoul-gradient-cyan: linear-gradient(135deg, #38B2F6 0%, #00E0D1 100%);
+  --basoul-glow-blue: 0 0 28px rgb(37 99 235 / 0.24);
+  --basoul-glow-soft: 0 18px 60px rgb(37 99 235 / 0.12);
 
-  /* Compatibility aliases let untouched product surfaces migrate incrementally. */
+  /* Product-family semantics from the approved board. */
+  --basoul-product-ai: #2563EB;
+  --basoul-product-os: #38B2F6;
+  --basoul-product-one: #F59E0B;
+  --basoul-product-labs: #8B5CF6;
+
+  /* Compatibility bridge. YVL keeps mechanics; BASOUL owns identity. */
   --ys-surface-canvas: var(--basoul-background);
   --ys-surface-base: var(--basoul-surface);
-  --ys-surface-subtle: var(--basoul-surface);
+  --ys-surface-subtle: color-mix(in srgb, var(--basoul-surface) 82%, var(--basoul-background));
   --ys-surface-raised: var(--basoul-surface-raised);
   --ys-text-primary: var(--basoul-text-primary);
   --ys-text-secondary: var(--basoul-text-secondary);
-  --ys-text-muted: var(--basoul-disabled);
+  --ys-text-muted: var(--basoul-text-muted);
   --ys-border-default: var(--basoul-border);
-  --ys-border-strong: color-mix(in srgb, var(--basoul-border) 68%, var(--basoul-text-secondary));
+  --ys-border-strong: color-mix(in srgb, var(--basoul-sky) 34%, var(--basoul-surface-raised));
+  --ys-action-primary: var(--basoul-electric);
+  --ys-action-primary-hover: #1D4ED8;
   --ys-status-success: var(--basoul-success);
   --ys-status-warning: var(--basoul-warning);
   --ys-status-danger: var(--basoul-danger);
   --ys-status-danger-border: color-mix(in srgb, var(--basoul-danger) 58%, var(--basoul-border));
   --ys-status-danger-subtle: color-mix(in srgb, var(--basoul-danger) 10%, var(--basoul-surface));
-  --ys-status-info: var(--yvl-color-cyan);
+  --ys-status-info: var(--basoul-sky);
   --ys-focus-ring: var(--basoul-focus);
   --ys-space-2: var(--yvl-space-2);
   --ys-space-4: var(--yvl-space-3);
@@ -43,22 +62,30 @@
   --ys-motion-duration-fast: var(--yvl-duration-fast);
   --ys-motion-duration-normal: var(--yvl-duration-normal);
   --ys-motion-duration-slow: var(--yvl-duration-slow);
-  --ys-shadow-overlay: var(--yvl-shadow-raised);
+  --ys-shadow-overlay: var(--basoul-glow-soft);
   --surface: var(--basoul-surface);
   --surface-2: var(--basoul-surface-raised);
 }
 
 body {
-  font-family: var(--yvl-font-body);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: var(--yvl-line-height-normal);
+  background: var(--basoul-background);
+  color: var(--basoul-text-primary);
 }
 
 h1, h2, h3, .logo strong {
-  font-family: var(--yvl-font-display);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: var(--yvl-line-height-tight);
+  letter-spacing: -0.02em;
 }
 
 button, input, select, textarea {
+  font: inherit;
   transition-duration: var(--yvl-duration-fast);
   transition-timing-function: var(--yvl-easing-standard);
+}
+
+:focus-visible {
+  outline-color: var(--basoul-focus);
 }

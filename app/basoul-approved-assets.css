@@ -1,0 +1,49 @@
+/* Approved BASOUL identity assets. Geometry must never be recreated with text/CSS.
+   Assets are pinned to the immutable approved source commit. */
+:root{
+  --basoul-approved-symbol:url("https://raw.githubusercontent.com/Yosseuf3/YOSSEUF--OS/3122092e9bc18acd696911aeb54eee7a3dcc26e2/brand/basoul/assets/symbol/BASOUL_Symbol_Master.png");
+  --basoul-approved-wordmark:url("https://raw.githubusercontent.com/Yosseuf3/YOSSEUF--OS/3122092e9bc18acd696911aeb54eee7a3dcc26e2/brand/basoul/assets/wordmark/BASOUL_Wordmark_Master.png");
+}
+
+/* Authentication identity */
+.auth-card .auth-logo,.auth-card .logo-mark{
+  background-color:transparent!important;
+  background-image:var(--basoul-approved-symbol)!important;
+  background-position:center!important;
+  background-repeat:no-repeat!important;
+  background-size:contain!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+.auth-card h1{
+  width:min(260px,72%);height:68px;margin:10px auto 8px!important;
+  font-size:0!important;line-height:0!important;
+  background-image:var(--basoul-approved-wordmark)!important;
+  background-position:center!important;background-repeat:no-repeat!important;background-size:contain!important;
+}
+.auth-card h1::after{content:none!important;display:none!important}
+
+/* Application shell identity */
+.sidebar .logo-mark{
+  background-color:transparent!important;
+  background-image:var(--basoul-approved-symbol)!important;
+  background-position:center!important;background-repeat:no-repeat!important;background-size:contain!important;
+  border-radius:0!important;box-shadow:none!important;
+}
+.sidebar .logo>div:not(.logo-mark){min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.sidebar .logo>div:not(.logo-mark) strong{display:none!important}
+.sidebar .logo>div:not(.logo-mark)::before{
+  content:"";display:block;width:124px;height:34px;
+  background-image:var(--basoul-approved-wordmark);background-position:left center;background-repeat:no-repeat;background-size:contain;
+}
+.sidebar .logo>div:not(.logo-mark) span{font-size:9px!important;letter-spacing:.11em!important;color:#38B2F6!important;text-transform:uppercase}
+
+/* Loading identity */
+.loader::before{
+  background-color:transparent!important;background-image:var(--basoul-approved-symbol)!important;
+  background-position:center!important;background-repeat:no-repeat!important;background-size:contain!important;
+}
+
+@media(max-width:900px){
+  .sidebar .logo>div:not(.logo-mark)::before{width:104px;height:28px}
+}

@@ -1,0 +1,417 @@
+/* BASOUL Visual Truth migration layer.
+   Identity authority: approved BASOUL Brand Identity System Board.
+   YVL remains mechanics-only: spacing, radii, motion, accessibility and RTL.
+   This layer intentionally wins over legacy YOSSEUF visual selectors. */
+
+:root {
+  --basoul-navy: #0B1020;
+  --basoul-navy-2: #11182A;
+  --basoul-surface: #1B2230;
+  --basoul-electric: #2563EB;
+  --basoul-sky: #38B2F6;
+  --basoul-violet: #8B5CF6;
+  --basoul-light: #E5E7EB;
+  --basoul-white: #FFFFFF;
+  --basoul-muted: #94A3B8;
+  --basoul-line: rgb(56 178 246 / .18);
+  --basoul-line-strong: rgb(56 178 246 / .36);
+  --basoul-gradient-electric: linear-gradient(135deg, #2563EB 0%, #38B2F6 100%);
+  --basoul-gradient-violet: linear-gradient(135deg, #8B5CF6 0%, #2563EB 100%);
+  --basoul-gradient-cyan: linear-gradient(135deg, #38B2F6 0%, #00E0D1 100%);
+  --basoul-panel-fill: linear-gradient(145deg, rgb(17 24 42 / .96), rgb(11 16 32 / .98));
+  --basoul-glow-soft: 0 18px 60px rgb(37 99 235 / .14);
+}
+
+html, body {
+  background: var(--basoul-navy) !important;
+  color: var(--basoul-white);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 76% 0%, rgb(56 178 246 / .10), transparent 28%),
+    radial-gradient(circle at 5% 100%, rgb(139 92 246 / .10), transparent 30%),
+    linear-gradient(180deg, #0B1020 0%, #080D1A 100%) !important;
+}
+
+/* ---------------- AUTH ---------------- */
+.auth-page {
+  min-height: 100vh !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 32px !important;
+  background:
+    radial-gradient(circle at 50% 88%, rgb(37 99 235 / .20), transparent 24%),
+    radial-gradient(circle at 72% 18%, rgb(139 92 246 / .11), transparent 26%),
+    linear-gradient(180deg, #0B1020 0%, #080D1A 100%) !important;
+}
+
+.auth-page::after {
+  content: "";
+  position: fixed;
+  inset: auto 0 0;
+  height: 34vh;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgb(56 178 246 / .34), transparent 42%),
+    linear-gradient(180deg, transparent 0%, rgb(37 99 235 / .07) 100%);
+  opacity: .72;
+}
+
+.auth-card {
+  width: min(520px, calc(100vw - 40px)) !important;
+  padding: 42px !important;
+  border-radius: 24px !important;
+  border: 1px solid var(--basoul-line) !important;
+  background: linear-gradient(145deg, rgb(17 24 42 / .94), rgb(11 16 32 / .97)) !important;
+  box-shadow: 0 30px 90px rgb(0 0 0 / .32), 0 0 70px rgb(37 99 235 / .08) !important;
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.auth-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--basoul-gradient-violet);
+  box-shadow: 0 0 24px rgb(37 99 235 / .48);
+}
+
+.auth-card .auth-logo,
+.auth-card .logo-mark {
+  width: 86px !important;
+  height: 86px !important;
+  margin: 0 auto 22px !important;
+  border: 0 !important;
+  border-radius: 22px !important;
+  background: #081126 url('/icons/basoul-192.png') center/74px 74px no-repeat !important;
+  box-shadow: 0 0 36px rgb(37 99 235 / .22) !important;
+}
+.auth-card .auth-logo svg,
+.auth-card .logo-mark svg { display: none !important; }
+
+.auth-card .section-kicker {
+  display: block !important;
+  font-size: 0 !important;
+  color: var(--basoul-sky) !important;
+  text-align: center !important;
+  letter-spacing: .18em !important;
+  font-weight: 700 !important;
+}
+.auth-card .section-kicker::after {
+  content: "AI-NATIVE ECOSYSTEM";
+  font-size: 11px;
+}
+
+.auth-card h1 {
+  font-size: 0 !important;
+  text-align: center !important;
+  margin: 14px 0 8px !important;
+  letter-spacing: .22em !important;
+}
+.auth-card h1::after {
+  content: "BASOUL";
+  font-size: clamp(34px, 4vw, 48px);
+  font-weight: 700;
+  color: var(--basoul-white);
+  letter-spacing: .20em;
+  text-shadow: 0 0 28px rgb(56 178 246 / .10);
+}
+
+.auth-card > p {
+  color: var(--basoul-muted) !important;
+  text-align: center !important;
+  margin-bottom: 28px !important;
+}
+
+.auth-card label > span { color: var(--basoul-light) !important; }
+.auth-card input {
+  background: rgb(7 14 30 / .72) !important;
+  color: var(--basoul-white) !important;
+  border: 1px solid var(--basoul-line) !important;
+  border-radius: 12px !important;
+  min-height: 52px !important;
+  box-shadow: inset 0 0 0 1px rgb(37 99 235 / .04) !important;
+}
+.auth-card input:focus {
+  border-color: var(--basoul-sky) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgb(56 178 246 / .14), 0 0 24px rgb(37 99 235 / .12) !important;
+}
+
+.auth-card .primary {
+  min-height: 52px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: var(--basoul-gradient-electric) !important;
+  color: white !important;
+  font-weight: 700 !important;
+  box-shadow: 0 12px 34px rgb(37 99 235 / .22) !important;
+}
+.auth-card .primary:hover { filter: brightness(1.08); }
+.auth-message.success { color: #34D399 !important; }
+.auth-diagnostic-note { color: var(--basoul-muted) !important; }
+
+/* Loading identity */
+.center-screen { background: var(--basoul-navy) !important; }
+.loader svg { display: none !important; }
+.loader::before {
+  content: "";
+  width: 58px;
+  height: 58px;
+  display: block;
+  margin: 0 auto 16px;
+  background: url('/icons/basoul-192.png') center/contain no-repeat;
+  filter: drop-shadow(0 0 20px rgb(37 99 235 / .30));
+}
+.loader span { font-size: 0 !important; }
+.loader span::after { content: "جارٍ تشغيل BASOUL…"; font-size: 14px; color: var(--basoul-light); }
+
+/* ---------------- APPLICATION SHELL ---------------- */
+.app-shell {
+  background:
+    radial-gradient(circle at 76% 4%, rgb(56 178 246 / .055), transparent 28%),
+    linear-gradient(180deg, #0B1020 0%, #080D1A 100%) !important;
+}
+
+.sidebar {
+  background: linear-gradient(180deg, #0A1020 0%, #080D19 100%) !important;
+  border-inline-start: 1px solid var(--basoul-line) !important;
+  box-shadow: -18px 0 60px rgb(0 0 0 / .16) !important;
+}
+.sidebar .logo {
+  padding-bottom: 22px !important;
+  border-bottom: 1px solid var(--basoul-line) !important;
+}
+.sidebar .logo-mark {
+  width: 46px !important;
+  height: 46px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: #081126 url('/icons/basoul-192.png') center/40px 40px no-repeat !important;
+  box-shadow: 0 0 26px rgb(37 99 235 / .18) !important;
+}
+.sidebar .logo-mark svg { display: none !important; }
+.sidebar .logo strong { color: var(--basoul-white) !important; letter-spacing: .08em !important; }
+.sidebar .logo span { color: var(--basoul-muted) !important; }
+
+.sidebar nav button {
+  color: var(--basoul-muted) !important;
+  border: 1px solid transparent !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+}
+.sidebar nav button:hover {
+  color: var(--basoul-light) !important;
+  background: rgb(37 99 235 / .06) !important;
+  border-color: rgb(56 178 246 / .10) !important;
+}
+.sidebar nav button.active {
+  color: var(--basoul-white) !important;
+  background: linear-gradient(90deg, rgb(37 99 235 / .18), rgb(56 178 246 / .05)) !important;
+  border-color: var(--basoul-line) !important;
+  box-shadow: inset 3px 0 0 var(--basoul-electric), 0 0 24px rgb(37 99 235 / .07) !important;
+}
+.sidebar nav button.active svg { color: var(--basoul-sky) !important; }
+.nav-count { background: rgb(37 99 235 / .16) !important; color: var(--basoul-sky) !important; }
+.nav-count.alert { background: rgb(255 93 115 / .12) !important; color: #FF7186 !important; }
+.user-avatar {
+  background: var(--basoul-gradient-violet) !important;
+  color: white !important;
+  box-shadow: 0 0 22px rgb(37 99 235 / .14) !important;
+}
+.user-card { border-color: var(--basoul-line) !important; }
+
+.main { background: transparent !important; }
+.topbar {
+  background: linear-gradient(180deg, rgb(11 16 32 / .92), rgb(11 16 32 / .70)) !important;
+  border-bottom: 1px solid var(--basoul-line) !important;
+  backdrop-filter: blur(18px);
+}
+.topbar .eyebrow {
+  color: var(--basoul-sky) !important;
+  letter-spacing: .18em !important;
+  font-weight: 700 !important;
+}
+.topbar h1 { color: var(--basoul-white) !important; }
+.topbar p { color: var(--basoul-muted) !important; }
+.sync-state {
+  background: rgb(11 16 32 / .72) !important;
+  border: 1px solid var(--basoul-line) !important;
+  color: var(--basoul-light) !important;
+}
+.sync-state.ok::before { background: #34D399 !important; }
+
+.primary,
+.universal-create-button {
+  border: 0 !important;
+  color: white !important;
+  background: var(--basoul-gradient-electric) !important;
+  box-shadow: 0 10px 30px rgb(37 99 235 / .20) !important;
+}
+.primary:hover,
+.universal-create-button:hover { filter: brightness(1.08); }
+.universal-create-button kbd {
+  color: var(--basoul-light) !important;
+  background: rgb(5 10 24 / .28) !important;
+  border-color: rgb(255 255 255 / .14) !important;
+}
+
+/* Global removal of legacy amber-as-identity in shell/dashboard. */
+.topbar .eyebrow,
+.section-kicker,
+.text-link,
+.hero-label,
+.executive-greeting > strong { color: var(--basoul-sky) !important; }
+
+/* ---------------- EXECUTIVE DASHBOARD ---------------- */
+.executive-dashboard {
+  display: grid;
+  gap: 18px !important;
+  color: var(--basoul-white);
+  position: relative;
+}
+.executive-dashboard::before {
+  content: "";
+  height: 3px;
+  width: min(420px, 46vw);
+  border-radius: 999px;
+  background: var(--basoul-gradient-violet);
+  box-shadow: 0 0 28px rgb(37 99 235 / .30);
+}
+.executive-dashboard .panel,
+.executive-dashboard .decision-kpi {
+  position: relative;
+  overflow: hidden;
+  background: var(--basoul-panel-fill) !important;
+  border: 1px solid var(--basoul-line) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 16px 46px rgb(0 0 0 / .20) !important;
+}
+.executive-dashboard .panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(118deg, rgb(56 178 246 / .028), transparent 42%, rgb(139 92 246 / .028));
+}
+.executive-dashboard .executive-hero {
+  min-height: 190px !important;
+  padding: 30px !important;
+  border-color: var(--basoul-line-strong) !important;
+  background:
+    radial-gradient(circle at 84% 14%, rgb(56 178 246 / .16), transparent 30%),
+    radial-gradient(circle at 14% 96%, rgb(139 92 246 / .10), transparent 32%),
+    linear-gradient(135deg, #11182A 0%, #0B1020 76%) !important;
+  box-shadow: var(--basoul-glow-soft) !important;
+}
+.executive-dashboard h2,
+.executive-dashboard h3,
+.executive-dashboard b,
+.executive-dashboard strong { color: var(--basoul-white); }
+.executive-dashboard p,
+.executive-dashboard small,
+.executive-dashboard em { color: var(--basoul-muted) !important; }
+.executive-dashboard .section-kicker,
+.executive-dashboard .hero-label { color: var(--basoul-sky) !important; }
+.executive-dashboard .hero-focus,
+.executive-dashboard .hero-meta,
+.executive-dashboard .executive-confidence,
+.executive-dashboard .finance-v2-breakdown,
+.executive-dashboard .executive-evidence span {
+  background: rgb(7 14 30 / .55) !important;
+  border: 1px solid var(--basoul-line) !important;
+  border-radius: 12px !important;
+}
+.executive-dashboard button {
+  border-color: var(--basoul-line) !important;
+  color: var(--basoul-light) !important;
+}
+.executive-dashboard button:hover {
+  border-color: var(--basoul-line-strong) !important;
+  background-color: rgb(37 99 235 / .08) !important;
+}
+.executive-dashboard .text-link,
+.executive-dashboard .health-action,
+.executive-dashboard .quick-actions-grid button,
+.executive-dashboard .smart-empty-actions button { color: var(--basoul-sky) !important; }
+.executive-dashboard .quick-actions-grid button,
+.executive-dashboard .smart-empty-actions button,
+.executive-dashboard .hero-empty button {
+  background: rgb(37 99 235 / .10) !important;
+  border: 1px solid var(--basoul-line) !important;
+  border-radius: 10px !important;
+}
+.executive-dashboard .decision-kpi .kpi-icon,
+.executive-dashboard .activity-dot {
+  color: var(--basoul-sky) !important;
+  background: rgb(37 99 235 / .10) !important;
+  border: 1px solid var(--basoul-line) !important;
+}
+.executive-dashboard .health-ring {
+  filter: drop-shadow(0 0 18px rgb(37 99 235 / .20)) !important;
+}
+.executive-dashboard .health-ring::before,
+.executive-dashboard .progress > i,
+.executive-dashboard .loading-bar i {
+  background: var(--basoul-gradient-electric) !important;
+}
+.executive-dashboard .decision-row,
+.executive-dashboard .activity-v2-list > button {
+  background: rgb(7 14 30 / .46) !important;
+  border-color: transparent !important;
+  border-bottom-color: rgb(56 178 246 / .09) !important;
+}
+.executive-dashboard .decision-row:hover,
+.executive-dashboard .activity-v2-list > button:hover {
+  background: rgb(37 99 235 / .08) !important;
+  border-color: var(--basoul-line) !important;
+}
+.executive-dashboard .decision-score,
+.executive-dashboard .decision-rank { color: var(--basoul-sky) !important; }
+
+/* Legacy amber must only survive actual warning semantics. */
+.executive-dashboard .warning,
+.executive-dashboard .timeline-warning,
+.executive-dashboard .health-attention { color: #F59E0B !important; }
+.executive-dashboard .positive,
+.executive-dashboard .timeline-positive,
+.executive-dashboard .health-excellent,
+.executive-dashboard .health-good { color: #34D399 !important; }
+.executive-dashboard .critical,
+.executive-dashboard .timeline-critical { color: #FF5D73 !important; }
+
+/* Kill legacy gold borders/backgrounds that carried identity instead of status. */
+.executive-dashboard .executive-insight,
+.executive-dashboard .executive-hero,
+.executive-dashboard .focus-panel,
+.executive-dashboard .health-card,
+.executive-dashboard .quick-actions-v2,
+.executive-dashboard .finance-v2,
+.executive-dashboard .activity-v2,
+.executive-dashboard .executive-timeline {
+  border-color: var(--basoul-line) !important;
+}
+.executive-dashboard .executive-insight::before,
+.executive-dashboard .focus-panel::before,
+.executive-dashboard .health-card::before { background: var(--basoul-gradient-electric) !important; }
+
+@media (max-width: 900px) {
+  .auth-card { padding: 30px !important; }
+  .executive-dashboard .executive-hero { padding: 24px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
