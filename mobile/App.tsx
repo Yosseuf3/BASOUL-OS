@@ -19,6 +19,7 @@ import type { MobileOrganizationRole } from "./src/permissions/organization";
 import { isMobileConfigured, supabase } from "./src/config/supabase";
 import {
   advanceMobileTask,
+  acceptMobileOrganizationInvitations,
   convertMobileFindingToTask,
   createMobileTask,
   loadMobileWorkspace,
@@ -54,7 +55,7 @@ export default function App() {
   const refresh = useCallback(async () => {
     if (!session?.user.id) return;
     setLoading(true); setError(null);
-    try { const [workspaceData, role] = await Promise.all([loadMobileWorkspace(session.user.id), loadMobileOrganizationRole(session.user.id)]); setData(workspaceData); setOrganizationRole(role); }
+    try { await acceptMobileOrganizationInvitations().catch(() => undefined); const [workspaceData, role] = await Promise.all([loadMobileWorkspace(session.user.id), loadMobileOrganizationRole(session.user.id)]); setData(workspaceData); setOrganizationRole(role); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحميل بيانات مساحة العمل."); }
     finally { setLoading(false); }
   }, [session?.user.id]);
