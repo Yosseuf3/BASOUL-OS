@@ -14,12 +14,15 @@ import { CreateTaskScreen, type NewTaskInput } from "./src/features/create/Creat
 import { TimelineScreen } from "./src/features/timeline/TimelineScreen";
 import { GlobalSearchScreen } from "./src/features/search/GlobalSearchScreen";
 import { ArchitectureReviewScreen } from "./src/features/architecture/architecture-review-screen";
+import { AdministrationScreen } from "./src/features/administration/AdministrationScreen";
+import type { MobileOrganizationRole } from "./src/permissions/organization";
 import { isMobileConfigured, supabase } from "./src/config/supabase";
 import {
   advanceMobileTask,
   convertMobileFindingToTask,
   createMobileTask,
   loadMobileWorkspace,
+  loadMobileOrganizationRole,
   markMobileNotificationRead,
   retryMobileDrawingAnalysis,
   updateMobileFindingDecision,
@@ -31,7 +34,7 @@ import {
 import type { ArchitecturalFinding, ArchitecturalReviewComment, MobileWorkspaceData, Task } from "./src/types/domain";
 
 const emptyData: MobileWorkspaceData = { projects: [], tasks: [], notifications: [], drawings: [], reviews: [], planElements: [], reviewComments: [] };
-type ScreenName = "dashboard" | "projects" | "tasks" | "notifications" | "intelligence" | "architecture" | "createTask" | "timeline" | "search";
+type ScreenName = "dashboard" | "projects" | "tasks" | "notifications" | "intelligence" | "architecture" | "createTask" | "timeline" | "search" | "administration";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -40,6 +43,7 @@ export default function App() {
   const [screen, setScreen] = useState<ScreenName>("dashboard");
   const [data, setData] = useState<MobileWorkspaceData>(emptyData);
   const [error, setError] = useState<string | null>(null);
+  const [organizationRole, setOrganizationRole] = useState<MobileOrganizationRole>("viewer");
   const [convertingFindingId, setConvertingFindingId] = useState("");
   const [decidingFindingId, setDecidingFindingId] = useState("");
   const [updatingPlanElementId, setUpdatingPlanElementId] = useState("");
@@ -50,7 +54,7 @@ export default function App() {
   const refresh = useCallback(async () => {
     if (!session?.user.id) return;
     setLoading(true); setError(null);
-    try { setData(await loadMobileWorkspace(session.user.id)); }
+    try { const [workspaceData, role] = await Promise.all([loadMobileWorkspace(session.user.id), loadMobileOrganizationRole(session.user.id)]); setData(workspaceData); setOrganizationRole(role); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحميل بيانات مساحة العمل."); }
     finally { setLoading(false); }
   }, [session?.user.id]);
@@ -155,6 +159,7 @@ export default function App() {
     {screen === "createTask" ? <CreateTaskScreen projects={data.projects} onCancel={() => setScreen("dashboard")} onSubmit={createTask} /> : null}
     {screen === "timeline" ? <TimelineScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "search" ? <GlobalSearchScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
+    {screen === "administration" ? <AdministrationScreen role={organizationRole} onBack={() => setScreen("dashboard")} /> : null}
     <View style={styles.footer}><Text style={styles.version}>v3.0.2 · Foundation v1 Migration</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
   </View>;
 }

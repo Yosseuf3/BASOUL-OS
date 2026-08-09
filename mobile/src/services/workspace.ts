@@ -1,8 +1,17 @@
 import { fetch } from "expo/fetch";
 import { supabase } from "../config/supabase";
 import type { ArchitecturalDrawing, ArchitecturalFinding, ArchitecturalPlanElement, ArchitecturalReview, ArchitecturalReviewComment, MobileWorkspaceData, Notification, Project, Task } from "../types/domain";
+import type { MobileOrganizationRole } from "../permissions/organization";
 
 const ARCHITECTURAL_DRAWINGS_BUCKET = "architectural-drawings";
+
+export async function loadMobileOrganizationRole(userId: string): Promise<MobileOrganizationRole> {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.from("organization_memberships")
+    .select("role").eq("user_id", userId).eq("status", "active").limit(1).maybeSingle();
+  if (error) throw error;
+  return (data?.role ?? "viewer") as MobileOrganizationRole;
+}
 
 export type MobileDrawingFile = {
   uri: string;

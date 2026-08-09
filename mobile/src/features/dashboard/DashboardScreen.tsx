@@ -4,7 +4,7 @@ import { buildExecutiveSnapshot } from "../../decision/executive";
 import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
 import type { MobileWorkspaceData } from "../../types/domain";
 
-type Destination = "projects" | "tasks" | "notifications" | "intelligence" | "architecture" | "createTask" | "timeline" | "search";
+type Destination = "projects" | "tasks" | "notifications" | "intelligence" | "architecture" | "createTask" | "timeline" | "search" | "administration";
 
 export function DashboardScreen({ data, onNavigate, onRefresh, refreshing }: { data: MobileWorkspaceData; onNavigate: (screen: Destination) => void; onRefresh: () => void; refreshing: boolean }) {
   const snapshot = buildExecutiveSnapshot(data);
@@ -34,6 +34,7 @@ export function DashboardScreen({ data, onNavigate, onRefresh, refreshing }: { d
     <Text style={styles.sectionTitle}>وصول سريع</Text><View style={styles.quickGrid}><Quick title="المشاريع" meta={`${data.projects.length} مشروع`} onPress={() => onNavigate("projects")} /><Quick title="الذكاء المعماري" meta={`${data.reviews.length} مراجعات`} onPress={() => onNavigate("architecture")} /></View>
     <TouchableOpacity style={styles.action} onPress={() => onNavigate("architecture")}><Text style={styles.actionTitle}>المخططات والمراجعات</Text><Text style={styles.actionMeta}>{data.drawings.length} مخططات محفوظة · {data.reviews.length} جلسات قابلة للتنفيذ</Text></TouchableOpacity>
     <TouchableOpacity style={styles.action} onPress={() => onNavigate("notifications")}><Text style={styles.actionTitle}>الإشعارات</Text><Text style={styles.actionMeta}>{snapshot.unreadAlerts ? `${snapshot.unreadAlerts} غير مقروءة` : "كل الإشعارات تمت مراجعتها"}</Text></TouchableOpacity>
+    <TouchableOpacity style={styles.action} onPress={() => onNavigate("administration")}><Text style={styles.actionTitle}>الإدارة والصلاحيات</Text><Text style={styles.actionMeta}>المؤسسة، الأعضاء، وحدود الدور الحالي</Text></TouchableOpacity>
   </Screen>;
 }
 function Metric({ value, label }: { value: string; label: string }) { return <View style={styles.metric}><Text style={styles.metricValue}>{value}</Text><Text style={styles.metricLabel}>{label}</Text></View>; }
