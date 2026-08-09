@@ -7,10 +7,10 @@ import type { MobileWorkspaceData } from "../../types/domain";
 type Props = { data: MobileWorkspaceData; onBack: () => void };
 
 const severityLabel: Record<SignalSeverity, string> = {
-  critical: "Ã˜Â­Ã˜Â±Ã˜Â¬",
-  warning: "Ã˜Â§Ã™â€ Ã˜ÂªÃ˜Â¨Ã˜Â§Ã™â€¡",
-  positive: "Ã™â€¦Ã˜Â³Ã˜ÂªÃ™â€šÃ˜Â±",
-  info: "Ã™â€¦Ã˜Â¹Ã™â€žÃ™Ë†Ã™â€¦Ã˜Â©",
+  critical: "حرج",
+  warning: "انتباه",
+  positive: "مستقر",
+  info: "معلومة",
 };
 
 export function CommandCenterScreen({ data, onBack }: Props) {
@@ -19,19 +19,19 @@ export function CommandCenterScreen({ data, onBack }: Props) {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack}><Text style={styles.back}>Ã˜Â±Ã˜Â¬Ã™Ë†Ã˜Â¹</Text></TouchableOpacity>
-        <View><Text style={styles.eyebrow}>YOSSEUF Platform Ã‚Â· EXECUTIVE KERNEL</Text><Text style={styles.title}>Ã™â€¦Ã˜Â±Ã™Æ’Ã˜Â² Ã˜Â§Ã™â€žÃ™â€šÃ™Å Ã˜Â§Ã˜Â¯Ã˜Â©</Text></View>
+        <TouchableOpacity onPress={onBack}><Text style={styles.back}>رجوع</Text></TouchableOpacity>
+        <View><Text style={styles.eyebrow}>BASOUL · EXECUTIVE KERNEL</Text><Text style={styles.title}>مركز القيادة</Text></View>
       </View>
 
       <View style={styles.hero}>
-        <Text style={styles.heroLabel}>Ã™â€¦Ã˜Â§Ã˜Â°Ã˜Â§ Ã™Å Ã˜Â¬Ã˜Â¨ Ã˜Â£Ã™â€  Ã˜ÂªÃ™ÂÃ˜Â¹Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¢Ã™â€ Ã˜Å¸</Text>
+        <Text style={styles.heroLabel}>ماذا يجب أن تفعل الآن؟</Text>
         <Text style={styles.heroTitle}>{snapshot.headline}</Text>
         <Text style={styles.heroBrief}>{snapshot.brief}</Text>
-        <Text style={styles.confidence}>Ã˜Â«Ã™â€šÃ˜Â© Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã™â€žÃ™Å Ã™â€ž {snapshot.confidence}%</Text>
+        <Text style={styles.confidence}>ثقة التحليل {snapshot.confidence}%</Text>
       </View>
 
       <View style={styles.healthCard}>
-        <Text style={styles.sectionTitle}>Ã˜ÂµÃ˜Â­Ã˜Â© Ã™â€¦Ã˜Â³Ã˜Â§Ã˜Â­Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â¹Ã™â€¦Ã™â€ž</Text>
+        <Text style={styles.sectionTitle}>صحة مساحة العمل</Text>
         <Text style={styles.healthScore}>{snapshot.health.score}%</Text>
         {snapshot.health.factors.map((factor) => (
           <View key={factor.id} style={styles.factor}>
@@ -41,24 +41,24 @@ export function CommandCenterScreen({ data, onBack }: Props) {
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>Ã˜Â§Ã™â€žÃ™â€šÃ˜Â±Ã˜Â§Ã˜Â±Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ˜ÂªÃ™â€ Ã™ÂÃ™Å Ã˜Â°Ã™Å Ã˜Â©</Text>
+      <Text style={styles.sectionTitle}>القرارات التنفيذية</Text>
       {snapshot.signals.map((signal, index) => (
         <View key={signal.id} style={styles.card}>
           <View style={styles.row}><Text style={styles.badge}>{severityLabel[signal.severity]}</Text><Text style={styles.rank}>#{index + 1}</Text></View>
           <Text style={styles.cardTitle}>{signal.title}</Text>
           <Text style={styles.explanation}>{signal.explanation}</Text>
-          <Text style={styles.action}>Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â¬Ã˜Â±Ã˜Â§Ã˜Â¡: {signal.recommendedAction}</Text>
+          <Text style={styles.action}>الإجراء: {signal.recommendedAction}</Text>
         </View>
       ))}
 
-      <Text style={styles.sectionTitle}>Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â®Ã˜Â§Ã˜Â·Ã˜Â± Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂªÃ™Ë†Ã™â€šÃ˜Â¹Ã˜Â©</Text>
-      {snapshot.risks.length === 0 ? <View style={styles.card}><Text style={styles.cardTitle}>Ã™â€žÃ˜Â§ Ã˜ÂªÃ™Ë†Ã˜Â¬Ã˜Â¯ Ã™â€¦Ã˜Â®Ã˜Â§Ã˜Â·Ã˜Â± Ã˜ÂªÃ™â€ Ã˜Â¨Ã˜Â¤Ã™Å Ã˜Â© Ã™Ë†Ã˜Â§Ã˜Â¶Ã˜Â­Ã˜Â© Ã˜Â­Ã˜Â§Ã™â€žÃ™Å Ã™â€¹Ã˜Â§</Text></View> : null}
+      <Text style={styles.sectionTitle}>المخاطر المتوقعة</Text>
+      {snapshot.risks.length === 0 ? <View style={styles.card}><Text style={styles.cardTitle}>لا توجد مخاطر تنبؤية واضحة حاليًا</Text></View> : null}
       {snapshot.risks.map((risk) => (
         <View key={risk.id} style={styles.card}>
-          <View style={styles.row}><Text style={styles.badge}>{risk.probability}%</Text><Text style={styles.rank}>Ã˜Â®Ã™â€žÃ˜Â§Ã™â€ž {risk.horizonDays} Ã˜Â£Ã™Å Ã˜Â§Ã™â€¦</Text></View>
+          <View style={styles.row}><Text style={styles.badge}>{risk.probability}%</Text><Text style={styles.rank}>خلال {risk.horizonDays} أيام</Text></View>
           <Text style={styles.cardTitle}>{risk.title}</Text>
           <Text style={styles.explanation}>{risk.reason}</Text>
-          <Text style={styles.action}>Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â®Ã™ÂÃ™Å Ã™Â: {risk.mitigation}</Text>
+          <Text style={styles.action}>التخفيف: {risk.mitigation}</Text>
         </View>
       ))}
     </ScrollView>

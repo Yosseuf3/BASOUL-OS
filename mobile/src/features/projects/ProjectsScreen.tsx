@@ -3,21 +3,21 @@ import { Screen } from "../../components/Screen";
 import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
 import type { Project } from "../../types/domain";
 
-const statusLabels: Record<Project["status"], string> = { Planning: "ØªØ®Ø·ÙŠØ·", Active: "Ù†Ø´Ø·", "On Hold": "Ù…ØªÙˆÙ‚Ù Ù…Ø¤Ù‚ØªÙ‹Ø§", Completed: "Ù…ÙƒØªÙ…Ù„" };
+const statusLabels: Record<Project["status"], string> = { Planning: "تخطيط", Active: "نشط", "On Hold": "متوقف مؤقتًا", Completed: "مكتمل" };
 
 export function ProjectsScreen({ projects, onBack }: { projects: Project[]; onBack: () => void }) {
   return (
     <Screen>
-      <Header title="Ø§Ù„Ù…Ø´Ø§Ø±ÙŠØ¹" onBack={onBack} />
-      <Text style={styles.summary}>{projects.length} Ù…Ø´Ø±ÙˆØ¹ Ù…Ø±ØªØ¨Ø· Ø¨Ø­Ø³Ø§Ø¨Ùƒ</Text>
-      {projects.length === 0 ? <Text style={styles.empty}>Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ø´Ø§Ø±ÙŠØ¹ Ø¨Ø¹Ø¯.</Text> : projects.map((project) => (
+      <Header title="المشاريع" onBack={onBack} />
+      <Text style={styles.summary}>{projects.length} مشروع مرتبط بحسابك</Text>
+      {projects.length === 0 ? <Text style={styles.empty}>لا توجد مشاريع بعد.</Text> : projects.map((project) => (
         <View key={project.id} style={styles.card}>
           <View style={styles.cardTop}><Text style={styles.status}>{statusLabels[project.status]}</Text><Text style={styles.number}>{project.project_number || "PROJECT"}</Text></View>
           <Text style={styles.name}>{project.name}</Text>
-          <Text style={styles.meta}>{project.client_name || "Ø¨Ø¯ÙˆÙ† Ø¹Ù…ÙŠÙ„"}{project.location ? ` Â· ${project.location}` : ""}</Text>
-          <View style={styles.details}><Text style={styles.detail}>Ø§Ù„Ù…Ø±Ø­Ù„Ø©: {project.design_phase || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯Ø©"}</Text><Text style={styles.detail}>Ø§Ù„Ø£ÙˆÙ„ÙˆÙŠØ©: {project.priority}</Text></View>
+          <Text style={styles.meta}>{project.client_name || "بدون عميل"}{project.location ? ` · ${project.location}` : ""}</Text>
+          <View style={styles.details}><Text style={styles.detail}>المرحلة: {project.design_phase || "غير محددة"}</Text><Text style={styles.detail}>الأولوية: {project.priority}</Text></View>
           <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.max(0, Math.min(100, project.progress))}%` }]} /></View>
-          <Text style={styles.progressText}>{project.progress}% ØªÙ‚Ø¯Ù…</Text>
+          <Text style={styles.progressText}>{project.progress}% تقدم</Text>
         </View>
       ))}
     </Screen>
@@ -25,7 +25,7 @@ export function ProjectsScreen({ projects, onBack }: { projects: Project[]; onBa
 }
 
 function Header({ title, onBack }: { title: string; onBack: () => void }) {
-  return <View style={styles.header}><TouchableOpacity onPress={onBack} style={styles.back}><Text style={styles.backText}>Ø¹ÙˆØ¯Ø©</Text></TouchableOpacity><Text style={styles.title}>{title}</Text></View>;
+  return <View style={styles.header}><TouchableOpacity onPress={onBack} style={styles.back}><Text style={styles.backText}>عودة</Text></TouchableOpacity><Text style={styles.title}>{title}</Text></View>;
 }
 
 const styles = StyleSheet.create({

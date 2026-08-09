@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "YOSSEUF Platform",
+    "name": "BASOUL",
     "slug": "yosseuf-os",
     "version": "4.0.0-rc.1",
     "orientation": "portrait",
@@ -19,12 +19,13 @@
       "versionCode": 32
     },
     "extra": {
-      "product": "YOSSEUF Platform",
+      "product": "BASOUL",
       "release": "v4.0.0-rc.1 Platform Foundation",
       "eas": {
         "projectId": "6f770730-8c8e-49b0-81b9-f9773faf567a"
       }
     },
-    "description": "Unified organization-aware platform for business and architectural work."
+    "description": "Unified organization-aware platform for business and architectural work.",
+    "icon": "./assets/icon.png"
   }
 }
