@@ -22,7 +22,6 @@ import {
   convertMobileFindingToTask,
   createMobileTask,
   loadMobileWorkspace,
-  loadMobileOrganizationRole,
   markMobileNotificationRead,
   retryMobileDrawingAnalysis,
   updateMobileFindingDecision,
@@ -55,7 +54,7 @@ export default function App() {
     if (!session?.user.id) return;
     setLoading(true); setError(null);
     try { const [workspaceData, role] = await Promise.all([loadMobileWorkspace(session.user.id), loadMobileOrganizationRole(session.user.id)]); setData(workspaceData); setOrganizationRole(role); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø¨ÙŠØ§Ù†Ø§Øª Ù…Ø³Ø§Ø­Ø© Ø§Ù„Ø¹Ù…Ù„."); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحميل بيانات مساحة العمل."); }
     finally { setLoading(false); }
   }, [session?.user.id]);
 
@@ -71,9 +70,9 @@ export default function App() {
 
   useEffect(() => { if (session) void refresh(); }, [session, refresh]);
 
-  async function readNotification(id: string) { try { await markMobileNotificationRead(id); setData((current) => ({ ...current, notifications: current.notifications.map((item) => item.id === id ? { ...item, is_read: true } : item) })); } catch (cause) { setError(cause instanceof Error ? cause.message : "ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±."); } }
+  async function readNotification(id: string) { try { await markMobileNotificationRead(id); setData((current) => ({ ...current, notifications: current.notifications.map((item) => item.id === id ? { ...item, is_read: true } : item) })); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحديث الإشعار."); } }
   async function createTask(input: NewTaskInput) { if (!session) return; await createMobileTask(session.user.id, input); await refresh(); setScreen("tasks"); }
-  async function advanceTask(task: Task) { try { await advanceMobileTask(task); await refresh(); } catch (cause) { setError(cause instanceof Error ? cause.message : "ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ù‡Ù…Ø©."); } }
+  async function advanceTask(task: Task) { try { await advanceMobileTask(task); await refresh(); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحديث المهمة."); } }
   async function convertFinding(finding: ArchitecturalFinding, projectId: string) {
     if (!session) return;
     setConvertingFindingId(finding.id);
@@ -81,7 +80,7 @@ export default function App() {
       await convertMobileFindingToTask(session.user.id, projectId, finding);
       await refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "ØªØ¹Ø°Ø± ØªØ­ÙˆÙŠÙ„ Ø§Ù„Ù…Ù„Ø§Ø­Ø¸Ø© Ø¥Ù„Ù‰ Ù…Ù‡Ù…Ø©.");
+      setError(cause instanceof Error ? cause.message : "تعذر تحويل الملاحظة إلى مهمة.");
     } finally {
       setConvertingFindingId("");
     }
@@ -93,7 +92,7 @@ export default function App() {
       await updateMobileFindingDecision(session.user.id, finding, status);
       await refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "ØªØ¹Ø°Ø± Ø­ÙØ¸ Ù‚Ø±Ø§Ø± Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©.");
+      setError(cause instanceof Error ? cause.message : "تعذر حفظ قرار المراجعة.");
     } finally {
       setDecidingFindingId("");
     }
@@ -105,7 +104,7 @@ export default function App() {
       await updateMobilePlanElementStatus(session.user.id, elementId, status);
       await refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "ØªØ¹Ø°Ø± Ø­ÙØ¸ Ù‚Ø±Ø§Ø± Ø¹Ù†ØµØ± Ø§Ù„Ù…Ø®Ø·Ø·.");
+      setError(cause instanceof Error ? cause.message : "تعذر حفظ قرار عنصر المخطط.");
     } finally {
       setUpdatingPlanElementId("");
     }
@@ -117,7 +116,7 @@ export default function App() {
       await updateMobileReviewCommentStatus(session.user.id, comment.id, status);
       await refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ù…Ù„Ø§Ø­Ø¸Ø© Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©.");
+      setError(cause instanceof Error ? cause.message : "تعذر تحديث ملاحظة المراجعة.");
     } finally {
       setUpdatingReviewCommentId("");
     }
@@ -160,9 +159,8 @@ export default function App() {
     {screen === "timeline" ? <TimelineScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "search" ? <GlobalSearchScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "administration" ? <AdministrationScreen role={organizationRole} onBack={() => setScreen("dashboard")} /> : null}
-    <View style={styles.footer}><Text style={styles.version}>v3.0.2 Â· Foundation v1 Migration</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬</Text></TouchableOpacity></View>
+    <View style={styles.footer}><Text style={styles.version}>v3.0.2 · Foundation v1 Migration</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
   </View>;
 }
 
 const styles = StyleSheet.create({ app: { flex: 1, backgroundColor: tokens.colors.background }, center: { flex: 1, backgroundColor: tokens.colors.background, alignItems: "center", justifyContent: "center" }, errorBar: { backgroundColor: tokens.colors.dangerSubtle, paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center" }, errorText: { color: tokens.colors.danger, flex: 1, textAlign: "right" }, dismiss: { color: tokens.colors.danger, fontSize: 24, marginLeft: 12 }, footer: { borderTopWidth: 1, borderTopColor: tokens.colors.border, paddingHorizontal: 18, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", backgroundColor: tokens.colors.surface }, version: { color: tokens.colors.muted, fontSize: 11 }, logout: { color: tokens.colors.danger, fontWeight: "800" } });
-
