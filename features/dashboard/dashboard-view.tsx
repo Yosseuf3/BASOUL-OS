@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import {
   Activity,
   BookOpen,
@@ -46,6 +45,9 @@ type Props = {
 };
 
 const money = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+const APPROVED_ASSET_REF = "3122092e9bc18acd696911aeb54eee7a3dcc26e2";
+const APPROVED_ASSET_ROOT = `https://raw.githubusercontent.com/Yosseuf3/YOSSEUF--OS/${APPROVED_ASSET_REF}/brand/basoul/assets`;
+const BASOUL_SYMBOL = `${APPROVED_ASSET_ROOT}/symbol/BASOUL_Symbol_Master.png`;
 
 export function DashboardView(props: Props) {
   const {
@@ -144,13 +146,7 @@ export function DashboardView(props: Props) {
             <span className="bx-ring r1" />
             <span className="bx-ring r2" />
             <span className="bx-ring r3" />
-            <Image
-              src="/brand/basoul/BASOUL_Symbol_Master.png"
-              width={58}
-              height={70}
-              alt="BASOUL"
-              priority
-            />
+            <img src={BASOUL_SYMBOL} width="58" height="70" alt="BASOUL" />
           </div>
           <p>{insight.summary}</p>
         </article>
