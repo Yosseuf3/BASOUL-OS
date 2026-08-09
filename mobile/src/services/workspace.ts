@@ -130,7 +130,7 @@ export async function updateMobileReviewCommentStatus(
     .select("id")
     .single();
   if (error) throw error;
-  if (!data) throw new Error("ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ù…Ù„Ø§Ø­Ø¸Ø© Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©.");
+  if (!data) throw new Error("تعذر تحديث ملاحظة المراجعة.");
 }
 
 export async function updateMobilePlanElementStatus(
@@ -160,7 +160,7 @@ export async function convertMobileFindingToTask(
     user_id: userId,
     project_id: projectId,
     title: finding.title,
-    description: `${finding.description}\n\nØ§Ù„ØªÙˆØµÙŠØ©: ${finding.recommendation}`,
+    description: `${finding.description}\n\nالتوصية: ${finding.recommendation}`,
     priority,
     status: "To Do",
     progress: 0,
@@ -188,7 +188,7 @@ export async function updateMobileFindingDecision(
     .select("id")
     .single();
   if (error) throw error;
-  if (!updatedFinding) throw new Error("ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ù„Ø§Ø­Ø¸Ø©.");
+  if (!updatedFinding) throw new Error("تعذر تحديث الملاحظة.");
 
   await syncMobileReviewCompletion(finding.review_id, userId);
 }
@@ -201,10 +201,10 @@ export async function uploadMobileDrawing(
 ): Promise<MobileDrawingAnalysisResult> {
   if (!supabase) throw new Error("Supabase is not configured.");
   const supportedTypes = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);
-  if (!supportedTypes.has(file.mimeType)) throw new Error("Ù†ÙˆØ¹ Ø§Ù„Ù…Ù„Ù ØºÙŠØ± Ù…Ø¯Ø¹ÙˆÙ….");
-  if (file.size > 50 * 1024 * 1024) throw new Error("Ø­Ø¬Ù… Ø§Ù„Ù…Ù„Ù ÙŠØªØ¬Ø§ÙˆØ² Ø§Ù„Ø­Ø¯ Ø§Ù„Ù…Ø³Ù…ÙˆØ­: 50 MB.");
+  if (!supportedTypes.has(file.mimeType)) throw new Error("نوع الملف غير مدعوم.");
+  if (file.size > 50 * 1024 * 1024) throw new Error("حجم الملف يتجاوز الحد المسموح: 50 MB.");
   const response = await fetch(file.uri);
-  if (!response.ok) throw new Error("ØªØ¹Ø°Ø± Ù‚Ø±Ø§Ø¡Ø© Ø§Ù„Ù…Ù„Ù Ø§Ù„Ù…Ø­Ø¯Ø¯ Ù…Ù† Ø§Ù„Ø¬Ù‡Ø§Ø².");
+  if (!response.ok) throw new Error("تعذر قراءة الملف المحدد من الجهاز.");
   const body = await response.arrayBuffer();
   const uploadId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const path = `${userId}/${projectId}/${uploadId}-${safeFileName(file.name)}`;
@@ -246,7 +246,7 @@ export async function uploadMobileDrawing(
   if (analysisError || !analysis?.review) {
     await supabase.from("architectural_drawings").delete().eq("id", drawing.id);
     await supabase.storage.from(ARCHITECTURAL_DRAWINGS_BUCKET).remove([path]);
-    throw analysisError ?? new Error(analysis?.error ?? "ÙØ´Ù„ ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ù…Ø®Ø·Ø·.");
+    throw analysisError ?? new Error(analysis?.error ?? "فشل تحليل المخطط.");
   }
   return {
     drawingId: drawing.id as string,
@@ -263,7 +263,7 @@ export async function retryMobileDrawingAnalysis(drawingId: string): Promise<Mob
     "architectural-analyze-v2",
     { body: { drawingId, retry: true } },
   );
-  if (error || !analysis?.review) throw error ?? new Error(analysis?.error ?? "ÙØ´Ù„Øª Ø¥Ø¹Ø§Ø¯Ø© ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ù…Ø®Ø·Ø·.");
+  if (error || !analysis?.review) throw error ?? new Error(analysis?.error ?? "فشلت إعادة تحليل المخطط.");
   return {
     drawingId,
     analysisStatus: analysis.analysisStatus === "needs_better_source" ? "needs_better_source" : "completed",
@@ -307,4 +307,3 @@ export async function advanceMobileTask(task: Task): Promise<void> {
   const { error } = await supabase.from("tasks").update(next[task.status]).eq("id", task.id);
   if (error) throw error;
 }
-
