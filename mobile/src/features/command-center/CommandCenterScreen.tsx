@@ -1,7 +1,7 @@
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { runExecutiveKernel } from "../../executive/executiveKernel";
 import type { SignalSeverity } from "../../executive/types";
-import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
+import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import type { MobileWorkspaceData } from "../../types/domain";
 
 type Props = { data: MobileWorkspaceData; onBack: () => void };

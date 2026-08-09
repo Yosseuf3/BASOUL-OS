@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Screen } from "../../components/Screen";
-import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
+import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import type { PriorityLevel, Project } from "../../types/domain";
 
 export type NewTaskInput = { title: string; project_id: string; priority: PriorityLevel; due_date: string | null };

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Screen } from "../../components/Screen";
-import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
+import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import type { MobileWorkspaceData } from "../../types/domain";
 
 type TimelineItem = { id: string; date: string; time: string; title: string; meta: string; kind: "task" | "project" | "notification"; urgent: boolean };

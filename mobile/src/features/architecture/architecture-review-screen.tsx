@@ -2,7 +2,7 @@ import { useState } from "react";
 import * as DocumentPicker from "expo-document-picker";
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Screen } from "../../components/Screen";
-import { nativeDarkTheme as tokens } from "@yosseuf/ui-tokens/native";
+import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import type { ArchitecturalFinding, ArchitecturalPlanElement, ArchitecturalReviewComment, MobileWorkspaceData } from "../../types/domain";
 import type { MobileDrawingAnalysisResult, MobileFindingDecision } from "../../services/workspace";
 
