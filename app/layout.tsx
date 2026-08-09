@@ -3,6 +3,7 @@ import "./globals.css";
 import "./foundation-architecture.css";
 import "@basoul/yvl-adapter/web.css";
 import "@/components/ui/yvl-primitives.css";
+import "./basoul-visual-truth.css";
 
 export const metadata: Metadata = {
   title: "BASOUL",
