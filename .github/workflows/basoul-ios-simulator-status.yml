@@ -41,15 +41,7 @@ jobs:
             echo "Attempt $attempt: EAS build status = $STATUS"
             case "$STATUS" in
               FINISHED)
-                node - <<'NODE'
-                const b = require('/tmp/build.json');
-                console.log(`Build ID: ${b.id}`);
-                console.log(`Platform: ${b.platform}`);
-                console.log(`Status: ${b.status}`);
-                console.log(`Simulator: ${b.isForIosSimulator}`);
-                if (b.artifacts?.buildUrl) console.log(`Artifact URL: ${b.artifacts.buildUrl}`);
-                if (b.buildDetailsPageUrl) console.log(`Build page: ${b.buildDetailsPageUrl}`);
-                NODE
+                node -e "const b=require('/tmp/build.json'); console.log('Build ID: '+b.id); console.log('Platform: '+b.platform); console.log('Status: '+b.status); console.log('Simulator: '+b.isForIosSimulator); if (b.artifacts && b.artifacts.buildUrl) console.log('Artifact URL: '+b.artifacts.buildUrl); if (b.buildDetailsPageUrl) console.log('Build page: '+b.buildDetailsPageUrl);"
                 exit 0
                 ;;
               ERRORED|CANCELED)
