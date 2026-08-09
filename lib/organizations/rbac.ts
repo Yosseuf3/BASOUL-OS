@@ -24,10 +24,6 @@ const ROLE_PERMISSIONS: Record<OrganizationRole, ReadonlySet<OrganizationPermiss
   viewer: new Set(["organization.read", "membership.read", "workspace.read", "business.read"]),
 };
 
-export const ORGANIZATION_ROLE_RANK: Readonly<Record<OrganizationRole, number>> = {
-  viewer: 10, member: 20, admin: 30, owner: 40,
-};
-
 export function hasOrganizationPermission(role: OrganizationRole, permission: OrganizationPermission) {
   return ROLE_PERMISSIONS[role].has(permission);
 }
@@ -35,15 +31,3 @@ export function hasOrganizationPermission(role: OrganizationRole, permission: Or
 export function capabilitiesForRole(role: OrganizationRole) {
   return new Set(ROLE_PERMISSIONS[role]);
 }
-
-export function canManageMember(caller: OrganizationRole, target: OrganizationRole) {
-  if (!hasOrganizationPermission(caller, "membership.manage")) return false;
-  return caller === "owner" || ORGANIZATION_ROLE_RANK[target] < ORGANIZATION_ROLE_RANK.admin;
-}
-
-export function canAssignRole(caller: OrganizationRole, role: OrganizationRole, self = false) {
-  if (self && ORGANIZATION_ROLE_RANK[role] > ORGANIZATION_ROLE_RANK[caller]) return false;
-  if (caller === "owner") return true;
-  return caller === "admin" && ORGANIZATION_ROLE_RANK[role] < ORGANIZATION_ROLE_RANK.admin;
-}
-
