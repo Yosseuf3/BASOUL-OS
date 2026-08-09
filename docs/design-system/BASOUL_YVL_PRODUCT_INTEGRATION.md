@@ -56,6 +56,8 @@ tabs/status, disabled, loading, error, and reduced motion. Native touch controls
 - Eleven React Native feature screens consume @basoul/yvl-adapter/native, including
   Login, Dashboard, Command Center, Administration, Projects, Tasks, Search,
   Notifications, Timeline, Create Task, and Architecture Review.
+- The mobile consumer declares both canonical peer packages and uses explicit
+  TypeScript/Metro monorepo resolution; an Android Metro export verifies the bundle.
 - Mobile Administration intentionally remains read-only.
 
 ## Arabic and RTL

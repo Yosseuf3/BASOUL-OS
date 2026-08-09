@@ -43,6 +43,20 @@ test("shared web and native primitives consume only the BASOUL YVL adapter", asy
   assert.doesNotMatch(native, /@yosseuf\/ui-tokens|nativeDarkTheme/);
 });
 
+test("mobile resolves local adapter peers for TypeScript and Metro", async () => {
+  const [adapterPackage, mobilePackage, tsconfig, metro] = await Promise.all([
+    read("packages/basoul-yvl-adapter/package.json"),
+    read("mobile/package.json"),
+    read("mobile/tsconfig.json"),
+    read("mobile/metro.config.js"),
+  ]);
+  assert.match(adapterPackage, /"peerDependencies"/);
+  assert.match(mobilePackage, /"@yosseuf\/yvl-tokens": "file:\.\.\/packages\/yvl-tokens"/);
+  assert.match(tsconfig, /"@yosseuf\/yvl-tokens\/react-native"/);
+  assert.match(metro, /watchFolders/);
+  assert.match(metro, /nodeModulesPaths/);
+});
+
 test("target web and mobile screens are adapter governed", async () => {
   const files = [
     "features/administration/administration-view.tsx",

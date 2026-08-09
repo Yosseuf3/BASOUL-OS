@@ -10,8 +10,8 @@
     "./native": "./src/native.ts",
     "./web.css": "./src/web.css"
   },
-  "dependencies": {
-    "@yosseuf/ui-tokens": "file:../ui-tokens",
-    "@yosseuf/yvl-tokens": "file:../yvl-tokens"
+  "peerDependencies": {
+    "@yosseuf/ui-tokens": "1.4.0",
+    "@yosseuf/yvl-tokens": "1.0.0"
   }
 }
