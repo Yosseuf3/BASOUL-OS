@@ -38,4 +38,3 @@ test("web and mobile use explicit permission helpers", async () => {
   assert.match(web, /canManageMember/);
   assert.match(mobile, /hasMobilePermission/);
 });
-
