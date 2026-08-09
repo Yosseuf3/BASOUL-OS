@@ -1,9 +1,9 @@
 name: BASOUL iOS Simulator Build
 
 on:
-  push:
+  pull_request:
     branches:
-      - release/basoul-ios-simulator-build
+      - main
     paths:
       - .github/workflows/basoul-ios-simulator-build.yml
       - mobile/**
