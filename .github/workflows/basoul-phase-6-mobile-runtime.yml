@@ -1,0 +1,60 @@
+name: BASOUL Phase 6 Mobile Runtime Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/basoul-phase-6-mobile-runtime.yml'
+      - 'brand/basoul/migration/PHASE_6_MOBILE_RUNTIME_VALIDATION.md'
+  push:
+    branches:
+      - validation/basoul-phase-6-mobile-runtime
+
+jobs:
+  runtime-validation:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install mobile dependencies
+        run: npm install
+      - name: Production dependency audit
+        run: npm run audit:production
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Expo Doctor
+        run: npm run doctor
+      - name: Verify BASOUL Expo identity boundary
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const app = require('./app.json').expo;
+          const failures = [];
+          if (app.name !== 'BASOUL') failures.push(`name=${app.name}`);
+          if (app.icon !== './assets/icon.png') failures.push(`icon=${app.icon}`);
+          if (app.slug !== 'yosseuf-os') failures.push(`slug changed: ${app.slug}`);
+          if (app.scheme !== 'yosseufos') failures.push(`scheme changed: ${app.scheme}`);
+          if (app.ios?.bundleIdentifier !== 'com.yosseufradwan.os') failures.push(`iOS bundle changed: ${app.ios?.bundleIdentifier}`);
+          if (app.android?.package !== 'com.yosseufradwan.os') failures.push(`Android package changed: ${app.android?.package}`);
+          if (app.extra?.eas?.projectId !== '6f770730-8c8e-49b0-81b9-f9773faf567a') failures.push('EAS projectId changed');
+          if (failures.length) { console.error(failures.join('\n')); process.exit(1); }
+          console.log('BASOUL identity and protected mobile identifiers verified.');
+          NODE
+      - name: Export iOS runtime bundle
+        run: npx expo export --platform ios --output-dir dist-ios
+      - name: Export Android runtime bundle
+        run: npx expo export --platform android --output-dir dist-android
+      - name: Verify exports
+        shell: bash
+        run: |
+          test -d dist-ios
+          test -d dist-android
+          echo 'iOS and Android Expo runtime exports completed successfully.'
