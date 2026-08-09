@@ -2,7 +2,7 @@
   "expo": {
     "name": "BASOUL",
     "slug": "yosseuf-os",
-    "version": "4.0.0-rc.1",
+    "version": "4.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "yosseufos",
