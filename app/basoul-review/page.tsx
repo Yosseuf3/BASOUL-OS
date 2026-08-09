@@ -1,6 +1,10 @@
-import Image from "next/image";
 import { Activity, Bell, BrainCircuit, BriefcaseBusiness, ChevronLeft, CircleDollarSign, FolderKanban, LayoutDashboard, Search, Sparkles, Target, Users, WalletCards } from "lucide-react";
 import "./review.css";
+
+const APPROVED_ASSET_REF = "3122092e9bc18acd696911aeb54eee7a3dcc26e2";
+const APPROVED_ASSET_ROOT = `https://raw.githubusercontent.com/Yosseuf3/YOSSEUF--OS/${APPROVED_ASSET_REF}/brand/basoul/assets`;
+const BASOUL_SYMBOL = `${APPROVED_ASSET_ROOT}/symbol/BASOUL_Symbol_Master.png`;
+const BASOUL_WORDMARK = `${APPROVED_ASSET_ROOT}/wordmark/BASOUL_Wordmark_Master.png`;
 
 const nav = [
   [LayoutDashboard, "لوحة القيادة", true],
@@ -17,9 +21,12 @@ export default function BasoulReviewPage() {
   return (
     <main className="basoul-review" dir="rtl">
       <aside className="review-sidebar">
-        <div className="review-brand">
-          <Image src="/icons/basoul-192.png" width={48} height={48} alt="BASOUL" priority />
-          <div><strong>BASOUL</strong><span>AI-NATIVE ECOSYSTEM</span></div>
+        <div className="review-brand" aria-label="BASOUL approved brand lockup">
+          <img className="review-brand-symbol" src={BASOUL_SYMBOL} width="42" height="50" alt="BASOUL symbol" />
+          <div className="review-brand-copy">
+            <img className="review-brand-wordmark" src={BASOUL_WORDMARK} width="116" height="30" alt="BASOUL" />
+            <span>AI-NATIVE ECOSYSTEM</span>
+          </div>
         </div>
         <div className="review-workspace"><BriefcaseBusiness size={18}/><div><small>مساحة العمل</small><b>الإدارة</b></div><ChevronLeft size={16}/></div>
         <nav>{nav.map(([Icon,label,active]) => <button className={active ? "active" : ""} key={label}><Icon size={19}/><span>{label}</span></button>)}</nav>
@@ -52,7 +59,7 @@ export default function BasoulReviewPage() {
           </article>
           <article className="review-panel signal-panel">
             <header><div><span>AI SIGNAL</span><h3>إشارة BASOUL</h3></div><Sparkles size={20}/></header>
-            <div className="signal-visual"><div className="signal-ring r1"/><div className="signal-ring r2"/><div className="signal-ring r3"/><Image src="/icons/basoul-192.png" width={56} height={56} alt="BASOUL AI"/></div>
+            <div className="signal-visual"><div className="signal-ring r1"/><div className="signal-ring r2"/><div className="signal-ring r3"/><img className="signal-approved-symbol" src={BASOUL_SYMBOL} width="48" height="58" alt="BASOUL symbol"/></div>
             <p>لا توجد إشارات حرجة. أفضل خطوة الآن هي الحفاظ على سرعة التنفيذ بدل فتح مسارات جديدة.</p>
           </article>
         </section>
