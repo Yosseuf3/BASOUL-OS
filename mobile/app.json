@@ -25,6 +25,7 @@
         "projectId": "6f770730-8c8e-49b0-81b9-f9773faf567a"
       }
     },
-    "description": "Unified organization-aware platform for business and architectural work."
+    "description": "Unified organization-aware platform for business and architectural work.",
+    "icon": "./assets/icon.png"
   }
 }
