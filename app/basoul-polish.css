@@ -1,0 +1,65 @@
+/* BASOUL Phase 9.1 visual polish.
+   Applies after approved assets and visual-truth layers.
+   No identity geometry is recreated here. */
+
+:root{
+  --basoul-copy-strong:#B7C4D8;
+  --basoul-copy-muted:#98A7BC;
+}
+
+/* Shell refinement */
+.sidebar .logo{padding-block:18px 22px!important;gap:14px!important}
+.sidebar .logo-mark{width:42px!important;height:50px!important;flex:0 0 auto}
+.sidebar .logo>div:not(.logo-mark)::before{width:132px!important;height:30px!important}
+.sidebar .logo>div:not(.logo-mark) span{margin-top:1px;font-size:8.5px!important;letter-spacing:.13em!important}
+.sidebar nav{gap:5px!important}
+.sidebar nav button{min-height:48px!important;padding-inline:14px!important;gap:12px!important}
+.sidebar nav button svg{width:18px!important;height:18px!important;flex:0 0 18px}
+.sidebar nav button.active{box-shadow:inset 3px 0 0 #2563EB,0 0 22px rgb(37 99 235/.07)!important}
+.user-card small{color:var(--basoul-copy-muted)!important}
+
+.topbar{padding-block:22px!important}
+.topbar .eyebrow{font-size:10px!important;letter-spacing:.14em!important}
+.topbar p{color:var(--basoul-copy-muted)!important;line-height:1.7!important}
+
+/* Executive dashboard rhythm */
+.basoul-executive{gap:20px!important}
+.bx-hero{min-height:232px!important;padding:28px 34px!important;grid-template-columns:minmax(0,1fr) 210px!important;gap:24px!important}
+.bx-hero h2{margin:7px 0 10px!important;line-height:1.2!important}
+.bx-hero p,.bx-card p,.bx-panel p{color:var(--basoul-copy-muted)!important}
+.bx-hero-tags{margin-top:18px!important;gap:8px!important}
+.bx-chip{color:var(--basoul-copy-strong)!important;padding:7px 10px!important}
+.bx-health{width:174px!important;height:174px!important;box-shadow:0 0 48px rgb(37 99 235/.14)!important}
+.bx-health>div{border-width:10px!important}
+.bx-health strong{font-size:34px!important}
+
+.bx-grid-3,.bx-grid-2{gap:20px!important}
+.bx-card{padding:26px!important;min-height:238px!important}
+.bx-icon{width:44px!important;height:44px!important;border-radius:12px!important;margin-bottom:20px!important}
+.bx-card>strong{font-size:30px!important;line-height:1.15!important;margin:10px 0 3px!important}
+.bx-card h3{font-size:15px!important;margin-bottom:7px!important}
+.bx-kicker{font-size:9.5px!important;letter-spacing:.13em!important;line-height:1.4!important}
+.bx-panel{padding:26px 28px!important}
+.bx-panel-head{margin-bottom:16px!important}
+.bx-panel-head h3{font-size:18px!important}
+.bx-row small,.bx-timeline small,.bx-finance small{color:var(--basoul-copy-muted)!important}
+.bx-row{padding-block:15px!important}
+.bx-timeline button{padding-block:13px!important}
+.bx-timeline-icon{width:32px!important;height:32px!important}
+.bx-signal p{max-width:400px!important;color:var(--basoul-copy-strong)!important}
+.bx-quick button{min-height:48px!important;color:var(--basoul-copy-strong)!important}
+
+/* Keep gradients as identity accents, never as visual noise. */
+.bx-card,.bx-panel{box-shadow:0 14px 42px rgb(2 6 23/.20)!important}
+.bx-card:hover,.bx-panel:hover{border-color:rgba(56,178,246,.19)!important}
+
+@media(max-width:1200px){
+  .bx-hero{grid-template-columns:minmax(0,1fr) 185px!important}
+  .bx-health{width:160px!important;height:160px!important}
+}
+@media(max-width:760px){
+  .topbar{padding-block:18px!important}
+  .bx-hero{grid-template-columns:1fr!important;padding:24px 20px!important}
+  .bx-health{width:148px!important;height:148px!important}
+  .bx-card{min-height:auto!important}
+}
