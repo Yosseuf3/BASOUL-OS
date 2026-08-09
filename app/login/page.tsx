@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import "./login.css";
 
@@ -64,7 +65,7 @@ export default function PasswordLoginPage() {
 
         <div className="basoul-password-copy">
           <h1 id="basoul-login-title">تسجيل الدخول</h1>
-          <p>استخدم بريدك وكلمة المرور للوصول إلى مساحة العمل دون الاعتماد على رسائل Magic Link.</p>
+          <p>استخدم بريدك وكلمة المرور للوصول إلى مساحة العمل.</p>
         </div>
 
         <form onSubmit={submit} className="basoul-password-form">
@@ -90,6 +91,9 @@ export default function PasswordLoginPage() {
               minLength={6}
             />
           </label>
+          <div className="basoul-password-tools">
+            <Link href="/forgot-password">نسيت كلمة المرور؟</Link>
+          </div>
           <button type="submit" disabled={busy || !email.trim() || !password}>
             {busy ? "جارٍ تسجيل الدخول…" : "تسجيل الدخول"}
           </button>
