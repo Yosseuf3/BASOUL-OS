@@ -27,4 +27,3 @@ mobile/.expo/
 mobile/node_modules/
 *.tsbuildinfo
 next-env.d.ts
-
