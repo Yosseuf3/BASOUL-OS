@@ -7,6 +7,22 @@ export type OrganizationMembership = {
   status: "active" | "invited" | "suspended"; created_at: string; updated_at: string;
 };
 
+export type OrganizationInvitation = {
+  id: string; email: string; target_user_id: string | null; role: Exclude<OrganizationRole, "owner">;
+  status: "pending" | "accepted" | "expired" | "revoked"; expires_at: string; created_at: string; updated_at: string;
+};
+
+async function invokeAdministration<T>(body: Record<string, unknown>) {
+  const { data, error } = await supabase.functions.invoke("organization-admin", { body });
+  if (error) throw error;
+  if (data?.error) throw new Error(String(data.error));
+  return data as T;
+}
+
+export async function acceptPendingInvitations() {
+  return invokeAdministration<{ accepted: number }>({ action: "accept" });
+}
+
 export async function loadAdministration(session: Session) {
   const { data: memberships, error } = await supabase.from("organization_memberships")
     .select("organization_id,user_id,role,status,created_at,updated_at,organizations(id,name,slug)")
@@ -22,13 +38,28 @@ export async function loadAdministration(session: Session) {
 }
 
 export async function setMembership(organizationId: string, userId: string, role: OrganizationRole, status: OrganizationMembership["status"]) {
-  const { error } = await supabase.rpc("set_organization_membership", {
-    target_organization: organizationId, target_user: userId, target_role: role, target_status: status,
-  });
-  if (error) throw error;
+  if (status !== "active") return deactivateMembership(organizationId, userId);
+  await invokeAdministration({ action: "change_role", organizationId, userId, role });
 }
 
 export async function removeMembership(organizationId: string, userId: string) {
-  const { error } = await supabase.rpc("remove_organization_membership", { target_organization: organizationId, target_user: userId });
-  if (error) throw error;
+  await invokeAdministration({ action: "remove", organizationId, userId });
+}
+
+export async function deactivateMembership(organizationId: string, userId: string) {
+  await invokeAdministration({ action: "deactivate", organizationId, userId });
+}
+
+export async function inviteMember(organizationId: string, email: string, role: Exclude<OrganizationRole, "owner">) {
+  return invokeAdministration<{ invitation: OrganizationInvitation; delivery: "existing_user" | "email_sent" }>({
+    action: "invite", organizationId, email, role,
+  });
+}
+
+export async function loadInvitations(organizationId: string) {
+  return invokeAdministration<{ invitations: OrganizationInvitation[]; members: OrganizationMembership[] }>({ action: "list", organizationId });
+}
+
+export async function revokeInvitation(organizationId: string, invitationId: string) {
+  await invokeAdministration({ action: "revoke", organizationId, invitationId });
 }

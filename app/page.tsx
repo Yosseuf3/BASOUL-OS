@@ -21,6 +21,7 @@ import { deleteNotification, markAllNotificationsRead, markNotificationRead } fr
 import { recordActivity } from "@/lib/events/activity-service";
 import { WorkspaceSwitcher } from "@/components/shell/workspace-switcher";
 import { AdministrationView } from "@/features/administration/administration-view";
+import { acceptPendingInvitations } from "@/lib/organizations/administration";
 import { QuickCreate } from "@/components/commands/quick-create";
 import type { QuickCreateTarget, WorkspaceId } from "@/packages/types/src";
 import { DEFAULT_WORKSPACE } from "@/packages/core/src";
@@ -134,6 +135,7 @@ export default function Home() {
     if (!session) return;
     setLoading(true);
     try {
+      await acceptPendingInvitations().catch(() => undefined);
       const result = await loadWorkspaceData();
       setProjects(result.data.projects);
       setTasks(result.data.tasks);
