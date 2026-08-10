@@ -6,8 +6,8 @@ test("Platform manifest exposes BASOUL identity while preserving OS compatibilit
   const source = await readFile(new URL("../packages/platform/src/manifest.ts", import.meta.url), "utf8");
   assert.match(source, /id: "basoul-platform"/);
   assert.match(source, /name: "BASOUL"/);
-  assert.match(source, /authority: "YOSSEUF HQ"/);
-  assert.match(source, /product: "YOSSEUF OS"/);
+  assert.match(source, /authority: "BASOUL HQ"/);
+  assert.match(source, /product: "BASOUL OS"/);
   assert.match(source, /minimumVersion: "3\.1\.0"/);
   assert.match(source, /production: "read-only-unless-approved"/);
 });

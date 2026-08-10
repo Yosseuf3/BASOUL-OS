@@ -1,6 +1,6 @@
 {
   "name": "yosseuf-platform-mobile",
-  "version": "4.0.0-rc.1",
+  "version": "4.0.0-beta.1",
   "private": true,
   "main": "expo/AppEntry.js",
   "scripts": {
@@ -21,8 +21,8 @@
     "@yosseuf/yvl-tokens": "file:../packages/yvl-tokens",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@supabase/supabase-js": "^2.110.8",
-    "expo": "~57.0.11",
-    "expo-dev-client": "~57.0.10",
+    "expo": "~57.0.12",
+    "expo-dev-client": "~57.0.11",
     "expo-document-picker": "^57.0.1",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
