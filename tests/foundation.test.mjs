@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 test("release metadata is aligned", async () => {
   const root = JSON.parse(await readFile(new URL("../package.json", import.meta.url)));
   const mobile = JSON.parse(await readFile(new URL("../mobile/package.json", import.meta.url)));
-  assert.equal(root.version, "4.0.0-rc.1");
+  assert.equal(root.version, "4.0.0-beta.1");
   assert.equal(mobile.version, root.version);
 });
 
