@@ -207,4 +207,29 @@ tbody tr { border-color:rgba(255,255,255,.055) !important; }
   .finance-summary{grid-template-columns:1fr !important;}
   .toolbar,.finance-toolbar,.activity-toolbar{align-items:stretch !important;}
   .project-modal,.modal,.project-workspace{border-radius:18px !important;}
+
+  /* Mobile Safari: keep long dialogs inside the dynamic viewport and make
+     the dialog itself the scroll container. This avoids body-scroll locking
+     trapping fields/actions below the visible viewport. */
+  .modal-backdrop{
+    align-items:flex-start !important;
+    overflow-y:auto !important;
+    overscroll-behavior:contain;
+    padding:
+      max(12px,env(safe-area-inset-top))
+      12px
+      max(18px,env(safe-area-inset-bottom)) !important;
+    touch-action:pan-y;
+    -webkit-overflow-scrolling:touch;
+  }
+  .modal-backdrop > .project-modal,
+  .modal-backdrop > .modal{
+    width:min(100%,720px) !important;
+    max-height:calc(100dvh - max(12px,env(safe-area-inset-top)) - max(18px,env(safe-area-inset-bottom))) !important;
+    margin:auto !important;
+    overflow-y:auto !important;
+    overscroll-behavior:contain;
+    touch-action:pan-y;
+    -webkit-overflow-scrolling:touch;
+  }
 }
