@@ -6,9 +6,11 @@ import { useEffect, useState } from "react";
 import { AdministrationView } from "@/features/administration/administration-view";
 import { Button, LoadingState, Panel } from "@/components/ui/yvl-primitives";
 import { supabase } from "@/lib/supabase";
+import { useLanguage } from "@/components/i18n/language-provider";
 
 export default function AdministrationPage() {
   const [session, setSession] = useState<Session | null>(null);
+  const { text } = useLanguage();
 
   useEffect(() => {
     let active = true;
@@ -25,18 +27,18 @@ export default function AdministrationPage() {
   }, []);
 
   if (!session) {
-    return <main className="main"><Panel><LoadingState title="جارٍ تحميل إدارة المؤسسة" /></Panel></main>;
+    return <main className="main"><Panel><LoadingState title={text("جارٍ تحميل إدارة المؤسسة", "Loading organization administration")} /></Panel></main>;
   }
 
   return <main className="main">
     <header className="topbar">
       <div>
         <span className="eyebrow">BASOUL · ADMINISTRATION</span>
-        <h1>إدارة المؤسسة</h1>
-        <p>إدارة الأعضاء ومستويات الصلاحية والدعوات وفق دورك المعتمد.</p>
+        <h1>{text("إدارة المؤسسة", "Organization Administration")}</h1>
+        <p>{text("إدارة الأعضاء ومستويات الصلاحية والدعوات وفق دورك المعتمد.", "Manage members, permission levels and invitations according to your assigned role.")}</p>
       </div>
       <div className="topbar-actions">
-        <Button type="button" className="ghost" onClick={() => window.location.assign("/")}><ArrowRight size={17}/> العودة إلى BASOUL</Button>
+        <Button type="button" className="ghost" onClick={() => window.location.assign("/")}><ArrowRight size={17}/> {text("العودة إلى BASOUL", "Back to BASOUL")}</Button>
       </div>
     </header>
     <AdministrationView session={session} />
