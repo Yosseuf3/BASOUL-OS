@@ -19,7 +19,7 @@ function recoveryMessage(error: unknown) {
 }
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("yosseuf.radwan@gmail.com");
+  const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [tone, setTone] = useState<"success" | "error" | "info">("info");
