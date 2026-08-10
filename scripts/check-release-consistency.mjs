@@ -1,6 +1,6 @@
 import fs from "node:fs";
 
-const expected = "4.0.0-rc.1";
+const expected = "4.0.0-beta.1";
 const expectedMobile = expected.split("-")[0];
 const files = [
   ["package.json", JSON.parse(fs.readFileSync("package.json", "utf8")).version, expected],
@@ -18,7 +18,7 @@ if (page.includes(staleLiveLabel)) files.push(["app/page.tsx stale label", stale
 const failures = files.filter(([, version, target]) => version !== target);
 if (failures.length) {
   console.error("Release consistency check failed:");
-  for (const [file, version, target] of failures) console.error(`- ${file}: ${version} (expected ${target})`);
+  for (const [file, version, target]) console.error(`- ${file}: ${version} (expected ${target})`);
   process.exit(1);
 }
 console.log(`Release consistency verified: platform v${expected}, mobile v${expectedMobile}`);
