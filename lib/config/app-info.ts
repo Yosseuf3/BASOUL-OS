@@ -1,8 +1,8 @@
 export const APP_INFO = {
   name: "BASOUL",
   legacyName: "YOSSEUF OS",
-  version: "4.0.0-rc.1",
-  platformVersion: "4.0.0-rc.1",
+  version: "4.0.0-beta.1",
+  platformVersion: "4.0.0-beta.1",
   codename: "Platform Foundation",
-  fullLabel: "BASOUL · v4.0.0-rc.1",
+  fullLabel: "BASOUL · v4.0.0-beta.1",
 } as const;
