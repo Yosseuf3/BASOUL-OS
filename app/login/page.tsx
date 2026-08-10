@@ -100,7 +100,7 @@ export default function PasswordLoginPage() {
         </form>
 
         {message && <div className="basoul-password-error" role="alert">{message}</div>}
-        <small>BASOUL · v4.0.0-rc.1</small>
+        <small>BASOUL · v4.0.0-beta.1</small>
       </section>
     </main>
   );
