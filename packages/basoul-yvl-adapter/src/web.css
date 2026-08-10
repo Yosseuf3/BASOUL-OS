@@ -43,6 +43,7 @@
   --ys-border-strong: color-mix(in srgb, var(--basoul-sky) 34%, var(--basoul-surface-raised));
   --ys-action-primary: var(--basoul-electric);
   --ys-action-primary-hover: #1D4ED8;
+  --basoul-accent: var(--ys-action-primary);
   --ys-status-success: var(--basoul-success);
   --ys-status-warning: var(--basoul-warning);
   --ys-status-danger: var(--basoul-danger);
