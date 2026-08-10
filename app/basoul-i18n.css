@@ -1,0 +1,56 @@
+.basoul-language-toggle {
+  position: fixed;
+  inset-block-start: calc(env(safe-area-inset-top, 0px) + 14px);
+  inset-inline-end: 16px;
+  z-index: 1200;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 8px 11px;
+  border: 1px solid rgba(55, 189, 248, 0.32);
+  border-radius: 999px;
+  background: rgba(7, 15, 35, 0.9);
+  color: #eaf7ff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  cursor: pointer;
+}
+
+.basoul-language-toggle:hover,
+.basoul-language-toggle:focus-visible {
+  border-color: rgba(55, 189, 248, 0.7);
+  outline: none;
+}
+
+.basoul-language-toggle span {
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+html[dir="ltr"] body,
+html[dir="ltr"] input,
+html[dir="ltr"] textarea,
+html[dir="ltr"] select,
+html[dir="ltr"] button {
+  direction: ltr;
+}
+
+html[dir="rtl"] body,
+html[dir="rtl"] input,
+html[dir="rtl"] textarea,
+html[dir="rtl"] select,
+html[dir="rtl"] button {
+  direction: rtl;
+}
+
+@media (max-width: 720px) {
+  .basoul-language-toggle {
+    inset-block-start: calc(env(safe-area-inset-top, 0px) + 10px);
+    inset-inline-end: 10px;
+    min-height: 36px;
+    padding: 7px 10px;
+  }
+}
