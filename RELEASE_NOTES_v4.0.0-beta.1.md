@@ -36,6 +36,10 @@ First official BASOUL Beta release after the ecosystem visual unification, secur
 - Physical iOS device signing remains dependent on an active Apple Developer Program team and valid signing credentials.
 - Cloud mobile build quotas and signing credentials remain external release constraints.
 
+## Publication
+
+GitHub prerelease channel: `v4.0.0-beta.1`.
+
 ## Legal
 
 Copyright © 2026 ELSHENAWY RADWAN. All rights reserved.
