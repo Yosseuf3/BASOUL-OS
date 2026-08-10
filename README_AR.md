@@ -1,25 +1,38 @@
 # BASOUL OS
 
-![الإصدار](https://img.shields.io/badge/version-v1.1.0-d4af37)
-![الحالة](https://img.shields.io/badge/status-stable-2ea44f)
+الحالة الحالية: **BASOUL Beta 1 · v4.0.0-rc.1 · Platform Foundation**
+
+![الإصدار](https://img.shields.io/badge/version-v4.0.0--rc.1-2563EB)
+![القناة](https://img.shields.io/badge/channel-beta-8B5CF6)
 ![Node](https://img.shields.io/badge/node-22.x-43853d)
 ![الترخيص](https://img.shields.io/badge/license-MIT-blue)
 
-**نظام تشغيل أعمال جاهز للذكاء الاصطناعي ومبني حول اتخاذ القرار — من YOSSEUF RADWAN.**
+**منصة أعمال موحّدة وواعية بالمؤسسة، أسسها YOSSEUF RADWAN.**
 
-يجمع BASOUL OS المشاريع والمهام والعملاء والمحتوى والمعرفة والمالية والنشاط والإشعارات داخل مساحة عمل تنفيذية واحدة. صُممت لوحة القيادة للإجابة عن سؤال عملي واضح:
+BASOUL هي العلامة التقنية الرئيسية. تبقى YOSSEUF RADWAN هوية المؤسس والشخصية، بينما تعود حقوق النشر للأعمال المملوكة لنا قانونيًا إلى **ELSHENAWY RADWAN**.
+
+يجمع BASOUL OS المشاريع والمهام والعملاء والمحتوى والمعرفة والمالية والنشاط والإشعارات والإدارة ودعم القرار التنفيذي داخل مساحة عمل واحدة محكومة.
 
 > **ماذا يجب أن أفعل الآن؟**
 
 ![لوحة القيادة في BASOUL OS](docs/assets/screenshots/executive-dashboard-v1.0.0.png)
 
-## لماذا BASOUL OS؟
+## حالة النسخة التجريبية
 
-تعرض معظم أدوات الأعمال البيانات فقط، بينما يحوّل BASOUL OS البيانات التشغيلية إلى أولويات وملخصات وتنبيهات وتوصيات وخطوات تالية من خلال طبقة قرار مستقلة.
+- حزمة المنتج: `basoul-platform`
+- إصدار المنتج: `v4.0.0-rc.1`
+- قناة الإصدار: **Beta**
+- الهوية: Symbol وWordmark الأصليان المعتمدان لـBASOUL
+- الألوان: Navy / Electric Blue / Cyan / Violet
+- تسجيل الدخول للتطوير: Email + Password
+- RTL والاستجابة للشاشات: مفعّلان
+- معرّفات الإنتاج وSupabase Production: بدون تغيير
+
+سجل التحقق المعتمد للنسخة موجود في `docs/releases/BASOUL_BETA_1_RUNTIME_VERIFICATION_2026-08-10.md`.
 
 ## الإمكانات الأساسية
 
-- لوحة القيادة التنفيذية وWorkspace Health 2.0
+- لوحة القيادة التنفيذية وصحة مساحة العمل
 - إدارة المشاريع وتنفيذ المهام
 - إدارة العملاء
 - استوديو المحتوى
@@ -28,10 +41,22 @@
 - سجل النشاط الموحد
 - مركز الإشعارات
 - البحث الشامل والإنشاء السريع
+- الإدارة والعمليات المعتمدة على الصلاحيات
+- دعوات الأعضاء الآمنة
 - اختصارات لوحة المفاتيح
-- بنية ذكاء مشتركة جاهزة للتوسع
+- بنية ذكاء مشتركة جاهزة لتكامل BASOUL AI
 
 ## البنية المعمارية
+
+```text
+YVL canonical mechanics
++ BASOUL Brand Foundation
+→ BASOUL semantic adapter
+→ Web / React Native primitives
+→ BASOUL products
+```
+
+وعلى مستوى التطبيق:
 
 ```text
 طبقة العرض
@@ -43,17 +68,7 @@
 خدمات البيانات / Supabase
 ```
 
-تتضمن محركات القرار: الأولويات، والملخصات، والتنبيهات، والتوصيات، والتركيز، وصحة مساحة العمل. ويظل منطق الأعمال خارج مكونات React لدعم نسخة الويب وتطبيقات الهاتف مستقبلًا.
-
-## التقنيات
-
-- Next.js 14
-- React 18
-- TypeScript 5
-- Supabase
-- GitHub Actions
-- Vercel
-- Node.js 22
+تدير YVL الميكانيكا مثل المسافات والزوايا والحركة وإمكانية الوصول وRTL وهندسة التفاعل. أما BASOUL Brand Foundation فهي مصدر الحقيقة للهوية والأصول المعتمدة والألوان والسلطة البصرية.
 
 ## التشغيل السريع
 
@@ -63,14 +78,14 @@ npm install
 npm run dev
 ```
 
-أضف متغيرات البيئة التالية:
+ثم أضف:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-ثم افتح `http://localhost:3000`.
+وافتح `http://localhost:3000`.
 
 ## بوابة الجودة
 
@@ -78,7 +93,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 npm run quality
 ```
 
-ينفذ هذا الأمر فحص ESLint والتحقق من TypeScript وبناء نسخة الإنتاج.
+لا يتم تخفيف بوابات الجودة أو الأمان لتبدو النسخة التجريبية سليمة. أي تحذير اعتماد معروف يبقى موثقًا حتى يتوفر إصلاح مدعوم ومختبر.
 
 ## التوثيق
 
@@ -86,23 +101,14 @@ npm run quality
 - [النشر](DEPLOYMENT.md)
 - [الأمان](SECURITY.md)
 - [المساهمة](CONTRIBUTING.md)
+- [BASOUL Brand Foundation](brand/basoul/README.md)
+- [سجل تحقق Beta 1](docs/releases/BASOUL_BETA_1_RUNTIME_VERIFICATION_2026-08-10.md)
+- [Ecosystem Pass C](docs/architecture/BASOUL_ECOSYSTEM_PASS_C_2026-08-10.md)
 - [بنية مساحة العمل](docs/WORKSPACE_ARCHITECTURE.md)
 - [مبادئ المنتج](docs/PRODUCT_PRINCIPLES.md)
 - [خارطة طريق الذكاء الاصطناعي](docs/AI_ROADMAP.md)
-- [ملاحظات إصلاح v1.1.0](RELEASE_NOTES_v1.1.0.md)
-- [ملاحظات إصدار v1.0.0](RELEASE_NOTES_v1.0.0.md)
-- [قائمة اختبارات إصلاح v1.1.0](TEST_CHECKLIST_v1.1.0.md)
-- [قائمة اختبارات v1.0.0](TEST_CHECKLIST_v1.0.0.md)
 
-## حالة الإصدار
-
-**v1.1.0** هو إصلاح تشخيص المصادقة المبني على أول إطلاق رسمي مستقر v1.0.0. يجب إبقاء الفرع المستقر محميًا، وعدم دمج أي تطوير جديد إلا بعد اجتياز بوابة الجودة والاختبارات الوظيفية.
-
-## خارطة الطريق
-
-- **v1.1:** ذكاء الأعمال، وتدفقات CRM، ومسار العملاء، وأتمتة المتابعة
-- **v1.2:** مساعد ذكاء اصطناعي مدمج، وتوصيات، وتحليل تشغيلي
-- **v1.3:** تطبيقات iOS وAndroid مع مشاركة منطق الأعمال
+تبقى ملاحظات الإصدارات التاريخية محفوظة كأدلة ولا يعاد تحريرها لتبدو كأنها الحالة الحالية.
 
 ## الترخيص
 
@@ -110,4 +116,4 @@ npm run quality
 
 ---
 
-**BASOUL OS** · تأسيس **YOSSEUF RADWAN**
+**BASOUL OS** · تأسيس **YOSSEUF RADWAN** · Copyright © 2026 **ELSHENAWY RADWAN**
