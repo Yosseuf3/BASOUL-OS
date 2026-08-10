@@ -1,7 +1,7 @@
 # BASOUL Ecosystem Pass B — Dependency & Overlap Analysis
 
 Date: 2026-08-10
-Status: Analysis only. No repository archive, rename, delete, merge, production promotion, or financial decision is performed by this document.
+Status: Analysis complete. Owner approved archival of `Yosseuf3/YOSSEUF-OS-V1` on 2026-08-10. No other repository archive, rename, delete, merge, production promotion, or financial decision is performed by this document.
 
 ## Executive conclusion
 
@@ -14,7 +14,7 @@ The ecosystem is not nine equal products. It is a layered system with four disti
 
 Two repositories sit outside this clean model and need explicit disposition:
 
-- `YOSSEUF-OS-V1`: historical runtime implementation; archive candidate after evidence extraction.
+- `YOSSEUF-OS-V1`: historical runtime implementation; **ARCHIVE APPROVED** by owner on 2026-08-10.
 - `yosseuf-ai-core`: incomplete/ambiguous authority; quarantine candidate until a product contract is approved.
 
 The strongest no-regret architecture is therefore **not** to collapse everything into one monorepo. Instead, preserve authority boundaries and remove only duplicated or obsolete implementations.
@@ -32,7 +32,7 @@ The strongest no-regret architecture is therefore **not** to collapse everything
 | `Yosseuf3/YOSSEUF-Platform` | read-only engineering intelligence and documentation portal | Presentation only | No | **KEEP FOR NOW / REDUCE OVERLAP** |
 | `Yosseuf3/YOSSEUF-R2-Research-Lab` | isolated experimental research | No production | No | **KEEP / ISOLATED RESEARCH** |
 | `Yosseuf3/yosseuf-design-system` | old shared design foundation and mechanics | Shared package source | No | **TRANSITION / EXTRACT MECHANICS** |
-| `Yosseuf3/YOSSEUF-OS-V1` | legacy OS implementation | Historical only | No | **ARCHIVE CANDIDATE** |
+| `Yosseuf3/YOSSEUF-OS-V1` | legacy OS implementation | Historical only | No | **ARCHIVE APPROVED** |
 | `Yosseuf3/yosseuf-ai-core` | nominal AI Core, currently incomplete/general starter shape | Unclear | No | **QUARANTINE / REDEFINE OR ARCHIVE** |
 
 ---
@@ -109,15 +109,18 @@ The strongest no-regret architecture is therefore **not** to collapse everything
 
 **Difference:** current BASOUL OS has newer stack, organization-aware authorization, mobile client, decision engine, BASOUL Brand Foundation, YVL adapter and current release path.
 
-**Recommendation:** archive V1 after a final extraction checklist:
+**Decision:** archive V1. Owner approval was explicitly granted on 2026-08-10.
 
-- unique migrations/schema fragments
-- unique product behavior not present in current OS
-- historical release notes worth preserving
-- deployment/environment knowledge not duplicated elsewhere
-- any user data migration instructions
+Preservation rules before/through archive:
 
-No new feature work should target V1.
+- preserve all Git history, releases, tags and source
+- retain migrations/schema fragments as historical evidence
+- retain historical release notes and deployment knowledge
+- prohibit new feature work
+- do not use V1 as runtime, schema, deployment, or product authority
+- any unique capability needed later must be deliberately migrated into current BASOUL OS rather than reactivating V1
+
+An `ARCHIVE_NOTICE.md` was added to the legacy repository before the archive action to record this decision.
 
 ### 3.4 BASOUL OS vs R1
 
@@ -190,7 +193,7 @@ R2 is intentionally isolated. Keep its zero-dollar/dry-run research model. Promo
 
 ### Tier D — Transition / sunset
 
-- **YOSSEUF-OS-V1**: archive candidate.
+- **YOSSEUF-OS-V1**: **archive approved / historical only**.
 - **AI Core**: quarantine pending authority decision.
 - **Old Design System repository**: transition pending consumer migration.
 
@@ -198,37 +201,34 @@ R2 is intentionally isolated. Keep its zero-dollar/dry-run research model. Promo
 
 ## 5. No-regret actions that can proceed automatically
 
-1. Stop new feature work on `YOSSEUF-OS-V1`.
+1. Treat `YOSSEUF-OS-V1` as historical-only and stop all new feature work.
 2. Prevent new dependencies on `yosseuf-ai-core` until authority is approved.
 3. Document HQ as the single source of lifecycle/status truth.
 4. Document Platform as read-only consumer, not authority.
 5. Create explicit OS ↔ R1 integration contracts instead of code duplication.
 6. Inventory all Design System package consumers before any archive/rename.
-7. Inventory unique V1 files/schema/features before archive.
+7. Preserve V1 history and evidence through archive.
 8. Keep R2 promotion-gated and production-isolated.
 9. Continue BASOUL visual migration in product repositories using locked Brand Foundation + YVL mechanics.
 
 ---
 
-## 6. Decisions that must NOT be automated
+## 6. Decisions that must NOT be automated without explicit owner approval
 
-The following require explicit owner approval because they materially change ownership, external references, or history:
-
-- archiving/deleting `YOSSEUF-OS-V1`
+- deleting repositories
 - renaming repositories from YOSSEUF to BASOUL
 - collapsing Platform into HQ or vice versa
 - redefining or archiving AI Core
 - archiving/replacing the Design System repository
 - changing production domains, Apple/Android IDs, Supabase project IDs, secrets, release tags or Git history
 
+`YOSSEUF-OS-V1` archival is no longer blocked by this gate because explicit owner approval was granted on 2026-08-10.
+
 ---
 
 ## 7. Pass C recommended evidence work
 
-Before any structural change, perform these four evidence packs:
-
-### C1 — Legacy OS extraction diff
-Create a capability/schema/file inventory comparing V1 with current BASOUL OS and produce `KEEP / MIGRATED / UNIQUE / OBSOLETE` classifications.
+With V1 archival approved, Pass C should continue on the remaining active structural questions:
 
 ### C2 — Design System consumer map
 Search all active repositories for `@yosseuf/*`, design-system package names, YVL imports and copied token files. Produce a migration graph and safe archive threshold.
@@ -243,11 +243,10 @@ Inventory actual code, APIs, routes, tests and deployments. Compare with R1 capa
 
 ## 8. Current recommendation
 
-Proceed to Pass C without deleting or renaming anything. The highest-value sequence is:
+Proceed with the approved V1 archival and continue Pass C on the remaining ecosystem cleanup work. Recommended order:
 
-1. **C1 Legacy OS extraction diff**
-2. **C2 Design System consumer map**
-3. **C3 Platform/HQ duplication map**
-4. **C4 AI Core authority dossier**
+1. **C2 Design System consumer map**
+2. **C3 Platform/HQ duplication map**
+3. **C4 AI Core authority dossier**
 
-This sequence reduces risk before any irreversible ecosystem cleanup.
+This sequence reduces active duplication without reopening the retired V1 line.
