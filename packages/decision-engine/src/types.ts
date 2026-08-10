@@ -1,5 +1,6 @@
 import type { ActivityEvent, Client, FinanceTransaction, Notification, Project, Task } from "@basoul/shared-types";
 
+export type DecisionLocale = "ar" | "en";
 export type DecisionTarget = "dashboard" | "projects" | "tasks" | "clients" | "finance" | "activity" | "notifications";
 export type DecisionSeverity = "critical" | "warning" | "info" | "positive";
 export type DecisionAction = { label: string; target: DecisionTarget; entityId?: string };
@@ -11,7 +12,7 @@ export type ExecutiveDecision = {
   priorities: DecisionSignal[];
   alerts: DecisionSignal[];
   recommendations: DecisionSignal[];
-  health: { score: number; label: "ممتاز" | "جيد" | "يحتاج انتباه" | "حرج"; factors: HealthFactor[] };
+  health: { score: number; label: "ممتاز" | "جيد" | "يحتاج انتباه" | "حرج" | "Excellent" | "Good" | "Needs attention" | "Critical"; factors: HealthFactor[] };
   stats: { activeProjects:number; stalledProjects:number; overdueProjects:number; overdueTasks:number; dueToday:number; dueSoon:number; doneTasks:number; completion:number; activeClients:number; followUps:number; income:number; expense:number; net:number; pendingPayments:number; currency:string };
 };
 export type DecisionInput = { projects:Project[]; tasks:Task[]; clients:Client[]; financeItems:FinanceTransaction[]; activityEvents:ActivityEvent[]; notifications:Notification[]; now?:Date };
