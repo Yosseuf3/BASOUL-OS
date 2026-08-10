@@ -1,4 +1,6 @@
-# YOSSEUF OS v3.1.0 Stable Release Checklist
+# Historical Release Checklist — YOSSEUF OS v3.1.0
+
+> **Historical evidence only.** This checklist documents the pre-BASOUL v3.1.0 release line and is not the current product/release authority. The active technology identity is **BASOUL**, with the current beta baseline tracked in the BASOUL Beta release records under `docs/releases/`. Preserve this file for provenance; do not use its legacy product name or version as current presentation.
 
 ## Source integrity
 
