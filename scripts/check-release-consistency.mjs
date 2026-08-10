@@ -18,7 +18,7 @@ if (page.includes(staleLiveLabel)) files.push(["app/page.tsx stale label", stale
 const failures = files.filter(([, version, target]) => version !== target);
 if (failures.length) {
   console.error("Release consistency check failed:");
-  for (const [file, version, target]) console.error(`- ${file}: ${version} (expected ${target})`);
+  for (const [file, version, target] of failures) console.error(`- ${file}: ${version} (expected ${target})`);
   process.exit(1);
 }
 console.log(`Release consistency verified: platform v${expected}, mobile v${expectedMobile}`);
