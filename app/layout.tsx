@@ -6,6 +6,7 @@ import "@/components/ui/yvl-primitives.css";
 import "./basoul-visual-truth.css";
 import "./basoul-approved-assets.css";
 import "./basoul-polish.css";
+import "./basoul-product-surfaces.css";
 
 export const metadata: Metadata = {
   title: "BASOUL",

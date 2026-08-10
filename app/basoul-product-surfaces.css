@@ -1,0 +1,210 @@
+/* BASOUL Phase 9.2 — product-surface migration.
+   Identity authority: approved BASOUL Brand Foundation.
+   This file extends the accepted Phase 9.1 visual baseline to the remaining web product modules
+   without changing business logic, data contracts, RLS, auth, or canonical YVL mechanics. */
+
+:root {
+  --bx-surface-0: #0B1020;
+  --bx-surface-1: #11182A;
+  --bx-surface-2: #1B2230;
+  --bx-blue: #2563EB;
+  --bx-cyan: #38B2F6;
+  --bx-violet: #8B5CF6;
+  --bx-text: #FFFFFF;
+  --bx-muted: #A8B4C8;
+  --bx-line: rgba(56,178,246,.16);
+  --bx-line-strong: rgba(56,178,246,.30);
+  --bx-panel: linear-gradient(145deg,rgba(17,24,42,.96),rgba(11,16,32,.985));
+  --bx-blue-grad: linear-gradient(135deg,#2563EB,#38B2F6);
+}
+
+/* Shared module shell */
+.main > .panel,
+.projects-panel,
+.tasks-panel,
+.clients-panel,
+.content-panel,
+.knowledge-panel,
+.finance-panel,
+.activity-page,
+.notifications-page,
+.architecture-review,
+.administration-page {
+  color: var(--bx-text);
+}
+
+.panel,
+.project-card,
+.task-card,
+.client-card,
+.content-card,
+.knowledge-card,
+.finance-metric,
+.finance-insight,
+.finance-table-section,
+.activity-row,
+.activity-toolbar,
+.notification-card,
+.architecture-review .card,
+.administration-page .card,
+.project-overview-card,
+.project-workspace-kpis > *,
+.project-review > div,
+.project-identity-preview {
+  border-color: var(--bx-line) !important;
+  background: var(--bx-panel) !important;
+  box-shadow: 0 14px 42px rgba(2,6,23,.18) !important;
+}
+
+.panel h2,.panel h3,.panel strong,.panel b,
+.project-card h3,.task-card h3,.client-card h3,.content-card h3,.knowledge-card h3,
+.finance-panel h2,.finance-panel strong,
+.activity-page h3,.notifications-page h3,
+.project-workspace h2,.project-workspace h3 { color: var(--bx-text) !important; }
+
+.panel p,.panel small,.panel em,
+.project-card p,.task-card p,.client-card p,.content-card p,.knowledge-card p,
+.finance-panel p,.finance-panel small,
+.activity-page p,.activity-page small,
+.notifications-page p,.notifications-page small,
+.project-workspace p,.project-workspace small { color: var(--bx-muted) !important; }
+
+.section-kicker,
+.finance-section-title .section-kicker,
+.project-workspace .section-kicker { color: var(--bx-cyan) !important; letter-spacing:.13em; }
+
+/* Toolbars, search, filters */
+.toolbar,.finance-toolbar,.activity-toolbar,.notifications-toolbar {
+  border-color: var(--bx-line) !important;
+  background: rgba(11,16,32,.78) !important;
+}
+.search-box,
+.finance-filter,
+.toolbar input,
+.toolbar select,
+.project-form input,
+.project-form textarea,
+.project-form select,
+.modal input,.modal textarea,.modal select {
+  color: var(--bx-text) !important;
+  background: rgba(7,14,30,.70) !important;
+  border-color: var(--bx-line) !important;
+}
+.search-box:focus-within,
+.finance-filter:focus-within,
+.project-form input:focus,.project-form textarea:focus,.project-form select:focus,
+.modal input:focus,.modal textarea:focus,.modal select:focus {
+  border-color: var(--bx-cyan) !important;
+  box-shadow: 0 0 0 3px rgba(56,178,246,.11) !important;
+  outline: none !important;
+}
+
+.filter-tabs,.activity-filters,.project-workspace-tabs { gap:8px; }
+.filter-tabs button,.activity-filters button,.project-workspace-tabs button,
+.secondary,.icon-button,.table-actions button {
+  color: var(--bx-muted) !important;
+  border-color: var(--bx-line) !important;
+  background: rgba(37,99,235,.045) !important;
+}
+.filter-tabs button:hover,.activity-filters button:hover,.project-workspace-tabs button:hover,
+.secondary:hover,.icon-button:hover,.table-actions button:hover {
+  color: var(--bx-text) !important;
+  border-color: var(--bx-line-strong) !important;
+  background: rgba(37,99,235,.09) !important;
+}
+.filter-tabs button.active,.activity-filters button.active,.project-workspace-tabs button.active {
+  color: var(--bx-text) !important;
+  border-color: rgba(56,178,246,.35) !important;
+  background: linear-gradient(90deg,rgba(37,99,235,.18),rgba(56,178,246,.06)) !important;
+  box-shadow: inset 3px 0 0 var(--bx-blue);
+}
+
+/* Cards and grids */
+.project-grid,.task-grid,.client-grid,.content-grid,.knowledge-grid { gap:16px !important; }
+.project-card,.task-card,.client-card,.content-card,.knowledge-card {
+  border-radius:16px !important;
+  transition: border-color .18s ease,transform .18s ease,box-shadow .18s ease;
+}
+.project-card:hover,.task-card:hover,.client-card:hover,.content-card:hover,.knowledge-card:hover {
+  border-color: var(--bx-line-strong) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 18px 50px rgba(37,99,235,.08) !important;
+}
+
+/* Status and semantic accents. Amber is semantic only, never global identity. */
+.status.active,.status.paid,.status.published,.status.done,.finance-status.paid { color:#42D7A0 !important; }
+.status.planning,.status.review,.status.draft,.status.pending,.finance-status.pending { color:var(--bx-cyan) !important; }
+.status.on-hold,.status.scheduled,.status.recording { color:#F4B740 !important; }
+.status.completed,.status.cancelled,.finance-status.cancelled { color:#93A0B5 !important; }
+.danger,.danger-soft { color:#FF7186 !important; }
+
+/* Finance */
+.finance-summary { gap:14px !important; }
+.finance-metric { border-radius:16px !important; }
+.finance-metric > span { background:rgba(37,99,235,.10) !important;color:var(--bx-cyan) !important; }
+.finance-metric.income > span { color:#42D7A0 !important; }
+.finance-metric.expense > span { color:#FF7186 !important; }
+.finance-insights-grid { gap:16px !important; }
+.finance-insight,.finance-table-section { border-radius:18px !important; }
+.finance-table-wrap { border-color:var(--bx-line) !important; }
+.finance-table th { color:#B9C5D8 !important;background:rgba(7,14,30,.64) !important;border-color:var(--bx-line) !important; }
+.finance-table td { border-color:rgba(255,255,255,.055) !important; }
+.finance-table tr:hover td { background:rgba(37,99,235,.04) !important; }
+.income-bar { background:linear-gradient(180deg,#42D7A0,#1AAE83) !important; }
+.expense-bar { background:linear-gradient(180deg,#FF7186,#D94A62) !important; }
+.finance-category em { background:rgba(56,178,246,.08) !important; }
+.finance-category em i { background:var(--bx-blue-grad) !important; }
+
+/* Activity + notifications */
+.activity-filters button.active { color:var(--bx-text) !important; }
+.activity-day > header { color:var(--bx-cyan) !important;border-color:var(--bx-line) !important; }
+.activity-row { border-radius:14px !important; }
+.activity-icon { color:var(--bx-cyan) !important;background:rgba(37,99,235,.10) !important; }
+.notification-card.unread { border-color:rgba(56,178,246,.30) !important;background:linear-gradient(145deg,rgba(18,31,57,.98),rgba(11,16,32,.98)) !important; }
+
+/* Modals and project workspace */
+.modal-backdrop { background:rgba(2,6,18,.76) !important;backdrop-filter:blur(10px); }
+.project-modal,.modal,.project-workspace {
+  color:var(--bx-text) !important;
+  border-color:var(--bx-line) !important;
+  background:linear-gradient(160deg,#11182A,#0B1020 72%) !important;
+  box-shadow:0 30px 100px rgba(0,0,0,.44),0 0 70px rgba(37,99,235,.08) !important;
+}
+.modal-head,.project-workspace-head { border-color:var(--bx-line) !important; }
+.wizard-progress button.active b,.wizard-progress button.done b { background:var(--bx-blue-grad) !important;color:white !important; }
+.project-identity-preview { border-inline-start-color:var(--bx-blue) !important; }
+.executive-brief {
+  border-color:var(--bx-line) !important;
+  background:radial-gradient(circle at 82% 10%,rgba(56,178,246,.10),transparent 32%),rgba(37,99,235,.055) !important;
+}
+.executive-brief-icon { color:var(--bx-cyan) !important;background:rgba(37,99,235,.10) !important; }
+.project-workspace-tabs { border-color:var(--bx-line) !important; }
+
+/* Empty states and actions */
+.empty-state,.mini-empty,.activity-empty {
+  color:var(--bx-muted) !important;
+  border-color:var(--bx-line) !important;
+  background:rgba(11,16,32,.55) !important;
+}
+.primary,.global-fab {
+  border:0 !important;
+  color:white !important;
+  background:var(--bx-blue-grad) !important;
+  box-shadow:0 12px 32px rgba(37,99,235,.20) !important;
+}
+.global-fab:hover,.primary:hover { filter:brightness(1.06); }
+
+/* Tables/lists shared across modules */
+table { border-color:var(--bx-line) !important; }
+thead th { color:#B9C5D8; }
+tbody tr { border-color:rgba(255,255,255,.055) !important; }
+
+/* Responsive consistency */
+@media (max-width:1100px){
+  .finance-summary{grid-template-columns:repeat(2,minmax(0,1fr)) !important;}
+}
+@media (max-width:760px){
+  .finance-summary{grid-template-columns:1fr !important;}
+  .toolbar,.finance-toolbar,.activity-toolbar{align-items:stretch !important;}
+  .project-modal,.modal,.project-workspace{border-radius:18px !important;}
+}
