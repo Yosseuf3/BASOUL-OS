@@ -10,21 +10,20 @@ import {
   deactivateMembership, inviteMember, loadAdministration, loadInvitations, removeMembership,
   revokeInvitation, setMembership, type OrganizationInvitation, type OrganizationMembership,
 } from "@/lib/organizations/administration";
+import { useLanguage } from "@/components/i18n/language-provider";
 
 const statusTone = (status: string) => status === "active" || status === "accepted" ? "success" : status === "pending" || status === "invited" ? "warning" : "neutral";
-const roleLabels: Record<OrganizationRole, string> = { owner: "مالك", admin: "مسؤول", member: "عضو", viewer: "مشاهد" };
-const statusLabels: Record<string, string> = {
-  active: "نشط",
-  inactive: "غير نشط",
-  pending: "قيد الانتظار",
-  invited: "تمت الدعوة",
-  accepted: "مقبولة",
-  expired: "منتهية",
-  revoked: "ملغاة",
+const roleLabels = {
+  ar: { owner: "مالك", admin: "مسؤول", member: "عضو", viewer: "مشاهد" },
+  en: { owner: "Owner", admin: "Admin", member: "Member", viewer: "Viewer" },
+} satisfies Record<"ar" | "en", Record<OrganizationRole, string>>;
+const statusLabels: Record<"ar" | "en", Record<string, string>> = {
+  ar: { active: "نشط", inactive: "غير نشط", pending: "قيد الانتظار", invited: "تمت الدعوة", accepted: "مقبولة", expired: "منتهية", revoked: "ملغاة" },
+  en: { active: "Active", inactive: "Inactive", pending: "Pending", invited: "Invited", accepted: "Accepted", expired: "Expired", revoked: "Revoked" },
 };
-const displayStatus = (status: string) => statusLabels[status] ?? status;
 
 export function AdministrationView({ session }: { session: Session }) {
+  const { locale, text } = useLanguage();
   const [state, setState] = useState<Awaited<ReturnType<typeof loadAdministration>>>(null);
   const [loaded, setLoaded] = useState(false);
   const [invitations, setInvitations] = useState<OrganizationInvitation[]>([]);
@@ -34,6 +33,8 @@ export function AdministrationView({ session }: { session: Session }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const displayStatus = (status: string) => statusLabels[locale][status] ?? status;
+
   const refresh = useCallback(async () => {
     try {
       const next = await loadAdministration(session);
@@ -43,16 +44,16 @@ export function AdministrationView({ session }: { session: Session }) {
         setInvitations(secure.invitations);
       } else setInvitations([]);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "تعذر تحميل الإدارة");
+      setError(cause instanceof Error ? cause.message : text("تعذر تحميل الإدارة", "Unable to load administration"));
     } finally {
       setLoaded(true);
     }
-  }, [session]);
+  }, [session, text]);
   useEffect(() => { void refresh(); }, [refresh]);
 
-  if (!loaded) return <Panel><LoadingState title="جارٍ تحميل الإدارة" /></Panel>;
-  if (error && !state) return <Panel><ErrorState title="تعذر تحميل الإدارة" detail={error} /></Panel>;
-  if (!state) return <Panel><EmptyState title="لا توجد عضوية نشطة" detail="سجّل الدخول بعضوية مؤسسة لعرض الإدارة." /></Panel>;
+  if (!loaded) return <Panel><LoadingState title={text("جارٍ تحميل الإدارة", "Loading administration")} /></Panel>;
+  if (error && !state) return <Panel><ErrorState title={text("تعذر تحميل الإدارة", "Unable to load administration")} detail={error} /></Panel>;
+  if (!state) return <Panel><EmptyState title={text("لا توجد عضوية نشطة", "No active membership")} detail={text("سجّل الدخول بعضوية مؤسسة لعرض الإدارة.", "Sign in with an organization membership to view administration.")} /></Panel>;
 
   const role = state.current.role as OrganizationRole;
   const organization = state.current.organizations as unknown as { id: string; name: string; slug: string };
@@ -64,7 +65,7 @@ export function AdministrationView({ session }: { session: Session }) {
       setNotice(typeof success === "function" ? success(result) : success);
       await refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "تعذر تنفيذ العملية");
+      setError(cause instanceof Error ? cause.message : text("تعذر تنفيذ العملية", "Unable to complete the operation"));
     } finally {
       setBusy(false);
     }
@@ -76,42 +77,42 @@ export function AdministrationView({ session }: { session: Session }) {
       setEmail(""); setInviteOpen(false);
       return result;
     }, (result) => result.delivery === "email_sent"
-      ? "أُرسلت الدعوة بأمان."
-      : "رُبطت الدعوة بالهوية الموجودة وستُقبل عند تسجيل الدخول التالي.");
+      ? text("أُرسلت الدعوة بأمان.", "Invitation sent securely.")
+      : text("رُبطت الدعوة بالهوية الموجودة وستُقبل عند تسجيل الدخول التالي.", "The invitation was linked to the existing identity and will be accepted on the next sign-in."));
   };
 
   return <Panel aria-labelledby="administration-title">
     <span className="section-kicker">BASOUL · ADMINISTRATION</span>
-    <h2 id="administration-title">إدارة المؤسسة</h2>
+    <h2 id="administration-title">{text("إدارة المؤسسة", "Organization Administration")}</h2>
     <p><strong>BASOUL</strong></p>
-    <p className="muted">معرّف المؤسسة التقني: <code>{organization.slug}</code></p>
-    <p>دورك: <Status tone={role === "owner" ? "accent" : "success"}>{roleLabels[role]}</Status>{hasOrganizationPermission(role, "organization.update") ? " · إدارة إعدادات المؤسسة متاحة" : " · إعدادات المؤسسة للمالك فقط"}</p>
+    <p className="muted">{text("معرّف المؤسسة التقني", "Technical organization identifier")}: <code>{organization.slug}</code></p>
+    <p>{text("دورك", "Your role")}: <Status tone={role === "owner" ? "accent" : "success"}>{roleLabels[locale][role]}</Status>{hasOrganizationPermission(role, "organization.update") ? text(" · إدارة إعدادات المؤسسة متاحة", " · Organization settings available") : text(" · إعدادات المؤسسة للمالك فقط", " · Organization settings are owner-only")}</p>
     {error ? <p role="alert" className="form-error">{error}</p> : null}
     {notice ? <p role="status" className="auth-message success">{notice}</p> : null}
-    {manage ? <Button type="button" className="primary" disabled={busy} onClick={() => setInviteOpen(true)}>دعوة عضو</Button> : null}
+    {manage ? <Button type="button" className="primary" disabled={busy} onClick={() => setInviteOpen(true)}>{text("دعوة عضو", "Invite member")}</Button> : null}
 
-    <Dialog open={inviteOpen} title="دعوة عضو إلى المؤسسة" onClose={() => setInviteOpen(false)}>
+    <Dialog open={inviteOpen} title={text("دعوة عضو إلى المؤسسة", "Invite member to organization")} onClose={() => setInviteOpen(false)}>
       <form onSubmit={submitInvite} className="admin-invite-form">
-        <label>البريد الإلكتروني<Input required type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-        <label>الدور<Select value={inviteRole} onChange={(event) => setInviteRole(event.target.value as Exclude<OrganizationRole, "owner">)}>
-          {ORGANIZATION_ROLES.filter((candidate): candidate is Exclude<OrganizationRole, "owner"> => candidate !== "owner" && canInviteRole(role, candidate)).map((candidate) => <option key={candidate} value={candidate}>{roleLabels[candidate]}</option>)}
+        <label>{text("البريد الإلكتروني", "Email address")}<Input required type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+        <label>{text("الدور", "Role")}<Select value={inviteRole} onChange={(event) => setInviteRole(event.target.value as Exclude<OrganizationRole, "owner">)}>
+          {ORGANIZATION_ROLES.filter((candidate): candidate is Exclude<OrganizationRole, "owner"> => candidate !== "owner" && canInviteRole(role, candidate)).map((candidate) => <option key={candidate} value={candidate}>{roleLabels[locale][candidate]}</option>)}
         </Select></label>
-        <div className="form-actions"><Button type="button" className="ghost" onClick={() => setInviteOpen(false)}>إلغاء</Button><Button type="submit" className="primary" aria-busy={busy}>إرسال الدعوة</Button></div>
+        <div className="form-actions"><Button type="button" className="ghost" onClick={() => setInviteOpen(false)}>{text("إلغاء", "Cancel")}</Button><Button type="submit" className="primary" aria-busy={busy}>{text("إرسال الدعوة", "Send invitation")}</Button></div>
       </form>
     </Dialog>
 
-    {manage && invitations.length > 0 ? <><h3>الدعوات</h3><TableContainer><table><thead><tr><th>البريد</th><th>الدور</th><th>الحالة</th><th>الانتهاء</th><th>الإجراء</th></tr></thead><tbody>
-      {invitations.map((invitation) => <tr key={invitation.id}><td>{invitation.email}</td><td>{roleLabels[invitation.role]}</td><td><Status tone={statusTone(invitation.status)}>{displayStatus(invitation.status)}</Status></td><td>{new Intl.DateTimeFormat("ar-SA").format(new Date(invitation.expires_at))}</td><td>{invitation.status === "pending" ? <Button type="button" className="ghost" disabled={busy} onClick={() => void run(() => revokeInvitation(organization.id, invitation.id), "أُلغيت الدعوة.")}>إلغاء</Button> : "—"}</td></tr>)}
+    {manage && invitations.length > 0 ? <><h3>{text("الدعوات", "Invitations")}</h3><TableContainer><table><thead><tr><th>{text("البريد", "Email")}</th><th>{text("الدور", "Role")}</th><th>{text("الحالة", "Status")}</th><th>{text("الانتهاء", "Expires")}</th><th>{text("الإجراء", "Action")}</th></tr></thead><tbody>
+      {invitations.map((invitation) => <tr key={invitation.id}><td>{invitation.email}</td><td>{roleLabels[locale][invitation.role]}</td><td><Status tone={statusTone(invitation.status)}>{displayStatus(invitation.status)}</Status></td><td>{new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-US").format(new Date(invitation.expires_at))}</td><td>{invitation.status === "pending" ? <Button type="button" className="ghost" disabled={busy} onClick={() => void run(() => revokeInvitation(organization.id, invitation.id), text("أُلغيت الدعوة.", "Invitation revoked."))}>{text("إلغاء", "Revoke")}</Button> : "—"}</td></tr>)}
     </tbody></table></TableContainer></> : null}
 
-    <h3>الأعضاء</h3>
-    <TableContainer><table><thead><tr><th>المستخدم</th><th>الدور</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>
+    <h3>{text("الأعضاء", "Members")}</h3>
+    <TableContainer><table><thead><tr><th>{text("المستخدم", "User")}</th><th>{text("الدور", "Role")}</th><th>{text("الحالة", "Status")}</th><th>{text("الإجراءات", "Actions")}</th></tr></thead><tbody>
       {state.members.map((member: OrganizationMembership) => <tr key={member.user_id}><td><code>{member.user_id}</code></td><td>
-        {manage && canManageMember(role, member.role) ? <Select disabled={busy} aria-label={`دور ${member.user_id}`} value={member.role} onChange={(event) => void run(() => setMembership(member.organization_id, member.user_id, event.target.value as OrganizationRole, "active"), "تغيّر الدور.")}>
-          {ORGANIZATION_ROLES.filter((candidate) => candidate !== "owner" && canAssignRole(role, candidate, member.user_id === session.user.id)).map((candidate) => <option key={candidate} value={candidate}>{roleLabels[candidate]}</option>)}
-        </Select> : roleLabels[member.role]}
-      </td><td><Status tone={statusTone(member.status)}>{displayStatus(member.status)}</Status></td><td>{manage && canManageMember(role, member.role) && member.user_id !== session.user.id ? <div className="admin-actions"><Button type="button" className="ghost" disabled={busy} onClick={() => void run(() => deactivateMembership(member.organization_id, member.user_id), "عُطّل العضو.")}>تعطيل</Button><Button type="button" className="danger" disabled={busy} onClick={() => void run(() => removeMembership(member.organization_id, member.user_id), "أُزيل العضو.")}>إزالة</Button></div> : <span aria-label="غير مسموح">—</span>}</td></tr>)}
+        {manage && canManageMember(role, member.role) ? <Select disabled={busy} aria-label={`${text("دور", "Role")} ${member.user_id}`} value={member.role} onChange={(event) => void run(() => setMembership(member.organization_id, member.user_id, event.target.value as OrganizationRole, "active"), text("تغيّر الدور.", "Role updated."))}>
+          {ORGANIZATION_ROLES.filter((candidate) => candidate !== "owner" && canAssignRole(role, candidate, member.user_id === session.user.id)).map((candidate) => <option key={candidate} value={candidate}>{roleLabels[locale][candidate]}</option>)}
+        </Select> : roleLabels[locale][member.role]}
+      </td><td><Status tone={statusTone(member.status)}>{displayStatus(member.status)}</Status></td><td>{manage && canManageMember(role, member.role) && member.user_id !== session.user.id ? <div className="admin-actions"><Button type="button" className="ghost" disabled={busy} onClick={() => void run(() => deactivateMembership(member.organization_id, member.user_id), text("عُطّل العضو.", "Member deactivated."))}>{text("تعطيل", "Deactivate")}</Button><Button type="button" className="danger" disabled={busy} onClick={() => void run(() => removeMembership(member.organization_id, member.user_id), text("أُزيل العضو.", "Member removed."))}>{text("إزالة", "Remove")}</Button></div> : <span aria-label={text("غير مسموح", "Not allowed")}>—</span>}</td></tr>)}
     </tbody></table></TableContainer>
-    {!manage ? <p>هذه الواجهة للقراءة فقط وفقًا لدورك.</p> : null}
+    {!manage ? <p>{text("هذه الواجهة للقراءة فقط وفقًا لدورك.", "This view is read-only for your current role.")}</p> : null}
   </Panel>;
 }
