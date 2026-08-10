@@ -57,7 +57,7 @@ export default function SetPasswordPage() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       setTone("success");
-      setMessage("تم تعيين كلمة المرور بنجاح. يمكنك الآن استخدام تسجيل الدخول بالبريد وكلمة المرور في BASOUL Preview.");
+      setMessage("تم تعيين كلمة المرور بنجاح. يمكنك الآن استخدام تسجيل الدخول بالبريد وكلمة المرور في BASOUL Beta.");
       window.setTimeout(() => {
         router.replace("/");
         router.refresh();
