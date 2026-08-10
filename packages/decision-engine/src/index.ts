@@ -1,36 +1,128 @@
-import type { DecisionInput, DecisionSignal, ExecutiveDecision, HealthFactor } from "./types";
+import type { DecisionInput, DecisionLocale, DecisionSignal, ExecutiveDecision, HealthFactor } from "./types";
 export * from "./types";
 export * from "./executive-insight";
 export * from "./executive-timeline";
 
-const day=86400000;
-const priorityWeight={Low:5,Medium:15,High:30,Critical:45} as const;
-const priorityLabel={Low:"منخفضة",Medium:"متوسطة",High:"مرتفعة",Critical:"حرجة"} as const;
-const projectStatusLabel={Planning:"تخطيط",Active:"نشط","On Hold":"متوقف مؤقتًا",Completed:"مكتمل"} as const;
-const healthLabel=(score:number):ExecutiveDecision["health"]["label"]=>score>=90?"ممتاز":score>=75?"جيد":score>=55?"يحتاج انتباه":"حرج";
+const day = 86400000;
+const priorityWeight = { Low: 5, Medium: 15, High: 30, Critical: 45 } as const;
+const priorityLabel = {
+  ar: { Low: "منخفضة", Medium: "متوسطة", High: "مرتفعة", Critical: "حرجة" },
+  en: { Low: "Low", Medium: "Medium", High: "High", Critical: "Critical" },
+} as const;
+const projectStatusLabel = {
+  ar: { Planning: "تخطيط", Active: "نشط", "On Hold": "متوقف مؤقتًا", Completed: "مكتمل" },
+  en: { Planning: "Planning", Active: "Active", "On Hold": "On Hold", Completed: "Completed" },
+} as const;
+const healthLabel = (score: number, locale: DecisionLocale): ExecutiveDecision["health"]["label"] => {
+  if (locale === "en") return score >= 90 ? "Excellent" : score >= 75 ? "Good" : score >= 55 ? "Needs attention" : "Critical";
+  return score >= 90 ? "ممتاز" : score >= 75 ? "جيد" : score >= 55 ? "يحتاج انتباه" : "حرج";
+};
 
-export function getExecutiveDecision(input:DecisionInput,userName="Yosseuf"):ExecutiveDecision{
- const now=input.now??new Date(); const today=now.toISOString().slice(0,10); const seven=new Date(now.getTime()+7*day).toISOString().slice(0,10);
- const paid=input.financeItems.filter(i=>i.status==="Paid"); const currency=paid[0]?.currency??input.financeItems[0]?.currency??"SAR"; const same=paid.filter(i=>i.currency===currency);
- const income=same.filter(i=>i.type==="Income").reduce((s,i)=>s+Number(i.amount),0); const expense=same.filter(i=>i.type==="Expense").reduce((s,i)=>s+Number(i.amount),0);
- const done=input.tasks.filter(t=>t.status==="Done").length;
- const stats={activeProjects:input.projects.filter(p=>p.status==="Active").length,stalledProjects:input.projects.filter(p=>p.status==="On Hold").length,overdueProjects:input.projects.filter(p=>p.status!=="Completed"&&!!p.due_date&&p.due_date<today).length,overdueTasks:input.tasks.filter(t=>t.status!=="Done"&&!!t.due_date&&t.due_date<today).length,dueToday:input.tasks.filter(t=>t.status!=="Done"&&t.due_date===today).length,dueSoon:input.tasks.filter(t=>t.status!=="Done"&&!!t.due_date&&t.due_date>today&&t.due_date<=seven).length,doneTasks:done,completion:input.tasks.length?Math.round(done/input.tasks.length*100):0,activeClients:input.clients.filter(c=>c.status==="Active").length,followUps:input.clients.filter(c=>!!c.next_follow_up&&c.next_follow_up<=today&&c.status!=="Inactive").length,income,expense,net:income-expense,pendingPayments:input.financeItems.filter(i=>i.status==="Pending").length,currency};
- const priorities:DecisionSignal[]=[];
- input.tasks.filter(t=>t.status!=="Done").forEach(t=>{const overdue=!!t.due_date&&t.due_date<today,dueToday=t.due_date===today,dueSoon=!!t.due_date&&t.due_date>today&&t.due_date<=seven;const age=Math.min(15,Math.max(0,Math.floor((now.getTime()-new Date(t.updated_at).getTime())/day)));const score=priorityWeight[t.priority]+(overdue?70:dueToday?55:dueSoon?25:0)+age;priorities.push({id:`task-${t.id}`,title:t.title,detail:overdue?`متأخرة منذ ${t.due_date}`:dueToday?"مستحقة اليوم":dueSoon?`موعدها ${t.due_date}`:"مهمة مفتوحة",severity:overdue||t.priority==="Critical"?"critical":dueToday||t.priority==="High"?"warning":"info",score,reason:`الأولوية ${priorityLabel[t.priority]}، حالة الموعد ${overdue?"متأخر":dueToday?"اليوم":dueSoon?"قريب":"غير عاجل"}، وآخر تحديث منذ ${age} يوم.`,action:{label:"فتح المهام",target:"tasks",entityId:t.id}})});
- input.projects.filter(p=>p.status!=="Completed").forEach(p=>{const overdue=!!p.due_date&&p.due_date<today,stalled=p.status==="On Hold";const score=(overdue?70:0)+(stalled?45:0)+priorityWeight[p.priority];if(score>=35)priorities.push({id:`project-${p.id}`,title:`متابعة مشروع ${p.name}`,detail:overdue?"تجاوز موعده المستهدف":stalled?"متوقف ويحتاج قرارًا":`${p.progress}% مكتمل`,severity:overdue||p.priority==="Critical"?"critical":"warning",score,reason:`حالة المشروع ${projectStatusLabel[p.status]}، أولوية ${priorityLabel[p.priority]}، والتقدم المسجل ${p.progress}%.`,action:{label:"فتح المشاريع",target:"projects",entityId:p.id}})});
- priorities.sort((a,b)=>b.score-a.score);
- const alerts:DecisionSignal[]=[]; const addAlert=(ok:boolean,s:DecisionSignal)=>{if(ok)alerts.push(s)};
- addAlert(stats.overdueTasks>0,{id:"overdue-tasks",title:`${stats.overdueTasks} مهام متأخرة`,detail:"تحتاج إعادة ترتيب أو موعدًا جديدًا.",severity:"critical",score:100,reason:"تم العثور على مهام مفتوحة تجاوز تاريخ استحقاقها.",action:{label:"معالجة المهام",target:"tasks"}});
- addAlert(stats.overdueProjects>0,{id:"overdue-projects",title:`${stats.overdueProjects} مشاريع تجاوزت موعدها`,detail:"راجع الخطة ونطاق التسليم.",severity:"critical",score:95,reason:"هناك مشاريع غير مكتملة وموعد تسليمها في الماضي.",action:{label:"مراجعة المشاريع",target:"projects"}});
- addAlert(stats.pendingPayments>0,{id:"pending-finance",title:`${stats.pendingPayments} معاملات مالية معلقة`,detail:"راجع التحصيلات والمصروفات.",severity:"warning",score:60,reason:"المعاملات بحالة Pending لم تُحسم بعد.",action:{label:"فتح المالية",target:"finance"}});
- const recommendations:DecisionSignal[]=[];
- input.projects.filter(p=>p.status==="Active"&&!input.tasks.some(t=>t.project_id===p.id&&t.status!=="Done")).forEach(p=>recommendations.push({id:`project-no-tasks-${p.id}`,title:`أنشئ خطة تنفيذ لمشروع ${p.name}`,detail:"المشروع نشط ولا توجد له مهام مفتوحة.",severity:"info",score:65,reason:"المشروع النشط بلا مهام لا يمكن قياس تقدمه تلقائيًا.",action:{label:"إضافة مهمة",target:"tasks",entityId:p.id}}));
- if(stats.followUps>0)recommendations.push({id:"client-followups",title:`نفّذ ${stats.followUps} متابعات عملاء`,detail:"المتابعات المستحقة قد تؤثر على القرارات والمبيعات.",severity:"warning",score:58,reason:"تاريخ المتابعة اليوم أو في الماضي.",action:{label:"فتح العملاء",target:"clients"}});
- if(!input.projects.length)recommendations.push({id:"first-project",title:"أنشئ أول مشروع",detail:"ابدأ بتحويل مساحة العمل إلى نظام تشغيل حي.",severity:"positive",score:50,reason:"لا توجد مشاريع مسجلة حتى الآن.",action:{label:"فتح المشاريع",target:"projects"}});
- const factors:HealthFactor[]=[{id:"base",label:"الأساس التشغيلي",impact:70,reason:"درجة بداية متحفظة لمساحة عمل قابلة للتشغيل.",tone:"neutral"}];
- const factor=(id:string,label:string,impact:number,reason:string)=>factors.push({id,label,impact,reason,tone:impact>0?"positive":impact<0?"negative":"neutral"});
- factor("active-projects","مشاريع نشطة",Math.min(12,stats.activeProjects*3),`${stats.activeProjects} مشاريع نشطة تضيف وضوحًا تشغيليًا.`); factor("task-completion","إنجاز المهام",Math.min(12,Math.round(stats.completion/10)),`نسبة إنجاز المهام ${stats.completion}%.`); factor("overdue-tasks","المهام المتأخرة",-Math.min(25,stats.overdueTasks*5),`${stats.overdueTasks} مهام متأخرة.`); factor("stalled-projects","المشاريع المتوقفة",-Math.min(18,stats.stalledProjects*6),`${stats.stalledProjects} مشاريع متوقفة.`); factor("pending-finance","المالية المعلقة",-Math.min(10,stats.pendingPayments*2),`${stats.pendingPayments} معاملات معلقة.`); factor("client-followup","متابعات العملاء",-Math.min(10,stats.followUps*2),`${stats.followUps} متابعات مستحقة.`);
- const healthScore=Math.max(0,Math.min(100,factors.reduce((s,f)=>s+f.impact,0)));
- const top=priorities[0]; const h=now.getHours(); const greet=h<12?"صباح الخير":h<18?"مساء الخير":"مساء النور"; const issueParts=[stats.overdueTasks&&`${stats.overdueTasks} مهام متأخرة`,stats.overdueProjects&&`${stats.overdueProjects} مشاريع متأخرة`,stats.pendingPayments&&`${stats.pendingPayments} معاملات معلقة`].filter(Boolean);
- return {generatedAt:now.toISOString(),brief:{headline:`${greet}، ${userName}`,message:issueParts.length?`تحتاج مساحة العمل إلى تدخل في ${issueParts.join("، ")}.`:`الوضع مستقر عبر ${stats.activeProjects} مشاريع نشطة، ولا توجد إشارات حرجة الآن.`,priorityLine:top?`أولوية اليوم: ${top.title}. لماذا؟ ${top.reason}`:"أولوية اليوم: حافظ على إيقاع التنفيذ الحالي."},priorities:priorities.slice(0,5),alerts:alerts.slice(0,4),recommendations:recommendations.sort((a,b)=>b.score-a.score).slice(0,4),health:{score:healthScore,label:healthLabel(healthScore),factors},stats};
+export function getExecutiveDecision(input: DecisionInput, userName = "Yosseuf", locale: DecisionLocale = "ar"): ExecutiveDecision {
+  const en = locale === "en";
+  const now = input.now ?? new Date();
+  const today = now.toISOString().slice(0, 10);
+  const seven = new Date(now.getTime() + 7 * day).toISOString().slice(0, 10);
+  const paid = input.financeItems.filter((i) => i.status === "Paid");
+  const currency = paid[0]?.currency ?? input.financeItems[0]?.currency ?? "SAR";
+  const same = paid.filter((i) => i.currency === currency);
+  const income = same.filter((i) => i.type === "Income").reduce((s, i) => s + Number(i.amount), 0);
+  const expense = same.filter((i) => i.type === "Expense").reduce((s, i) => s + Number(i.amount), 0);
+  const done = input.tasks.filter((t) => t.status === "Done").length;
+  const stats = {
+    activeProjects: input.projects.filter((p) => p.status === "Active").length,
+    stalledProjects: input.projects.filter((p) => p.status === "On Hold").length,
+    overdueProjects: input.projects.filter((p) => p.status !== "Completed" && !!p.due_date && p.due_date < today).length,
+    overdueTasks: input.tasks.filter((t) => t.status !== "Done" && !!t.due_date && t.due_date < today).length,
+    dueToday: input.tasks.filter((t) => t.status !== "Done" && t.due_date === today).length,
+    dueSoon: input.tasks.filter((t) => t.status !== "Done" && !!t.due_date && t.due_date > today && t.due_date <= seven).length,
+    doneTasks: done,
+    completion: input.tasks.length ? Math.round(done / input.tasks.length * 100) : 0,
+    activeClients: input.clients.filter((c) => c.status === "Active").length,
+    followUps: input.clients.filter((c) => !!c.next_follow_up && c.next_follow_up <= today && c.status !== "Inactive").length,
+    income,
+    expense,
+    net: income - expense,
+    pendingPayments: input.financeItems.filter((i) => i.status === "Pending").length,
+    currency,
+  };
+
+  const priorities: DecisionSignal[] = [];
+  input.tasks.filter((t) => t.status !== "Done").forEach((t) => {
+    const overdue = !!t.due_date && t.due_date < today;
+    const dueToday = t.due_date === today;
+    const dueSoon = !!t.due_date && t.due_date > today && t.due_date <= seven;
+    const age = Math.min(15, Math.max(0, Math.floor((now.getTime() - new Date(t.updated_at).getTime()) / day)));
+    const score = priorityWeight[t.priority] + (overdue ? 70 : dueToday ? 55 : dueSoon ? 25 : 0) + age;
+    const detail = en ? overdue ? `Overdue since ${t.due_date}` : dueToday ? "Due today" : dueSoon ? `Due ${t.due_date}` : "Open task" : overdue ? `متأخرة منذ ${t.due_date}` : dueToday ? "مستحقة اليوم" : dueSoon ? `موعدها ${t.due_date}` : "مهمة مفتوحة";
+    const timing = en ? overdue ? "overdue" : dueToday ? "today" : dueSoon ? "soon" : "not urgent" : overdue ? "متأخر" : dueToday ? "اليوم" : dueSoon ? "قريب" : "غير عاجل";
+    priorities.push({
+      id: `task-${t.id}`,
+      title: t.title,
+      detail,
+      severity: overdue || t.priority === "Critical" ? "critical" : dueToday || t.priority === "High" ? "warning" : "info",
+      score,
+      reason: en ? `Priority ${priorityLabel.en[t.priority]}, timing ${timing}, last updated ${age} day(s) ago.` : `الأولوية ${priorityLabel.ar[t.priority]}، حالة الموعد ${timing}، وآخر تحديث منذ ${age} يوم.`,
+      action: { label: en ? "Open tasks" : "فتح المهام", target: "tasks", entityId: t.id },
+    });
+  });
+
+  input.projects.filter((p) => p.status !== "Completed").forEach((p) => {
+    const overdue = !!p.due_date && p.due_date < today;
+    const stalled = p.status === "On Hold";
+    const score = (overdue ? 70 : 0) + (stalled ? 45 : 0) + priorityWeight[p.priority];
+    if (score < 35) return;
+    priorities.push({
+      id: `project-${p.id}`,
+      title: en ? `Follow up ${p.name}` : `متابعة مشروع ${p.name}`,
+      detail: en ? overdue ? "Past target date" : stalled ? "On hold and needs a decision" : `${p.progress}% complete` : overdue ? "تجاوز موعده المستهدف" : stalled ? "متوقف ويحتاج قرارًا" : `${p.progress}% مكتمل`,
+      severity: overdue || p.priority === "Critical" ? "critical" : "warning",
+      score,
+      reason: en ? `Project status ${projectStatusLabel.en[p.status]}, priority ${priorityLabel.en[p.priority]}, recorded progress ${p.progress}%.` : `حالة المشروع ${projectStatusLabel.ar[p.status]}، أولوية ${priorityLabel.ar[p.priority]}، والتقدم المسجل ${p.progress}%.`,
+      action: { label: en ? "Open projects" : "فتح المشاريع", target: "projects", entityId: p.id },
+    });
+  });
+  priorities.sort((a, b) => b.score - a.score);
+
+  const alerts: DecisionSignal[] = [];
+  const addAlert = (ok: boolean, signal: DecisionSignal) => { if (ok) alerts.push(signal); };
+  addAlert(stats.overdueTasks > 0, { id: "overdue-tasks", title: en ? `${stats.overdueTasks} overdue tasks` : `${stats.overdueTasks} مهام متأخرة`, detail: en ? "Reprioritize them or set new due dates." : "تحتاج إعادة ترتيب أو موعدًا جديدًا.", severity: "critical", score: 100, reason: en ? "Open tasks have passed their due dates." : "تم العثور على مهام مفتوحة تجاوز تاريخ استحقاقها.", action: { label: en ? "Resolve tasks" : "معالجة المهام", target: "tasks" } });
+  addAlert(stats.overdueProjects > 0, { id: "overdue-projects", title: en ? `${stats.overdueProjects} overdue projects` : `${stats.overdueProjects} مشاريع تجاوزت موعدها`, detail: en ? "Review the plan and delivery scope." : "راجع الخطة ونطاق التسليم.", severity: "critical", score: 95, reason: en ? "Incomplete projects have target dates in the past." : "هناك مشاريع غير مكتملة وموعد تسليمها في الماضي.", action: { label: en ? "Review projects" : "مراجعة المشاريع", target: "projects" } });
+  addAlert(stats.pendingPayments > 0, { id: "pending-finance", title: en ? `${stats.pendingPayments} pending financial transactions` : `${stats.pendingPayments} معاملات مالية معلقة`, detail: en ? "Review collections and expenses." : "راجع التحصيلات والمصروفات.", severity: "warning", score: 60, reason: en ? "Transactions in Pending status are unresolved." : "المعاملات بحالة Pending لم تُحسم بعد.", action: { label: en ? "Open finance" : "فتح المالية", target: "finance" } });
+
+  const recommendations: DecisionSignal[] = [];
+  input.projects.filter((p) => p.status === "Active" && !input.tasks.some((t) => t.project_id === p.id && t.status !== "Done")).forEach((p) => recommendations.push({ id: `project-no-tasks-${p.id}`, title: en ? `Create an execution plan for ${p.name}` : `أنشئ خطة تنفيذ لمشروع ${p.name}`, detail: en ? "The project is active with no open tasks." : "المشروع نشط ولا توجد له مهام مفتوحة.", severity: "info", score: 65, reason: en ? "An active project without tasks cannot have progress measured automatically." : "المشروع النشط بلا مهام لا يمكن قياس تقدمه تلقائيًا.", action: { label: en ? "Add task" : "إضافة مهمة", target: "tasks", entityId: p.id } }));
+  if (stats.followUps > 0) recommendations.push({ id: "client-followups", title: en ? `Complete ${stats.followUps} client follow-ups` : `نفّذ ${stats.followUps} متابعات عملاء`, detail: en ? "Due follow-ups may affect decisions and sales." : "المتابعات المستحقة قد تؤثر على القرارات والمبيعات.", severity: "warning", score: 58, reason: en ? "The follow-up date is today or in the past." : "تاريخ المتابعة اليوم أو في الماضي.", action: { label: en ? "Open clients" : "فتح العملاء", target: "clients" } });
+  if (!input.projects.length) recommendations.push({ id: "first-project", title: en ? "Create your first project" : "أنشئ أول مشروع", detail: en ? "Start turning the workspace into a live operating system." : "ابدأ بتحويل مساحة العمل إلى نظام تشغيل حي.", severity: "positive", score: 50, reason: en ? "No projects have been recorded yet." : "لا توجد مشاريع مسجلة حتى الآن.", action: { label: en ? "Open projects" : "فتح المشاريع", target: "projects" } });
+
+  const factors: HealthFactor[] = [{ id: "base", label: en ? "Operational baseline" : "الأساس التشغيلي", impact: 70, reason: en ? "Conservative starting score for an operational workspace." : "درجة بداية متحفظة لمساحة عمل قابلة للتشغيل.", tone: "neutral" }];
+  const factor = (id: string, label: string, impact: number, reason: string) => factors.push({ id, label, impact, reason, tone: impact > 0 ? "positive" : impact < 0 ? "negative" : "neutral" });
+  factor("active-projects", en ? "Active projects" : "مشاريع نشطة", Math.min(12, stats.activeProjects * 3), en ? `${stats.activeProjects} active projects add operational clarity.` : `${stats.activeProjects} مشاريع نشطة تضيف وضوحًا تشغيليًا.`);
+  factor("task-completion", en ? "Task completion" : "إنجاز المهام", Math.min(12, Math.round(stats.completion / 10)), en ? `Task completion is ${stats.completion}%.` : `نسبة إنجاز المهام ${stats.completion}%.`);
+  factor("overdue-tasks", en ? "Overdue tasks" : "المهام المتأخرة", -Math.min(25, stats.overdueTasks * 5), en ? `${stats.overdueTasks} overdue tasks.` : `${stats.overdueTasks} مهام متأخرة.`);
+  factor("stalled-projects", en ? "Stalled projects" : "المشاريع المتوقفة", -Math.min(18, stats.stalledProjects * 6), en ? `${stats.stalledProjects} stalled projects.` : `${stats.stalledProjects} مشاريع متوقفة.`);
+  factor("pending-finance", en ? "Pending finance" : "المالية المعلقة", -Math.min(10, stats.pendingPayments * 2), en ? `${stats.pendingPayments} pending transactions.` : `${stats.pendingPayments} معاملات معلقة.`);
+  factor("client-followup", en ? "Client follow-ups" : "متابعات العملاء", -Math.min(10, stats.followUps * 2), en ? `${stats.followUps} due follow-ups.` : `${stats.followUps} متابعات مستحقة.`);
+  const healthScore = Math.max(0, Math.min(100, factors.reduce((sum, item) => sum + item.impact, 0)));
+
+  const top = priorities[0];
+  const hour = now.getHours();
+  const greeting = en ? hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening" : hour < 12 ? "صباح الخير" : hour < 18 ? "مساء الخير" : "مساء النور";
+  const issueParts = en
+    ? [stats.overdueTasks && `${stats.overdueTasks} overdue tasks`, stats.overdueProjects && `${stats.overdueProjects} overdue projects`, stats.pendingPayments && `${stats.pendingPayments} pending transactions`].filter(Boolean)
+    : [stats.overdueTasks && `${stats.overdueTasks} مهام متأخرة`, stats.overdueProjects && `${stats.overdueProjects} مشاريع متأخرة`, stats.pendingPayments && `${stats.pendingPayments} معاملات معلقة`].filter(Boolean);
+
+  return {
+    generatedAt: now.toISOString(),
+    brief: {
+      headline: `${greeting}, ${userName}`,
+      message: issueParts.length ? (en ? `The workspace needs attention in ${issueParts.join(", ")}.` : `تحتاج مساحة العمل إلى تدخل في ${issueParts.join("، ")}.`) : (en ? `Stable across ${stats.activeProjects} active projects with no critical signals right now.` : `الوضع مستقر عبر ${stats.activeProjects} مشاريع نشطة، ولا توجد إشارات حرجة الآن.`),
+      priorityLine: top ? (en ? `Today's priority: ${top.title}. Why? ${top.reason}` : `أولوية اليوم: ${top.title}. لماذا؟ ${top.reason}`) : (en ? "Today's priority: maintain the current execution rhythm." : "أولوية اليوم: حافظ على إيقاع التنفيذ الحالي."),
+    },
+    priorities: priorities.slice(0, 5),
+    alerts: alerts.slice(0, 4),
+    recommendations: recommendations.sort((a, b) => b.score - a.score).slice(0, 4),
+    health: { score: healthScore, label: healthLabel(healthScore, locale), factors },
+    stats,
+  };
 }

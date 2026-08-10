@@ -1,4 +1,4 @@
-import type { DecisionInput, DecisionSignal, ExecutiveDecision } from "./types";
+import type { DecisionInput, DecisionLocale, DecisionSignal, ExecutiveDecision } from "./types";
 
 export type ExecutiveInsight = {
   status: "stable" | "attention" | "critical";
@@ -10,10 +10,16 @@ export type ExecutiveInsight = {
   evidence: string[];
 };
 
-export function buildExecutiveInsight(input: DecisionInput, decision: ExecutiveDecision): ExecutiveInsight {
+export function buildExecutiveInsight(input: DecisionInput, decision: ExecutiveDecision, locale: DecisionLocale = "ar"): ExecutiveInsight {
+  const en = locale === "en";
   const primary = decision.alerts[0] ?? decision.priorities[0] ?? decision.recommendations[0];
   const status = decision.alerts.some((item) => item.severity === "critical") ? "critical" : primary ? "attention" : "stable";
-  const evidence = [
+  const evidence = en ? [
+    `${decision.stats.overdueTasks} overdue tasks`,
+    `${decision.stats.overdueProjects} overdue projects`,
+    `${decision.stats.pendingPayments} pending transactions`,
+    `${decision.health.score}% workspace health`,
+  ] : [
     `${decision.stats.overdueTasks} مهام متأخرة`,
     `${decision.stats.overdueProjects} مشاريع متأخرة`,
     `${decision.stats.pendingPayments} معاملات معلقة`,
@@ -25,10 +31,10 @@ export function buildExecutiveInsight(input: DecisionInput, decision: ExecutiveD
   if (!primary) {
     return {
       status,
-      title: "مساحة العمل مستقرة",
-      summary: "لا توجد مخاطر أو قرارات عاجلة وفق البيانات الحالية.",
-      nextAction: { label: "فتح لوحة القيادة", target: "dashboard" },
-      nextActionLabel: "مراجعة لوحة القيادة",
+      title: en ? "Workspace is stable" : "مساحة العمل مستقرة",
+      summary: en ? "No urgent risks or decisions are indicated by the current data." : "لا توجد مخاطر أو قرارات عاجلة وفق البيانات الحالية.",
+      nextAction: { label: en ? "Open dashboard" : "فتح لوحة القيادة", target: "dashboard" },
+      nextActionLabel: en ? "Review dashboard" : "مراجعة لوحة القيادة",
       confidence,
       evidence,
     };
