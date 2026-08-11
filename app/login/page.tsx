@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { APP_INFO } from "@/lib/config/app-info";
 import { useLanguage } from "@/components/i18n/language-provider";
 import "./login.css";
 
@@ -75,7 +76,7 @@ export default function PasswordLoginPage() {
         </form>
 
         {message && <div className="basoul-password-error" role="alert">{message}</div>}
-        <small>BASOUL · v4.0.0-beta.1</small>
+        <small>{APP_INFO.fullLabel}</small>
       </section>
     </main>
   );
