@@ -23,6 +23,7 @@ Bilingual stabilization release prepared for selected tester validation after th
 - Accessibility structural baseline: PASS.
 - TypeScript and unit/contract tests: PASS.
 - Web production dependency audit: 0 vulnerabilities at the Beta 2 release gate.
+- Final Vercel release Preview: READY.
 - Arabic ↔ English shell reactivity physically verified on iPhone mobile web.
 
 ## Known non-blocking debt
