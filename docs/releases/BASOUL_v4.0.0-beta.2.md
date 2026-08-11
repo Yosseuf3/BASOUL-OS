@@ -13,6 +13,19 @@ Beta 2 is the first BASOUL build prepared for a selected external tester group a
 - Production administration backend activated with Owner / Admin / Member / Viewer authority boundaries.
 - Mobile Safari long-modal scrolling regression fixed and physically verified on iPhone.
 - BASOUL administration navigation restored.
+- Legacy shell/topbar labels now react to locale switching instead of remaining Arabic-only.
+- Known system-generated historical activity prefixes are localized at display time without mutating stored history.
+
+## Verification
+- Web Quality Gate: PASS.
+- Mobile Quality Gate: PASS.
+- Release consistency: PASS for v4.0.0-beta.2.
+- Foundation validation: PASS.
+- Accessibility structural baseline: PASS.
+- TypeScript and unit/contract tests: PASS.
+- Web production dependency audit: 0 vulnerabilities at the final Beta 2 gate.
+- Finance long-form modal scrolling: physically verified on iPhone Safari.
+- Arabic ↔ English shell reactivity: physically verified on iPhone mobile web after PR #95.
 
 ## Tester focus
 1. Sign in and sign out.
@@ -29,7 +42,7 @@ Beta 2 is the first BASOUL build prepared for a selected external tester group a
 - Testers must not be given Owner credentials or service-role secrets.
 
 ## Known localization debt
-The legacy monolithic Projects / Tasks / Clients / Content / Knowledge implementation still contains some Arabic-only deep labels and dialogs. These are accepted as tester-visible localization defects for Beta 2 and must not be interpreted as missing language-switch functionality. They are tracked for extraction into localized feature modules.
+The legacy monolithic Projects / Tasks / Clients / Content / Knowledge implementation can still contain some deep Arabic-only labels and dialogs. These are accepted as non-blocking localization debt for Beta 2 and are tracked for extraction into localized feature modules.
 
 ## Copyright
 Copyright © 2026 ELSHENAWY RADWAN. All rights reserved.

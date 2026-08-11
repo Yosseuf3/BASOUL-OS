@@ -1,0 +1,35 @@
+name: Publish BASOUL v4.0.0-beta.2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "RELEASE_NOTES_v4.0.0-beta.2.md"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify release version
+        run: |
+          node -e "const p=require('./package.json'); if(p.version!=='4.0.0-beta.2') process.exit(1)"
+          grep -q 'version: "4.0.0-beta.2"' lib/config/app-info.ts
+
+      - name: Create GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v4.0.0-beta.2 >/dev/null 2>&1; then
+            echo "Release v4.0.0-beta.2 already exists; leaving it unchanged."
+            exit 0
+          fi
+          gh release create v4.0.0-beta.2 \
+            --target "$GITHUB_SHA" \
+            --title "BASOUL v4.0.0-beta.2" \
+            --notes-file RELEASE_NOTES_v4.0.0-beta.2.md \
+            --prerelease
