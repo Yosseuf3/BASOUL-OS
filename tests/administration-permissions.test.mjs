@@ -38,3 +38,13 @@ test("web and mobile use explicit permission helpers", async () => {
   assert.match(web, /canManageMember/);
   assert.match(mobile, /hasMobilePermission/);
 });
+
+test("administration navigation and direct route require membership.manage", async () => {
+  const switcher = await readFile(new URL("../components/shell/workspace-switcher.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/administration/page.tsx", import.meta.url), "utf8");
+  assert.match(switcher, /hasOrganizationPermission\(administration\.current\.role as OrganizationRole, "membership\.manage"\)/);
+  assert.match(switcher, /canAdminister \? <button/);
+  assert.match(page, /hasOrganizationPermission\(administration\.current\.role as OrganizationRole, "membership\.manage"\)/);
+  assert.match(page, /if \(!canAdminister\)/);
+  assert.match(page, /requires an Owner or Admin role/);
+});
