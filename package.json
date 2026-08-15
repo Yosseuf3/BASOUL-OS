@@ -1,6 +1,6 @@
 {
   "name": "basoul-platform",
-  "version": "4.0.0-rc.2",
+  "version": "4.0.0",
   "private": true,
   "engines": { "node": ">=20.9.0" },
   "scripts": {
