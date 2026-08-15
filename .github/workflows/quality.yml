@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   web:
@@ -23,6 +23,17 @@ jobs:
         with:
           node-version: 22.13.1
           cache: npm
+      - name: Regenerate RC lockfile from package metadata
+        if: github.head_ref == 'release/basoul-v4.0.0-rc.1'
+        run: |
+          npm install --package-lock-only --ignore-scripts
+          if ! git diff --quiet -- package-lock.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "fix(security): lock patched nanoid for RC gate"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
       - run: npm ci
       - run: npm run check:release
       - run: npm run validate:foundation
