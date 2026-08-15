@@ -1,6 +1,6 @@
 {
   "name": "basoul-platform",
-  "version": "4.0.0-beta.2",
+  "version": "4.0.0-rc.1",
   "private": true,
   "engines": { "node": ">=20.9.0" },
   "scripts": {
@@ -46,7 +46,7 @@
   "workspaces": ["packages/*"],
   "overrides": {
     "postcss": "8.5.25",
-    "nanoid": "3.3.17",
+    "nanoid": "3.3.18",
     "sharp": "0.35.3",
     "brace-expansion": "1.1.18"
   }
