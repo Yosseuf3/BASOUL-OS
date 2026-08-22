@@ -23,7 +23,9 @@ test("signup captures a full name into Supabase auth metadata", async () => {
 test("sidebar and executive dashboard resolve the current auth session identity", async () => {
   const switcher = await readFile(new URL("../components/shell/workspace-switcher.tsx", import.meta.url), "utf8");
   const dashboard = await readFile(new URL("../features/dashboard/dashboard-view.tsx", import.meta.url), "utf8");
-  assert.match(switcher, /resolveUserIdentity\(data\.session\.user\)/);
+  assert.match(switcher, /function syncLegacySidebarIdentity/);
+  assert.match(switcher, /resolveUserIdentity\(user\)/);
+  assert.match(switcher, /syncLegacySidebarIdentity\(data\.session\.user\)/);
   assert.match(switcher, /identity\.displayName/);
   assert.match(switcher, /identity\.initials/);
   assert.match(dashboard, /resolveUserIdentity\(data\.session\.user\)\.displayName/);
