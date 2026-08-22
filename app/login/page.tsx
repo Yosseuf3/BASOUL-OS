@@ -74,7 +74,8 @@ export default function PasswordLoginPage() {
         </form>
         {message && <div className="basoul-password-error" role="alert">{message}</div>}
         <div className="basoul-auth-switch">
-          {text("مؤسسة جديدة على BASOUL؟", "New organization on BASOUL?")} <Link className="basoul-password-link" href="/signup">{text("إنشاء حساب", "Create account")}</Link>
+          <span>{text("مؤسسة جديدة على BASOUL؟", "New organization on BASOUL?")}</span>
+          <a className="basoul-signup-cta" href="/signup">{text("إنشاء حساب جديد", "Create new account")}</a>
         </div>
         <small>{APP_INFO.fullLabel}</small>
       </section>
