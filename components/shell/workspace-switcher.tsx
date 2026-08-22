@@ -1,10 +1,11 @@
 "use client";
-import { Building2, Check, ChevronDown, Languages, LockKeyhole, ShieldCheck } from "lucide-react";
+import { Building2, Check, ChevronDown, Languages, LockKeyhole, Settings2, ShieldCheck, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { WORKSPACES } from "@/packages/core/src";
 import type { WorkspaceId } from "@/packages/types/src";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { supabase } from "@/lib/supabase";
+import { resolveUserIdentity } from "@/lib/auth/user-identity";
 import { loadAdministration } from "@/lib/organizations/administration";
 import { hasOrganizationPermission, type OrganizationRole } from "@/lib/organizations/rbac";
 
@@ -15,9 +16,22 @@ const workspaceEnglish: Record<WorkspaceId, { label: string; shortLabel: string;
   knowledge: { label: "Knowledge Workspace", shortLabel: "Knowledge", description: "References, templates and expertise" },
 };
 
+function syncLegacySidebarIdentity(user: Parameters<typeof resolveUserIdentity>[0]) {
+  const identity = resolveUserIdentity(user);
+  const card = document.querySelector<HTMLElement>(".user-card");
+  if (!card) return;
+  const avatar = card.querySelector<HTMLElement>(".user-avatar");
+  const name = card.querySelector<HTMLElement>("b");
+  const email = card.querySelector<HTMLElement>("small");
+  if (avatar) avatar.textContent = identity.initials;
+  if (name) name.textContent = identity.displayName;
+  if (email) email.textContent = identity.email;
+}
+
 export function WorkspaceSwitcher({ value, onChange }: { value: WorkspaceId; onChange: (value: WorkspaceId) => void }) {
   const [open, setOpen] = useState(false);
   const [canAdminister, setCanAdminister] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const { locale, toggleLocale, text } = useLanguage();
   const active = WORKSPACES.find((workspace) => workspace.id === value) ?? WORKSPACES[0];
   const activeEnglish = workspaceEnglish[active.id];
@@ -29,21 +43,28 @@ export function WorkspaceSwitcher({ value, onChange }: { value: WorkspaceId; onC
       try {
         const { data } = await supabase.auth.getSession();
         if (!data.session) {
-          if (activeRequest) setCanAdminister(false);
+          if (activeRequest) { setCanAdminister(false); setIsOwner(false); }
           return;
         }
+        syncLegacySidebarIdentity(data.session.user);
         const administration = await loadAdministration(data.session);
         const allowed = Boolean(
           administration && hasOrganizationPermission(administration.current.role as OrganizationRole, "membership.manage"),
         );
-        if (activeRequest) setCanAdminister(allowed);
+        if (activeRequest) {
+          setCanAdminister(allowed);
+          setIsOwner(administration?.current.role === "owner");
+        }
       } catch {
-        if (activeRequest) setCanAdminister(false);
+        if (activeRequest) { setCanAdminister(false); setIsOwner(false); }
       }
     };
 
     void refreshAdministrationAccess();
-    const { data } = supabase.auth.onAuthStateChange(() => { void refreshAdministrationAccess(); });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) syncLegacySidebarIdentity(session.user);
+      void refreshAdministrationAccess();
+    });
     return () => {
       activeRequest = false;
       data.subscription.unsubscribe();
@@ -61,6 +82,12 @@ export function WorkspaceSwitcher({ value, onChange }: { value: WorkspaceId; onC
           <span>{workspace.id === value ? <Check size={15}/> : !workspace.enabled ? <LockKeyhole size={14}/> : null}</span><div><b>{locale === "ar" ? workspace.label : en.label}</b><small>{locale === "ar" ? workspace.description : en.description}</small></div>
         </button>;
       })}
+      <button onClick={() => window.location.assign("/settings/profile")}>
+        <span><UserRound size={15}/></span><div><b>{text("الملف الشخصي", "Personal Profile")}</b><small>{text("اسمك وهويتك الشخصية داخل BASOUL", "Your personal name and BASOUL identity")}</small></div>
+      </button>
+      {isOwner ? <button onClick={() => window.location.assign("/settings/organization")}>
+        <span><Settings2 size={15}/></span><div><b>{text("بيانات المؤسسة", "Organization Settings")}</b><small>{text("البيانات القانونية والعنوان وبيانات الاتصال", "Legal, address and contact profile")}</small></div>
+      </button> : null}
       {canAdminister ? <button onClick={() => window.location.assign("/administration")}>
         <span><ShieldCheck size={15}/></span><div><b>{text("إدارة المؤسسة", "Organization Administration")}</b><small>{text("الأعضاء والصلاحيات والدعوات", "Members, permissions and invitations")}</small></div>
       </button> : null}
