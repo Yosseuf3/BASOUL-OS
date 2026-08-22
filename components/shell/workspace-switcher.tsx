@@ -5,6 +5,7 @@ import { WORKSPACES } from "@/packages/core/src";
 import type { WorkspaceId } from "@/packages/types/src";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { supabase } from "@/lib/supabase";
+import { resolveUserIdentity } from "@/lib/auth/user-identity";
 import { loadAdministration } from "@/lib/organizations/administration";
 import { hasOrganizationPermission, type OrganizationRole } from "@/lib/organizations/rbac";
 
@@ -14,6 +15,18 @@ const workspaceEnglish: Record<WorkspaceId, { label: string; shortLabel: string;
   engineering: { label: "Engineering Workspace", shortLabel: "Engineering", description: "Plans, reviews and design intelligence" },
   knowledge: { label: "Knowledge Workspace", shortLabel: "Knowledge", description: "References, templates and expertise" },
 };
+
+function syncLegacySidebarIdentity(user: Parameters<typeof resolveUserIdentity>[0]) {
+  const identity = resolveUserIdentity(user);
+  const card = document.querySelector<HTMLElement>(".user-card");
+  if (!card) return;
+  const avatar = card.querySelector<HTMLElement>(".user-avatar");
+  const name = card.querySelector<HTMLElement>("b");
+  const email = card.querySelector<HTMLElement>("small");
+  if (avatar) avatar.textContent = identity.initials;
+  if (name) name.textContent = identity.displayName;
+  if (email) email.textContent = identity.email;
+}
 
 export function WorkspaceSwitcher({ value, onChange }: { value: WorkspaceId; onChange: (value: WorkspaceId) => void }) {
   const [open, setOpen] = useState(false);
@@ -33,6 +46,7 @@ export function WorkspaceSwitcher({ value, onChange }: { value: WorkspaceId; onC
           if (activeRequest) { setCanAdminister(false); setIsOwner(false); }
           return;
         }
+        syncLegacySidebarIdentity(data.session.user);
         const administration = await loadAdministration(data.session);
         const allowed = Boolean(
           administration && hasOrganizationPermission(administration.current.role as OrganizationRole, "membership.manage"),
@@ -47,7 +61,10 @@ export function WorkspaceSwitcher({ value, onChange }: { value: WorkspaceId; onC
     };
 
     void refreshAdministrationAccess();
-    const { data } = supabase.auth.onAuthStateChange(() => { void refreshAdministrationAccess(); });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) syncLegacySidebarIdentity(session.user);
+      void refreshAdministrationAccess();
+    });
     return () => {
       activeRequest = false;
       data.subscription.unsubscribe();
