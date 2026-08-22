@@ -34,11 +34,12 @@ export function WorkspaceSwitcher({ value, onChange }: { value: WorkspaceId; onC
           return;
         }
         const administration = await loadAdministration(data.session);
-        const role = administration?.current.role as OrganizationRole | undefined;
-        const allowed = Boolean(role && hasOrganizationPermission(role, "membership.manage"));
+        const allowed = Boolean(
+          administration && hasOrganizationPermission(administration.current.role as OrganizationRole, "membership.manage"),
+        );
         if (activeRequest) {
           setCanAdminister(allowed);
-          setIsOwner(role === "owner");
+          setIsOwner(administration?.current.role === "owner");
         }
       } catch {
         if (activeRequest) { setCanAdminister(false); setIsOwner(false); }
