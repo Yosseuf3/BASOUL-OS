@@ -31,3 +31,16 @@ test("sidebar and executive dashboard resolve the current auth session identity"
   assert.match(dashboard, /resolveUserIdentity\(data\.session\.user\)\.displayName/);
   assert.doesNotMatch(dashboard, /userName = "Yosseuf"/);
 });
+
+test("authenticated users can edit only their personal full name from profile settings", async () => {
+  const profile = await readFile(new URL("../app/settings/profile/page.tsx", import.meta.url), "utf8");
+  const switcher = await readFile(new URL("../components/shell/workspace-switcher.tsx", import.meta.url), "utf8");
+  assert.match(profile, /supabase\.auth\.getSession\(\)/);
+  assert.match(profile, /supabase\.auth\.updateUser\(\{ data: \{ full_name: normalizedName \} \}\)/);
+  assert.match(profile, /resolveUserIdentity\(data\.session\.user\)/);
+  assert.match(profile, /value=\{email\} readOnly/);
+  assert.doesNotMatch(profile, /organization_id|organizationId|membership/);
+  assert.match(switcher, /\/settings\/profile/);
+  assert.match(switcher, /الملف الشخصي/);
+  assert.match(switcher, /Personal Profile/);
+});
