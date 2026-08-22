@@ -1,0 +1,87 @@
+name: Temporary user identity patch
+
+on:
+  push:
+    branches:
+      - feat/basoul-signup-geography
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'chore: run user identity patch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/basoul-signup-geography
+          fetch-depth: 0
+      - name: Apply identity fix
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          branch_page = Path('app/page.tsx')
+          text = branch_page.read_text()
+
+          needle = 'import { APP_INFO } from "@/lib/config/app-info";\n'
+          replacement = needle + 'import { resolveUserIdentity } from "@/lib/auth/user-identity";\n'
+          if 'resolveUserIdentity' not in text:
+              assert needle in text, 'APP_INFO import anchor missing'
+              text = text.replace(needle, replacement, 1)
+
+          anchor = '  const navigate = (next: View) => { setView(next); setSidebarOpen(false); };\n'
+          if 'const userIdentity = resolveUserIdentity(session.user);' not in text:
+              assert anchor in text, 'navigate anchor missing'
+              text = text.replace(anchor, '  const userIdentity = resolveUserIdentity(session.user);\n\n' + anchor, 1)
+
+          old_card = '<div className="user-card"><div className="user-avatar">YR</div><div><b>Yosseuf</b><small>{session.user.email}</small></div></div>'
+          new_card = '<div className="user-card"><div className="user-avatar">{userIdentity.initials}</div><div><b>{userIdentity.displayName}</b><small>{userIdentity.email}</small></div></div>'
+          assert old_card in text, 'hard-coded user card anchor missing'
+          text = text.replace(old_card, new_card, 1)
+
+          old_dashboard = 'userName="Yosseuf"'
+          assert old_dashboard in text, 'hard-coded dashboard username anchor missing'
+          text = text.replace(old_dashboard, 'userName={userIdentity.displayName}', 1)
+
+          branch_page.write_text(text)
+
+          identity = Path('lib/auth/user-identity.ts')
+          identity.parent.mkdir(parents=True, exist_ok=True)
+          identity.write_text('''import type { User } from "@supabase/supabase-js";\n\ntype UserIdentitySource = Pick<User, "email" | "user_metadata">;\n\nfunction clean(value: unknown) {\n  return typeof value === "string" ? value.trim() : "";\n}\n\nfunction emailLocalPart(email: string) {\n  return email.split("@", 1)[0]?.trim() ?? "";\n}\n\nfunction initialsFor(value: string) {\n  const words = value\n    .replace(/[._-]+/g, " ")\n    .split(/\\s+/)\n    .map((part) => part.trim())\n    .filter(Boolean);\n  if (!words.length) return "U";\n  return words.slice(0, 2).map((word) => word[0]?.toUpperCase() ?? "").join("") || "U";\n}\n\nexport function resolveUserIdentity(user: UserIdentitySource) {\n  const email = clean(user.email);\n  const metadata = user.user_metadata ?? {};\n  const displayName =\n    clean(metadata.full_name) ||\n    clean(metadata.name) ||\n    emailLocalPart(email) ||\n    "User";\n\n  return {\n    displayName,\n    email,\n    initials: initialsFor(displayName),\n  };\n}\n''')
+
+          signup = Path('app/signup/page.tsx')
+          s = signup.read_text()
+          if 'const [fullName, setFullName]' not in s:
+              s = s.replace('  const [email, setEmail] = useState("");\n', '  const [fullName, setFullName] = useState("");\n  const [email, setEmail] = useState("");\n', 1)
+
+          old_signup = 'const { data, error: signUpError } = await supabase.auth.signUp({ email: normalizedEmail, password });'
+          new_signup = 'const { data, error: signUpError } = await supabase.auth.signUp({\n        email: normalizedEmail,\n        password,\n        options: { data: { full_name: fullName.trim() } },\n      });'
+          assert old_signup in s, 'signUp call anchor missing'
+          s = s.replace(old_signup, new_signup, 1)
+
+          email_label = '          <label><span>{text("البريد الإلكتروني", "Email")}</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" inputMode="email" required /></label>\n'
+          full_name_label = '          <label><span>{text("الاسم الكامل", "Full name")}</span><input type="text" value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" required maxLength={120} /></label>\n' + email_label
+          assert email_label in s, 'email label anchor missing'
+          s = s.replace(email_label, full_name_label, 1)
+
+          old_disabled = 'disabled={busy || !email.trim() || !password || !confirmPassword}'
+          assert old_disabled in s, 'signup disabled anchor missing'
+          s = s.replace(old_disabled, 'disabled={busy || !fullName.trim() || !email.trim() || !password || !confirmPassword}', 1)
+          signup.write_text(s)
+
+          test = Path('tests/user-identity.test.mjs')
+          test.write_text('''import assert from "node:assert/strict";\nimport { test } from "node:test";\nimport { readFile } from "node:fs/promises";\n\ntest("authenticated user identity is never hard-coded to Yosseuf", async () => {\n  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");\n  assert.match(page, /resolveUserIdentity\\(session\\.user\\)/);\n  assert.match(page, /userIdentity\\.displayName/);\n  assert.match(page, /userIdentity\\.initials/);\n  assert.match(page, /userIdentity\\.email/);\n  assert.doesNotMatch(page, /<b>Yosseuf<\\/b>/);\n  assert.doesNotMatch(page, /userName="Yosseuf"/);\n});\n\ntest("identity resolver prefers metadata and falls back to email local-part", async () => {\n  const identity = await readFile(new URL("../lib/auth/user-identity.ts", import.meta.url), "utf8");\n  assert.match(identity, /metadata\\.full_name/);\n  assert.match(identity, /metadata\\.name/);\n  assert.match(identity, /emailLocalPart\\(email\\)/);\n  assert.match(identity, /initialsFor\\(displayName\\)/);\n  assert.doesNotMatch(identity, /Yosseuf/);\n});\n\ntest("signup stores the new user's full name in auth metadata", async () => {\n  const signup = await readFile(new URL("../app/signup/page.tsx", import.meta.url), "utf8");\n  assert.match(signup, /الاسم الكامل/);\n  assert.match(signup, /Full name/);\n  assert.match(signup, /full_name: fullName\\.trim\\(\\)/);\n  assert.match(signup, /autoComplete="name"/);\n});\n''')
+
+          Path('.github/workflows/tmp-fix-user-identity.yml').unlink()
+          PY
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/page.tsx app/signup/page.tsx lib/auth/user-identity.ts tests/user-identity.test.mjs .github/workflows/tmp-fix-user-identity.yml
+          git commit -m "fix(auth): resolve per-user identity and capture full name"
+          git push origin HEAD:feat/basoul-signup-geography
