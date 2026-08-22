@@ -3,9 +3,12 @@
 import {
   Activity, BookOpen, ChevronLeft, ClipboardList, Film, FolderKanban, Plus, Sparkles, Target, Users, Wallet,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { ActivityEvent, Client, FinanceTransaction, Notification, Project, Task } from "@/lib/types";
 import { buildExecutiveInsight, buildExecutiveTimeline, getExecutiveDecision, type DecisionSignal, type DecisionTarget } from "@yosseuf/decision-engine";
 import { useLanguage } from "@/components/i18n/language-provider";
+import { supabase } from "@/lib/supabase";
+import { resolveUserIdentity } from "@/lib/auth/user-identity";
 import "./dashboard-visual-truth.css";
 
 type QuickAction = "project" | "task" | "client" | "finance" | "knowledge" | "content";
@@ -18,7 +21,24 @@ const BASOUL_SYMBOL = `${APPROVED_ASSET_ROOT}/symbol/BASOUL_Symbol_Master.png`;
 
 export function DashboardView(props: Props) {
   const { locale, text } = useLanguage();
-  const { projects, tasks, clients, financeItems, activityEvents, notifications, userName = "Yosseuf", onNavigate, onQuickAction } = props;
+  const { projects, tasks, clients, financeItems, activityEvents, notifications, onNavigate, onQuickAction } = props;
+  const [userName, setUserName] = useState("User");
+
+  useEffect(() => {
+    let active = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (active && data.session) setUserName(resolveUserIdentity(data.session.user).displayName);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+      setUserName(session ? resolveUserIdentity(session.user).displayName : "User");
+    });
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
   const decisionInput = { projects, tasks, clients, financeItems, activityEvents, notifications };
   const state = getExecutiveDecision(decisionInput, userName, locale);
   const s = state.stats;
