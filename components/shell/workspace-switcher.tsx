@@ -1,5 +1,5 @@
 "use client";
-import { Building2, Check, ChevronDown, Languages, LockKeyhole, Settings2, ShieldCheck } from "lucide-react";
+import { Building2, Check, ChevronDown, Languages, LockKeyhole, Settings2, ShieldCheck, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { WORKSPACES } from "@/packages/core/src";
 import type { WorkspaceId } from "@/packages/types/src";
@@ -82,6 +82,9 @@ export function WorkspaceSwitcher({ value, onChange }: { value: WorkspaceId; onC
           <span>{workspace.id === value ? <Check size={15}/> : !workspace.enabled ? <LockKeyhole size={14}/> : null}</span><div><b>{locale === "ar" ? workspace.label : en.label}</b><small>{locale === "ar" ? workspace.description : en.description}</small></div>
         </button>;
       })}
+      <button onClick={() => window.location.assign("/settings/profile")}>
+        <span><UserRound size={15}/></span><div><b>{text("الملف الشخصي", "Personal Profile")}</b><small>{text("اسمك وهويتك الشخصية داخل BASOUL", "Your personal name and BASOUL identity")}</small></div>
+      </button>
       {isOwner ? <button onClick={() => window.location.assign("/settings/organization")}>
         <span><Settings2 size={15}/></span><div><b>{text("بيانات المؤسسة", "Organization Settings")}</b><small>{text("البيانات القانونية والعنوان وبيانات الاتصال", "Legal, address and contact profile")}</small></div>
       </button> : null}
