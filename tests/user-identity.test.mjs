@@ -39,7 +39,7 @@ test("authenticated users can edit only their personal full name from profile se
   assert.match(profile, /supabase\.auth\.updateUser\(\{ data: \{ full_name: normalizedName \} \}\)/);
   assert.match(profile, /resolveUserIdentity\(data\.session\.user\)/);
   assert.match(profile, /value=\{email\} readOnly/);
-  assert.doesNotMatch(profile, /organization_id|organizationId|membership/);
+  assert.doesNotMatch(profile, /supabase\.from\(|organizationId|organization_id/);
   assert.match(switcher, /\/settings\/profile/);
   assert.match(switcher, /الملف الشخصي/);
   assert.match(switcher, /Personal Profile/);
