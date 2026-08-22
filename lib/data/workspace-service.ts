@@ -14,7 +14,6 @@ export type WorkspaceData = {
 };
 
 export type WorkspaceLoadResult = { data: WorkspaceData; errors: string[]; loadedAt: string };
-
 type RowResult<T> = { data: T[]; error: string | null };
 
 async function safeRows<T>(label: string, request: Promise<RowResult<T>>): Promise<RowResult<T>> {
@@ -23,8 +22,16 @@ async function safeRows<T>(label: string, request: Promise<RowResult<T>>): Promi
 }
 
 export async function loadWorkspaceData(): Promise<WorkspaceLoadResult> {
-  const { error: organizationError } = await supabase.rpc("ensure_personal_organization");
-  if (organizationError) throw new Error(`organization: ${organizationError.message}`);
+  // Tenant creation is an explicit Owner onboarding action. Workspace reads must never create tenants.
+  const { data: membership, error: membershipError } = await supabase.from("organization_memberships")
+    .select("organization_id,role,status")
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (membershipError) throw new Error(`organization: ${membershipError.message}`);
+  if (!membership) throw new Error("ORGANIZATION_ONBOARDING_REQUIRED");
+
   const [projects, tasks, clients, contentItems, knowledgeItems, financeItems, activityEvents, notifications] = await Promise.all([
     safeRows("projects", listRows<Project>("projects")),
     safeRows("tasks", listRows<Task>("tasks")),
