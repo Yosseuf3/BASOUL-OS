@@ -48,5 +48,5 @@ export function canAssignRole(caller: OrganizationRole, role: OrganizationRole, 
 }
 
 export function canInviteRole(caller: OrganizationRole, role: OrganizationRole) {
-  return ORGANIZATION_ROLE_RANK[caller] >= ORGANIZATION_ROLE_RANK.admin && role !== "owner";
+  return caller === "owner" && role !== "owner";
 }
