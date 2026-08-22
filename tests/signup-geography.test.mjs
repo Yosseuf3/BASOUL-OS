@@ -18,10 +18,11 @@ test("signup route remains public through the global session gate", async () => 
   assert.match(template, /PUBLIC_AUTH_PATHS\.has\(pathname\)/);
 });
 
-test("signup keeps identity creation separate from organization creation", async () => {
+test("signup keeps identity creation separate and uses enumeration-safe confirmation copy", async () => {
   const signup = await readFile(new URL("../app/signup/page.tsx", import.meta.url), "utf8");
-  assert.match(signup, /Confirm your email/);
-  assert.match(signup, /organization invitation/);
+  assert.match(signup, /If this is a new email/);
+  assert.match(signup, /already have an account/);
+  assert.match(signup, /existing invitation is resolved first/);
   assert.doesNotMatch(signup, /organization_id/);
 });
 
