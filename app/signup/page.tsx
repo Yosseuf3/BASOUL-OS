@@ -16,6 +16,7 @@ const BASOUL_WORDMARK = `${APPROVED_ASSET_ROOT}/wordmark/BASOUL_Wordmark_Master.
 export default function SignupPage() {
   const router = useRouter();
   const { locale, text } = useLanguage();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -51,7 +52,11 @@ export default function SignupPage() {
     setBusy(true);
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      const { data, error: signUpError } = await supabase.auth.signUp({ email: normalizedEmail, password });
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: { data: { full_name: fullName.trim() } },
+      });
       if (signUpError) throw signUpError;
 
       if (data.session) {
@@ -86,10 +91,11 @@ export default function SignupPage() {
           <p>{text("أنشئ هويتك في BASOUL. إنشاء المؤسسة خطوة مستقلة تتم بعد التحقق من الدعوات والعضويات.", "Create your BASOUL identity. Organization creation is a separate step after invitations and memberships are resolved.")}</p>
         </div>
         <form onSubmit={submit} className="basoul-password-form">
+          <label><span>{text("الاسم الكامل", "Full name")}</span><input type="text" value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" required maxLength={120} /></label>
           <label><span>{text("البريد الإلكتروني", "Email")}</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" inputMode="email" required /></label>
           <label><span>{text("كلمة المرور", "Password")}</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" required minLength={8} /></label>
           <label><span>{text("تأكيد كلمة المرور", "Confirm password")}</span><input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" required minLength={8} /></label>
-          <button type="submit" disabled={busy || !email.trim() || !password || !confirmPassword}>{busy ? text("جارٍ إنشاء الحساب…", "Creating account…") : text("إنشاء الحساب", "Create account")}</button>
+          <button type="submit" disabled={busy || !fullName.trim() || !email.trim() || !password || !confirmPassword}>{busy ? text("جارٍ إنشاء الحساب…", "Creating account…") : text("إنشاء الحساب", "Create account")}</button>
         </form>
         {error ? <div className="basoul-password-error" role="alert">{error}</div> : null}
         {success ? <div className="basoul-password-success" role="status">{success}</div> : null}
