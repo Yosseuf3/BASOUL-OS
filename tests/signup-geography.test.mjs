@@ -6,6 +6,7 @@ test("login exposes a separate account creation path", async () => {
   const login = await readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8");
   const signup = await readFile(new URL("../app/signup/page.tsx", import.meta.url), "utf8");
   assert.match(login, /href="\/signup"/);
+  assert.match(login, /basoul-signup-cta/);
   assert.match(signup, /supabase\.auth\.signUp/);
   assert.match(signup, /router\.replace\("\/onboarding"\)/);
   assert.doesNotMatch(signup, /createOwnedOrganization/);
@@ -27,6 +28,20 @@ test("owner onboarding uses cascading country region and city selectors", async 
   assert.match(onboarding, /<select required value=\{countryCode\}/);
   assert.match(onboarding, /value=\{region\}/);
   assert.match(onboarding, /value=\{city\}/);
+});
+
+test("owner can manage the organization profile after onboarding", async () => {
+  const settingsPage = await readFile(new URL("../app/settings/organization/page.tsx", import.meta.url), "utf8");
+  const settingsService = await readFile(new URL("../lib/organizations/settings.ts", import.meta.url), "utf8");
+  const switcher = await readFile(new URL("../components/shell/workspace-switcher.tsx", import.meta.url), "utf8");
+  assert.match(settingsService, /membership\.role !== "owner"/);
+  assert.match(settingsService, /organization_profiles/);
+  assert.match(settingsService, /\.update\(/);
+  assert.match(settingsPage, /updateOrganizationProfileSettings/);
+  assert.match(settingsPage, /level=countries/);
+  assert.match(settingsPage, /level: "cities"/);
+  assert.match(switcher, /\/settings\/organization/);
+  assert.match(switcher, /role === "owner"/);
 });
 
 test("geography provider remains server-side and validates supported levels", async () => {
