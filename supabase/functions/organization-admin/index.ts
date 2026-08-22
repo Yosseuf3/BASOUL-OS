@@ -21,6 +21,17 @@ function isManagedRole(value: unknown): value is ManagedRole {
 function normalizeEmail(value: unknown) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
+function invitationRedirectTo() {
+  const configured = Deno.env.get("BASOUL_PUBLIC_URL")?.trim();
+  if (!configured) return undefined;
+  try {
+    const url = new URL(configured);
+    if (url.protocol !== "https:") return undefined;
+    return url.origin;
+  } catch {
+    return undefined;
+  }
+}
 function publicError(error: { code?: string; message?: string } | null, fallback: string) {
   if (!error) return fallback;
   if (error.code === "42501") return "This administrative action is not permitted.";
@@ -98,9 +109,12 @@ Deno.serve(async (request: Request) => {
     let target = await findUserByEmail(admin, email);
     let delivery: "existing_user" | "email_sent" = "existing_user";
     if (!target) {
-      const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
+      const redirectTo = invitationRedirectTo();
+      const inviteOptions = {
         data: { basoul_invitation_id: invitation.id, basoul_organization_id: organizationId },
-      });
+        ...(redirectTo ? { redirectTo } : {}),
+      };
+      const { data, error } = await admin.auth.admin.inviteUserByEmail(email, inviteOptions);
       if (error || !data.user) {
         await userClient.rpc("revoke_organization_invitation", { target_invitation: invitation.id });
         return respond({ error: "The Auth invitation could not be delivered." }, 502);

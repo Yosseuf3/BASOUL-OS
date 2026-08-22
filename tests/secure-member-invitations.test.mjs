@@ -46,6 +46,22 @@ test("Edge Function keeps Auth Admin server-side and verifies the caller", async
   assert.doesNotMatch(source, /console\.(log|warn|error).*service|NEXT_PUBLIC_SUPABASE_SERVICE|EXPO_PUBLIC_SUPABASE_SERVICE/);
 });
 
+test("Auth invitations can use the canonical BASOUL production origin without hard-coding it", async () => {
+  const source = await readFile(functionUrl, "utf8");
+  assert.match(source, /BASOUL_PUBLIC_URL/);
+  assert.match(source, /url\.protocol !== "https:"/);
+  assert.match(source, /return url\.origin/);
+  assert.match(source, /redirectTo/);
+  assert.doesNotMatch(source, /redirectTo:\s*["']https:\/\/yosseuf-os\.vercel\.app/);
+});
+
+test("password recovery follows the current application origin so custom domains remain valid", async () => {
+  const source = await readFile(new URL("../app/forgot-password/page.tsx", import.meta.url), "utf8");
+  assert.match(source, /window\.location\.origin/);
+  assert.match(source, /\/reset-password/);
+  assert.doesNotMatch(source, /yosseuf-os\.vercel\.app/);
+});
+
 test("sensitive invitation operations emit audit events", async () => {
   const sql = await readFile(migrationUrl, "utf8");
   for (const action of ["member_invited", "role_changed", "member_deactivated", "invitation_revoked"]) {
