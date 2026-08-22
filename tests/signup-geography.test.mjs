@@ -12,6 +12,12 @@ test("login exposes a separate account creation path", async () => {
   assert.doesNotMatch(signup, /createOwnedOrganization/);
 });
 
+test("signup route remains public through the global session gate", async () => {
+  const template = await readFile(new URL("../app/template.tsx", import.meta.url), "utf8");
+  assert.match(template, /"\/signup"/);
+  assert.match(template, /PUBLIC_AUTH_PATHS\.has\(pathname\)/);
+});
+
 test("signup keeps identity creation separate from organization creation", async () => {
   const signup = await readFile(new URL("../app/signup/page.tsx", import.meta.url), "utf8");
   assert.match(signup, /Confirm your email/);
