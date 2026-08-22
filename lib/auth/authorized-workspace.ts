@@ -33,13 +33,17 @@ export async function authenticatedDatabase(accessToken: string, requestedOrgani
     if (membership.error || !membership.data) return null;
     role = membership.data.role as OrganizationRole;
   } else {
-    const resolved = await database.rpc("ensure_personal_organization");
-    if (resolved.error || typeof resolved.data !== "string") throw new Error("Unable to resolve an active organization.");
-    organizationId = resolved.data;
     const membership = await database.from("organization_memberships")
-      .select("role").eq("organization_id", organizationId).eq("user_id", data.user.id).eq("status", "active").single();
+      .select("organization_id,role")
+      .eq("user_id", data.user.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
     if (membership.error || !membership.data) return null;
+    organizationId = membership.data.organization_id;
     role = membership.data.role as OrganizationRole;
   }
+  if (!organizationId || !role) return null;
   return { database, user: data.user, organizationId, role };
 }

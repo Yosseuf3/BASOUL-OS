@@ -4,8 +4,17 @@ import { readFile } from "node:fs/promises";
 
 test("workspace loading never creates a tenant implicitly", async () => {
   const source = await readFile(new URL("../lib/data/workspace-service.ts", import.meta.url), "utf8");
+  const authorized = await readFile(new URL("../lib/auth/authorized-workspace.ts", import.meta.url), "utf8");
   assert.doesNotMatch(source, /ensure_personal_organization/);
+  assert.doesNotMatch(authorized, /ensure_personal_organization/);
   assert.match(source, /ORGANIZATION_ONBOARDING_REQUIRED/);
+});
+
+test("server authorization resolves an existing active membership without provisioning", async () => {
+  const source = await readFile(new URL("../lib/auth/authorized-workspace.ts", import.meta.url), "utf8");
+  assert.match(source, /select\("organization_id,role"\)/);
+  assert.match(source, /eq\("status", "active"\)/);
+  assert.match(source, /maybeSingle\(\)/);
 });
 
 test("new owner onboarding creates isolated organization and owner membership", async () => {
