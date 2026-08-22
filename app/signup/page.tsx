@@ -61,8 +61,8 @@ export default function SignupPage() {
       }
 
       setSuccess(text(
-        "تم إنشاء طلب الحساب. تحقق من بريدك الإلكتروني لتأكيد الحساب، ثم سجّل الدخول. إذا كانت لديك دعوة لمؤسسة فسيتم توجيهك إليها؛ وإلا ستبدأ إنشاء مؤسستك.",
-        "Your account request was created. Confirm your email, then sign in. If you have an organization invitation you will join it; otherwise you will start organization setup.",
+        "إذا كان هذا بريداً جديداً، فتحقق من صندوق الوارد والرسائل غير المرغوب فيها لإكمال التأكيد. إذا كان لديك حساب بالفعل، استخدم تسجيل الدخول أو استعادة كلمة المرور. بعد الدخول، ستتم معالجة أي دعوة قائمة أولاً، وإلا ستبدأ إعداد مؤسستك.",
+        "If this is a new email, check your inbox and spam folder to complete confirmation. If you already have an account, sign in or reset your password. After sign-in, any existing invitation is resolved first; otherwise you will start organization setup.",
       ));
       setPassword("");
       setConfirmPassword("");
