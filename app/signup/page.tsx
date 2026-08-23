@@ -9,7 +9,7 @@ import { useLanguage } from "@/components/i18n/language-provider";
 import "../login/login.css";
 
 const APPROVED_ASSET_REF = "3122092e9bc18acd696911aeb54eee7a3dcc26e2";
-const APPROVED_ASSET_ROOT = `https://raw.githubusercontent.com/Yosseuf3/YOSSEUF--OS/${APPROVED_ASSET_REF}/brand/basoul/assets`;
+const APPROVED_ASSET_ROOT = `https://raw.githubusercontent.com/Yosseuf3/BASOUL-OS/${APPROVED_ASSET_REF}/brand/basoul/assets`;
 const BASOUL_SYMBOL = `${APPROVED_ASSET_ROOT}/symbol/BASOUL_Symbol_Master.png`;
 const BASOUL_WORDMARK = `${APPROVED_ASSET_ROOT}/wordmark/BASOUL_Wordmark_Master.png`;
 

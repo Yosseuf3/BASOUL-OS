@@ -16,7 +16,7 @@ type Props = { projects: Project[]; tasks: Task[]; clients: Client[]; financeIte
 
 const money = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const APPROVED_ASSET_REF = "3122092e9bc18acd696911aeb54eee7a3dcc26e2";
-const APPROVED_ASSET_ROOT = `https://raw.githubusercontent.com/Yosseuf3/YOSSEUF--OS/${APPROVED_ASSET_REF}/brand/basoul/assets`;
+const APPROVED_ASSET_ROOT = `https://raw.githubusercontent.com/Yosseuf3/BASOUL-OS/${APPROVED_ASSET_REF}/brand/basoul/assets`;
 const BASOUL_SYMBOL = `${APPROVED_ASSET_ROOT}/symbol/BASOUL_Symbol_Master.png`;
 
 export function DashboardView(props: Props) {

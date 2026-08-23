@@ -1,8 +1,8 @@
 /* Approved BASOUL identity assets. Geometry must never be recreated with text/CSS.
    Assets are pinned to the immutable approved source commit. */
 :root{
-  --basoul-approved-symbol:url("https://raw.githubusercontent.com/Yosseuf3/YOSSEUF--OS/3122092e9bc18acd696911aeb54eee7a3dcc26e2/brand/basoul/assets/symbol/BASOUL_Symbol_Master.png");
-  --basoul-approved-wordmark:url("https://raw.githubusercontent.com/Yosseuf3/YOSSEUF--OS/3122092e9bc18acd696911aeb54eee7a3dcc26e2/brand/basoul/assets/wordmark/BASOUL_Wordmark_Master.png");
+  --basoul-approved-symbol:url("https://raw.githubusercontent.com/Yosseuf3/BASOUL-OS/3122092e9bc18acd696911aeb54eee7a3dcc26e2/brand/basoul/assets/symbol/BASOUL_Symbol_Master.png");
+  --basoul-approved-wordmark:url("https://raw.githubusercontent.com/Yosseuf3/BASOUL-OS/3122092e9bc18acd696911aeb54eee7a3dcc26e2/brand/basoul/assets/wordmark/BASOUL_Wordmark_Master.png");
 }
 
 /* Authentication identity */
