@@ -1,6 +1,12 @@
 name: Pascal Architecture PoC
 
 on:
+  push:
+    branches:
+      - oss/pascal-architecture-poc
+    paths:
+      - 'experiments/pascal-architecture-poc/**'
+      - '.github/workflows/pascal-architecture-poc.yml'
   pull_request:
     paths:
       - 'experiments/pascal-architecture-poc/**'
