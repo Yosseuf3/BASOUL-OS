@@ -28,7 +28,11 @@ jobs:
           cache-dependency-path: experiments/pascal-architecture-poc/package.json
       - name: Install
         run: npm install --no-audit --no-fund
-      - name: Typecheck
+      - name: Typecheck BASOUL host
         run: npm run typecheck
-      - name: Build
+      - name: Test constrained AI tool
+        run: npm test
+      - name: Convert real IFC fixture
+        run: npm run ifc:smoke
+      - name: Production build
         run: npm run build
