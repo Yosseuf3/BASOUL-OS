@@ -20,3 +20,8 @@ test('IFC converter remains injected behind BASOUL port', () => {
   assert.match(source, /interface IfcConverterPort/)
   assert.doesNotMatch(source, /@pascal-app\/ifc-converter/)
 })
+
+test('IFC diagnostics expose generated nodes and warnings', () => {
+  assert.match(source, /generatedNodes/)
+  assert.match(source, /warnings/)
+})
