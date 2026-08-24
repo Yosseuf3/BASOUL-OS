@@ -2,6 +2,9 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   transpilePackages: ['@pascal-app/editor'],
+  turbopack: {
+    root: process.cwd(),
+  },
   typescript: {
     // Pascal editor beta currently publishes its TypeScript source and has
     // upstream tuple-type errors under a consumer tsc. BASOUL host code is
