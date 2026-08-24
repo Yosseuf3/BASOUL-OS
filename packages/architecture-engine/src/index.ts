@@ -54,10 +54,6 @@ export interface PascalRuntimePort {
   createViewer(): ArchitectureViewerPort
 }
 
-/**
- * BASOUL-owned adapter. Pascal remains replaceable behind this boundary.
- * No Pascal package types are exported from this package.
- */
 export class PascalArchitectureAdapter implements ArchitectureEnginePort {
   constructor(private readonly runtime: PascalRuntimePort) {}
 
@@ -105,3 +101,5 @@ export class PascalArchitectureAdapter implements ArchitectureEnginePort {
     return this.runtime.createViewer()
   }
 }
+
+export * from './persistence'
