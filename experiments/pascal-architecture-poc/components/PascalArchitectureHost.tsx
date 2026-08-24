@@ -1,7 +1,7 @@
 'use client'
 
 import { loadPlugin } from '@pascal-app/core'
-import Editor from '@pascal-app/editor'
+import { Editor } from '@pascal-app/editor'
 import { builtinPlugin } from '@pascal-app/nodes'
 import { useEffect, useMemo, useState } from 'react'
 import { createBasoulDemoScene } from '../lib/demo-scene'
