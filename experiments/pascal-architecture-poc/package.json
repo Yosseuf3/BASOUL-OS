@@ -8,7 +8,7 @@
     "start": "next start -p 3010",
     "typecheck": "tsc --noEmit -p tsconfig.host.json",
     "test": "tsx --test tests/*.test.ts",
-    "ifc:smoke": "node scripts/ifc-smoke.mjs"
+    "ifc:smoke": "tsx scripts/ifc-smoke.ts"
   },
   "dependencies": {
     "@pascal-app/core": "1.0.0-beta.5",
