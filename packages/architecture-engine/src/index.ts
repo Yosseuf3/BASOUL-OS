@@ -104,3 +104,4 @@ export class PascalArchitectureAdapter implements ArchitectureEnginePort {
 
 export * from './persistence'
 export * from './ifc'
+export * from './tools'
