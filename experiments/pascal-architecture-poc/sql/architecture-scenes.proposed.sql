@@ -27,17 +27,44 @@ with check (
   and user_id = (select auth.uid())
 );
 
+-- Architecture scenes are organization-owned collaborative records. Unlike
+-- personal rows, updates are authorized by organization permission, not by the
+-- identity of the original creator.
 create policy architecture_scenes_org_update
 on public.architecture_scenes for update to authenticated
 using (private.has_permission(organization_id, 'update'))
-with check (
-  private.has_permission(organization_id, 'update')
-  and user_id = (select auth.uid())
-);
+with check (private.has_permission(organization_id, 'update'));
 
 create policy architecture_scenes_org_delete
 on public.architecture_scenes for delete to authenticated
 using (private.has_permission(organization_id, 'delete'));
+
+-- Prevent a valid editor from moving a scene into another tenant/project or
+-- rewriting creator ownership during an update.
+create or replace function public.guard_architecture_scene_scope()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  if new.organization_id is distinct from old.organization_id
+     or new.project_id is distinct from old.project_id
+     or new.user_id is distinct from old.user_id then
+    raise exception 'architecture_scene_scope_immutable';
+  end if;
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+revoke all on function public.guard_architecture_scene_scope() from public;
+grant execute on function public.guard_architecture_scene_scope() to authenticated;
+
+drop trigger if exists architecture_scenes_guard_scope on public.architecture_scenes;
+create trigger architecture_scenes_guard_scope
+before update on public.architecture_scenes
+for each row execute function public.guard_architecture_scene_scope();
 
 grant select, insert, update, delete on public.architecture_scenes to authenticated;
 revoke all on public.architecture_scenes from anon;
