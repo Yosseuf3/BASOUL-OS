@@ -6,31 +6,33 @@ import { builtinPlugin } from '@pascal-app/nodes'
 import { useEffect, useMemo, useState } from 'react'
 import { createBasoulDemoScene } from '../lib/demo-scene'
 
+type PersistedScene = {
+  nodes: Record<string, unknown>
+  rootNodeIds: string[]
+}
+
 const registryReady = loadPlugin(builtinPlugin)
-
-type SceneGraph = ReturnType<typeof createBasoulDemoScene>
-
 const STORAGE_KEY = 'basoul:architecture:poc:scene:v1'
 
 export default function PascalArchitectureHost() {
   const [ready, setReady] = useState(false)
-  const fallbackScene = useMemo(() => createBasoulDemoScene(), [])
+  const fallbackScene = useMemo(() => createBasoulDemoScene() as unknown as PersistedScene, [])
 
   useEffect(() => {
     void registryReady.then(() => setReady(true))
   }, [])
 
-  async function loadScene(): Promise<SceneGraph | null> {
+  async function loadScene(): Promise<PersistedScene | null> {
     const persisted = window.localStorage.getItem(STORAGE_KEY)
     if (!persisted) return fallbackScene
     try {
-      return JSON.parse(persisted) as SceneGraph
+      return JSON.parse(persisted) as PersistedScene
     } catch {
       return fallbackScene
     }
   }
 
-  async function saveScene(scene: SceneGraph) {
+  async function saveScene(scene: PersistedScene) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(scene))
   }
 
