@@ -21,3 +21,10 @@ test('architecture scenes migration is deny-by-default', () => {
   assert.match(migration, /private\.has_permission\(organization_id, 'delete'\)/)
   assert.match(migration, /revoke all on public\.architecture_scenes from anon/i)
 })
+
+test('architecture scenes RLS enforces project and organization integrity', () => {
+  assert.match(migration, /from public\.projects p/i)
+  assert.match(migration, /p\.id = architecture_scenes\.project_id/i)
+  assert.match(migration, /p\.organization_id = architecture_scenes\.organization_id/i)
+  assert.match(migration, /user_id = \(select auth\.uid\(\)\)/i)
+})
