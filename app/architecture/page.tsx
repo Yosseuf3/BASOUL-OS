@@ -4,6 +4,7 @@ import { Box, BrainCircuit, FileBox, Save, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/components/i18n/language-provider";
+import { ArchitectureEditorPanel } from "@/features/architecture/architecture-editor-panel";
 import {
   loadArchitectureProjects,
   loadArchitectureScene,
@@ -96,6 +97,13 @@ export default function ArchitectureWorkspacePage() {
     setStatusMessage(text("تم إنشاء نسخة بداية محلية. اضغط حفظ لتخزينها للمشروع.", "A local starter scene was created. Save it to persist it for this project."));
   }
 
+  function applyEditedScene(next: ArchitectureScene, message: string) {
+    setScene(next);
+    setSceneRevision((value) => value + 1);
+    setStatus("unsaved");
+    setStatusMessage(message);
+  }
+
   async function saveScene() {
     if (!selectedProjectId || !scene || status === "saving") return;
     setStatus("saving");
@@ -120,13 +128,14 @@ export default function ArchitectureWorkspacePage() {
           <span className="bx-kicker">BASOUL · ARCHITECTURE</span>
           <h2>{text("مساحة العمل الهندسية", "Architecture workspace")}</h2>
           <p>{text(
-            "محرك العرض ثلاثي الأبعاد يعمل خلف طبقة BASOUL الهندسية، وأصبحت واجهة المشروع جاهزة لتحميل وحفظ المشاهد عبر بوابة عزل المؤسسة والمشروع.",
-            "The live 3D runtime runs behind the BASOUL architecture boundary, and the workspace is now wired to load and save scenes through the organization/project isolation gate.",
+            "محرك العرض والتحرير ثلاثي الأبعاد يعمل خلف طبقة BASOUL الهندسية، مع حفظ حي معزول حسب المؤسسة والمشروع.",
+            "The live 3D viewing and editing runtime runs behind the BASOUL architecture boundary with production persistence isolated by organization and project.",
           )}</p>
           <div className="bx-hero-tags">
             <span className="bx-chip">ENGINE BOUNDARY · READY</span>
             <span className="bx-chip">3D RUNTIME · LIVE</span>
-            <span className="bx-chip">PERSISTENCE UI · WIRED</span>
+            <span className="bx-chip">EDITOR · LIVE</span>
+            <span className="bx-chip">PERSISTENCE · PRODUCTION</span>
             <span className="bx-chip">IFC GATEWAY · READY</span>
             <span className="bx-chip">AI TOOLS · GUARDED</span>
           </div>
@@ -141,38 +150,24 @@ export default function ArchitectureWorkspacePage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, alignItems: "end" }}>
           <label style={{ display: "grid", gap: 8 }}>
             <span className="bx-kicker">{text("المشروع", "PROJECT")}</span>
-            <select
-              value={selectedProjectId}
-              onChange={(event) => setSelectedProjectId(event.target.value)}
-              disabled={!projects.length || status === "saving"}
-              style={{ minHeight: 44, borderRadius: 12, padding: "0 12px", background: "transparent", color: "inherit" }}
-            >
+            <select value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)} disabled={!projects.length || status === "saving"} style={{ minHeight: 44, borderRadius: 12, padding: "0 12px", background: "transparent", color: "inherit" }}>
               {!projects.length && <option value="">{text("لا توجد مشاريع", "No projects")}</option>}
               {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
             </select>
           </label>
           <label style={{ display: "grid", gap: 8 }}>
             <span className="bx-kicker">{text("اسم المشهد", "SCENE NAME")}</span>
-            <input
-              value={sceneName}
-              onChange={(event) => { setSceneName(event.target.value); if (status === "saved") setStatus("unsaved"); }}
-              maxLength={120}
-              disabled={!selectedProjectId || status === "loading" || status === "saving"}
-              style={{ minHeight: 44, borderRadius: 12, padding: "0 12px", background: "transparent", color: "inherit" }}
-            />
+            <input value={sceneName} onChange={(event) => { setSceneName(event.target.value); if (status === "saved") setStatus("unsaved"); }} maxLength={120} disabled={!selectedProjectId || status === "loading" || status === "saving"} style={{ minHeight: 44, borderRadius: 12, padding: "0 12px", background: "transparent", color: "inherit" }} />
           </label>
           <div className="bx-actions" style={{ margin: 0 }}>
-            <button type="button" onClick={resetStarterScene} disabled={!selectedProjectId || status === "loading" || status === "saving"}>
-              {text("مشهد بداية جديد", "New starter scene")}
-            </button>
-            <button type="button" onClick={() => void saveScene()} disabled={!selectedProjectId || !scene || status === "loading" || status === "saving"}>
-              <Save size={16} /> {text("حفظ المشهد", "Save scene")}
-            </button>
+            <button type="button" onClick={resetStarterScene} disabled={!selectedProjectId || status === "loading" || status === "saving"}>{text("مشهد بداية جديد", "New starter scene")}</button>
+            <button type="button" onClick={() => void saveScene()} disabled={!selectedProjectId || !scene || status === "loading" || status === "saving"}><Save size={16} /> {text("حفظ المشهد", "Save scene")}</button>
           </div>
         </div>
         <p aria-live="polite">{statusMessage}</p>
       </section>
 
+      {scene && <ArchitectureEditorPanel scene={scene} onSceneChange={applyEditedScene} text={text} />}
       {scene && <PascalRuntimeViewer scene={scene} sceneKey={`${selectedProjectId}:${sceneRevision}`} />}
 
       <section className="bx-grid-2" aria-label={text("حالة المنظومة الهندسية", "Architecture system status")}>
@@ -183,8 +178,8 @@ export default function ArchitectureWorkspacePage() {
       </section>
 
       <section className="bx-panel">
-        <header className="bx-panel-head"><div><span className="bx-kicker">PRODUCTION GATE</span><h3>{text("بوابة قاعدة البيانات", "Database gate")}</h3></div></header>
-        <p>{text("واجهة الحفظ أصبحت مرتبطة بالـAPI، لكن Migration الخاصة بجدول architecture_scenes لا تُطبق من هذه الصفحة ولم يتم تشغيلها على Supabase Production. تفعيل قاعدة البيانات يظل قرارًا مستقلاً بعد المراجعة.", "The persistence UI is now wired to the API, but the architecture_scenes migration is never applied from this page and has not been executed on Supabase Production. Database activation remains a separate reviewed decision.")}</p>
+        <header className="bx-panel-head"><div><span className="bx-kicker">PRODUCTION STATUS</span><h3>{text("حالة قاعدة البيانات", "Database status")}</h3></div><span className="bx-chip">PERSISTENCE · LIVE</span></header>
+        <p>{text("تم تفعيل architecture_scenes على BASOUL Production مع Forced RLS وعزل المؤسسة والمشروع، واجتاز مسار الحفظ والاسترجاع اختبار E2E. كل تعديل هندسي يبقى محليًا حتى الضغط على حفظ المشهد.", "architecture_scenes is active on BASOUL Production with forced RLS and organization/project isolation, and persistence has passed E2E verification. Every geometry edit remains local until Save scene is pressed.")}</p>
         <div className="bx-actions"><button type="button" onClick={() => router.push("/")}>{text("العودة إلى لوحة القيادة", "Back to dashboard")}</button></div>
       </section>
     </main>
