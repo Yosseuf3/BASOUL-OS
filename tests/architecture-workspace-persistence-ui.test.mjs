@@ -32,5 +32,6 @@ test('Pascal runtime is controlled by the BASOUL-owned architecture scene', () =
 test('workspace does not expose privileged database access', () => {
   assert.doesNotMatch(page, /service_role|SERVICE_ROLE|supabase\.rpc/i)
   assert.doesNotMatch(client, /service_role|SERVICE_ROLE|supabase\.from\(/i)
-  assert.match(page, /has not been executed on Supabase Production/)
+  assert.match(page, /PERSISTENCE · LIVE/)
+  assert.match(page, /Forced RLS/)
 })
