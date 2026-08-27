@@ -29,6 +29,12 @@ export interface OpeningGeometryPatch {
   height?: number
 }
 
+export interface ArchitectureTranslationDelta {
+  x: number
+  y: number
+  z: number
+}
+
 function finite(value: number | undefined, fallback: number) {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
@@ -76,6 +82,36 @@ export function editableArchitectureElements(scene: ArchitectureScene): Editable
   return elements
 }
 
+export function editableElementAnchor(scene: ArchitectureScene, nodeId: string): [number, number, number] | null {
+  const node = scene.nodes[nodeId]
+  if (!node) return null
+
+  const start = pair(node.start)
+  const end = pair(node.end)
+  if (start && end) {
+    return [
+      (start[0] + end[0]) / 2,
+      typeof node.height === 'number' ? node.height / 2 : 1.6,
+      (start[1] + end[1]) / 2,
+    ]
+  }
+
+  if (typeof node.wallId !== 'string') return null
+  const wall = scene.nodes[node.wallId]
+  const wallStart = pair(wall?.start)
+  const wallEnd = pair(wall?.end)
+  const position = triple(node.position)
+  if (!wallStart || !wallEnd || !position) return null
+
+  const dx = wallEnd[0] - wallStart[0]
+  const dz = wallEnd[1] - wallStart[1]
+  const length = Math.hypot(dx, dz)
+  if (length <= 0.0001) return null
+  const ux = dx / length
+  const uz = dz / length
+  return [wallStart[0] + ux * position[0], position[1], wallStart[1] + uz * position[0]]
+}
+
 export function updateWallGeometry(scene: ArchitectureScene, wallId: string, patch: WallGeometryPatch): ArchitectureScene {
   const wall = scene.nodes[wallId]
   const start = pair(wall?.start)
@@ -111,6 +147,43 @@ export function updateOpeningGeometry(scene: ArchitectureScene, openingId: strin
   const next = cloneScene(scene)
   next.nodes[openingId] = parsed
   return next
+}
+
+export function translateEditableElement(scene: ArchitectureScene, nodeId: string, delta: ArchitectureTranslationDelta): ArchitectureScene {
+  const node = scene.nodes[nodeId]
+  if (!node) throw new Error('architecture.edit.node_missing')
+
+  const start = pair(node.start)
+  const end = pair(node.end)
+  if (start && end) {
+    return updateWallGeometry(scene, nodeId, {
+      startX: start[0] + finite(delta.x, 0),
+      startY: start[1] + finite(delta.z, 0),
+      endX: end[0] + finite(delta.x, 0),
+      endY: end[1] + finite(delta.z, 0),
+    })
+  }
+
+  if (typeof node.wallId !== 'string') throw new Error('architecture.edit.node_not_translatable')
+  const wall = scene.nodes[node.wallId]
+  const wallStart = pair(wall?.start)
+  const wallEnd = pair(wall?.end)
+  const position = triple(node.position) ?? [0, 1, 0]
+  if (!wallStart || !wallEnd) throw new Error('architecture.edit.wall_invalid')
+
+  const dx = wallEnd[0] - wallStart[0]
+  const dz = wallEnd[1] - wallStart[1]
+  const wallLength = Math.hypot(dx, dz)
+  if (wallLength <= 0.0001) throw new Error('architecture.edit.wall_invalid')
+  const alongWall = (finite(delta.x, 0) * dx + finite(delta.z, 0) * dz) / wallLength
+  const width = typeof node.width === 'number' ? node.width : 1
+  const height = typeof node.height === 'number' ? node.height : 1.4
+  const minimumOffset = Math.min(width / 2, wallLength / 2)
+  const maximumOffset = Math.max(minimumOffset, wallLength - minimumOffset)
+  const nextOffset = Math.min(maximumOffset, Math.max(minimumOffset, position[0] + alongWall))
+  const nextVertical = Math.max(height / 2, position[1] + finite(delta.y, 0))
+
+  return updateOpeningGeometry(scene, nodeId, { offset: nextOffset, sill: nextVertical })
 }
 
 export function addWall(scene: ArchitectureScene, levelId: string): { scene: ArchitectureScene; nodeId: string } {
