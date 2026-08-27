@@ -22,6 +22,7 @@ export default function ArchitectureWorkspacePage() {
   const { locale, text } = useLanguage();
   const [projects, setProjects] = useState<ArchitectureProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedElementId, setSelectedElementId] = useState("");
   const [scene, setScene] = useState<ArchitectureScene | null>(null);
   const [sceneName, setSceneName] = useState("Architecture scene");
   const [status, setStatus] = useState<PersistenceStatus>("idle");
@@ -56,10 +57,12 @@ export default function ArchitectureWorkspacePage() {
   useEffect(() => {
     if (!selectedProjectId) {
       setScene(null);
+      setSelectedElementId("");
       return;
     }
 
     let cancelled = false;
+    setSelectedElementId("");
     setStatus("loading");
     setStatusMessage(text("جارٍ تحميل المشهد…", "Loading scene…"));
 
@@ -92,6 +95,7 @@ export default function ArchitectureWorkspacePage() {
 
   function resetStarterScene() {
     setScene(createBasoulStarterScene());
+    setSelectedElementId("");
     setSceneRevision((value) => value + 1);
     setStatus("unsaved");
     setStatusMessage(text("تم إنشاء نسخة بداية محلية. اضغط حفظ لتخزينها للمشروع.", "A local starter scene was created. Save it to persist it for this project."));
@@ -99,9 +103,12 @@ export default function ArchitectureWorkspacePage() {
 
   function applyEditedScene(next: ArchitectureScene, message: string) {
     setScene(next);
-    setSceneRevision((value) => value + 1);
     setStatus("unsaved");
     setStatusMessage(message);
+  }
+
+  function applyDirectManipulation(next: ArchitectureScene) {
+    applyEditedScene(next, text("تم تحريك العنصر مباشرة داخل المشهد ثلاثي الأبعاد.", "The selected element was moved directly in the 3D scene."));
   }
 
   async function saveScene() {
@@ -128,13 +135,13 @@ export default function ArchitectureWorkspacePage() {
           <span className="bx-kicker">BASOUL · ARCHITECTURE</span>
           <h2>{text("مساحة العمل الهندسية", "Architecture workspace")}</h2>
           <p>{text(
-            "محرك العرض والتحرير ثلاثي الأبعاد يعمل خلف طبقة BASOUL الهندسية، مع حفظ حي معزول حسب المؤسسة والمشروع.",
-            "The live 3D viewing and editing runtime runs behind the BASOUL architecture boundary with production persistence isolated by organization and project.",
+            "محرك العرض والتحرير ثلاثي الأبعاد يعمل خلف طبقة BASOUL الهندسية، مع تحديد مباشر وتحريك بصري وحفظ حي معزول حسب المؤسسة والمشروع.",
+            "The live 3D viewing and editing runtime runs behind the BASOUL architecture boundary with direct selection, visual movement and production persistence isolated by organization and project.",
           )}</p>
           <div className="bx-hero-tags">
             <span className="bx-chip">ENGINE BOUNDARY · READY</span>
             <span className="bx-chip">3D RUNTIME · LIVE</span>
-            <span className="bx-chip">EDITOR · LIVE</span>
+            <span className="bx-chip">DIRECT MANIPULATION · LIVE</span>
             <span className="bx-chip">PERSISTENCE · PRODUCTION</span>
             <span className="bx-chip">IFC GATEWAY · READY</span>
             <span className="bx-chip">AI TOOLS · GUARDED</span>
@@ -167,8 +174,8 @@ export default function ArchitectureWorkspacePage() {
         <p aria-live="polite">{statusMessage}</p>
       </section>
 
-      {scene && <ArchitectureEditorPanel scene={scene} onSceneChange={applyEditedScene} text={text} />}
-      {scene && <PascalRuntimeViewer scene={scene} sceneKey={`${selectedProjectId}:${sceneRevision}`} />}
+      {scene && <ArchitectureEditorPanel scene={scene} selectedId={selectedElementId} onSelectionChange={setSelectedElementId} onSceneChange={applyEditedScene} text={text} />}
+      {scene && <PascalRuntimeViewer scene={scene} sceneKey={`${selectedProjectId}:${sceneRevision}`} selectedId={selectedElementId} onSelectionChange={setSelectedElementId} onSceneChange={applyDirectManipulation} />}
 
       <section className="bx-grid-2" aria-label={text("حالة المنظومة الهندسية", "Architecture system status")}>
         <StatusCard icon={<Box size={20} />} kicker="ENGINE" title={text("محرك قابل للاستبدال", "Replaceable engine")} detail={text("Pascal Core/Viewer مثبتان بإصدار محدد ويبقيان خلف BASOUL Adapter.", "Pascal Core/Viewer are pinned and remain behind the BASOUL adapter.")} />
