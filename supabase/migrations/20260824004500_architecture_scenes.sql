@@ -17,26 +17,62 @@ alter table public.architecture_scenes force row level security;
 
 create policy architecture_scenes_org_select
 on public.architecture_scenes for select to authenticated
-using (private.has_permission(organization_id, 'read'));
+using (
+  private.has_permission(organization_id, 'read')
+  and exists (
+    select 1
+    from public.projects p
+    where p.id = architecture_scenes.project_id
+      and p.organization_id = architecture_scenes.organization_id
+  )
+);
 
 create policy architecture_scenes_org_insert
 on public.architecture_scenes for insert to authenticated
 with check (
   private.has_permission(organization_id, 'create')
   and user_id = (select auth.uid())
+  and exists (
+    select 1
+    from public.projects p
+    where p.id = architecture_scenes.project_id
+      and p.organization_id = architecture_scenes.organization_id
+  )
 );
 
 create policy architecture_scenes_org_update
 on public.architecture_scenes for update to authenticated
-using (private.has_permission(organization_id, 'update'))
+using (
+  private.has_permission(organization_id, 'update')
+  and exists (
+    select 1
+    from public.projects p
+    where p.id = architecture_scenes.project_id
+      and p.organization_id = architecture_scenes.organization_id
+  )
+)
 with check (
   private.has_permission(organization_id, 'update')
   and user_id = (select auth.uid())
+  and exists (
+    select 1
+    from public.projects p
+    where p.id = architecture_scenes.project_id
+      and p.organization_id = architecture_scenes.organization_id
+  )
 );
 
 create policy architecture_scenes_org_delete
 on public.architecture_scenes for delete to authenticated
-using (private.has_permission(organization_id, 'delete'));
+using (
+  private.has_permission(organization_id, 'delete')
+  and exists (
+    select 1
+    from public.projects p
+    where p.id = architecture_scenes.project_id
+      and p.organization_id = architecture_scenes.organization_id
+  )
+);
 
 grant select, insert, update, delete on public.architecture_scenes to authenticated;
 revoke all on public.architecture_scenes from anon;
