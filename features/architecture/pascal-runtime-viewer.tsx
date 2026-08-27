@@ -1,9 +1,20 @@
 'use client'
 
-import { type AnyNode, type AnyNodeId, useScene } from '@pascal-app/core'
+import {
+  BuildingNode,
+  DoorNode,
+  LevelNode,
+  SiteNode,
+  SlabNode,
+  WallNode,
+  WindowNode,
+  type AnyNode,
+  type AnyNodeId,
+  useScene,
+} from '@pascal-app/core'
 import { Viewer } from '@pascal-app/viewer'
-import { CameraControls } from '@react-three/drei'
-import { useEffect, useMemo, useState } from 'react'
+import { CameraControls, type CameraControlsImpl } from '@react-three/drei'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ArchitectureScene } from '../../packages/architecture-engine/src/index'
 import { ensurePascalBuiltins } from './pascal-bootstrap'
 
@@ -29,7 +40,7 @@ export function PascalRuntimeViewer() {
       </header>
       <div style={{ height: 'min(68vh, 720px)', minHeight: 420, overflow: 'hidden', borderRadius: 18 }}>
         <Viewer sceneReadyKey="basoul-starter-v1" onSceneReadyChange={setReady}>
-          <CameraControls makeDefault />
+          <BasoulCamera />
         </Viewer>
       </div>
       <p>Live BASOUL-owned starter scene: building, level, four walls, slab, door and window. No Production persistence is activated.</p>
@@ -37,19 +48,30 @@ export function PascalRuntimeViewer() {
   )
 }
 
+function BasoulCamera() {
+  const controls = useRef<CameraControlsImpl>(null)
+
+  useEffect(() => {
+    void controls.current?.setLookAt(12, 9, 12, 4, 1.4, 3, false)
+  }, [])
+
+  return <CameraControls ref={controls} makeDefault />
+}
+
 function createBasoulStarterScene(): ArchitectureScene {
-  const nodes: ArchitectureScene['nodes'] = {
-    site_basoul: { object: 'node', id: 'site_basoul', type: 'site', parentId: null, children: ['building_basoul'], visible: true, metadata: {} },
-    building_basoul: { object: 'node', id: 'building_basoul', type: 'building', parentId: 'site_basoul', children: ['level_ground'], visible: true, metadata: {} },
-    level_ground: { object: 'node', id: 'level_ground', type: 'level', parentId: 'building_basoul', children: ['slab_ground', 'wall_north', 'wall_east', 'wall_south', 'wall_west'], visible: true, metadata: {}, name: 'Ground', baseElevation: 0, height: 3.2 },
-    slab_ground: { object: 'node', id: 'slab_ground', type: 'slab', parentId: 'level_ground', children: [], visible: true, metadata: {}, points: [[0,0],[8,0],[8,6],[0,6]], thickness: 0.2, elevation: 0 },
-    wall_north: { object: 'node', id: 'wall_north', type: 'wall', parentId: 'level_ground', children: ['window_north'], visible: true, metadata: {}, start: [0,0], end: [8,0], height: 3.2, thickness: 0.2 },
-    wall_east: { object: 'node', id: 'wall_east', type: 'wall', parentId: 'level_ground', children: [], visible: true, metadata: {}, start: [8,0], end: [8,6], height: 3.2, thickness: 0.2 },
-    wall_south: { object: 'node', id: 'wall_south', type: 'wall', parentId: 'level_ground', children: ['door_south'], visible: true, metadata: {}, start: [8,6], end: [0,6], height: 3.2, thickness: 0.2 },
-    wall_west: { object: 'node', id: 'wall_west', type: 'wall', parentId: 'level_ground', children: [], visible: true, metadata: {}, start: [0,6], end: [0,0], height: 3.2, thickness: 0.2 },
-    window_north: { object: 'node', id: 'window_north', type: 'window', parentId: 'wall_north', children: [], visible: true, metadata: {}, position: 0.5, width: 1.5, height: 1.4, sillHeight: 0.9 },
-    door_south: { object: 'node', id: 'door_south', type: 'door', parentId: 'wall_south', children: [], visible: true, metadata: {}, position: 0.5, width: 1.0, height: 2.2 },
-  }
+  const parsedNodes: AnyNode[] = [
+    SiteNode.parse({ id: 'site_basoul', parentId: null, children: ['building_basoul'] }),
+    BuildingNode.parse({ id: 'building_basoul', parentId: 'site_basoul', children: ['level_ground'], position: [0, 0, 0], rotation: [0, 0, 0] }),
+    LevelNode.parse({ id: 'level_ground', parentId: 'building_basoul', children: ['slab_ground', 'wall_north', 'wall_east', 'wall_south', 'wall_west'], name: 'Ground', level: 0, baseElevation: 0, height: 3.2 }),
+    SlabNode.parse({ id: 'slab_ground', parentId: 'level_ground', polygon: [[0, 0], [8, 0], [8, 6], [0, 6]], thickness: 0.2, elevation: 0 }),
+    WallNode.parse({ id: 'wall_north', parentId: 'level_ground', children: ['window_north'], start: [0, 0], end: [8, 0], height: 3.2, thickness: 0.2 }),
+    WallNode.parse({ id: 'wall_east', parentId: 'level_ground', start: [8, 0], end: [8, 6], height: 3.2, thickness: 0.2 }),
+    WallNode.parse({ id: 'wall_south', parentId: 'level_ground', children: ['door_south'], start: [8, 6], end: [0, 6], height: 3.2, thickness: 0.2 }),
+    WallNode.parse({ id: 'wall_west', parentId: 'level_ground', start: [0, 6], end: [0, 0], height: 3.2, thickness: 0.2 }),
+    WindowNode.parse({ id: 'window_north', parentId: 'wall_north', wallId: 'wall_north', position: [4, 1.6, 0], rotation: [0, 0, 0], width: 1.5, height: 1.4 }),
+    DoorNode.parse({ id: 'door_south', parentId: 'wall_south', wallId: 'wall_south', position: [4, 1.1, 0], rotation: [0, 0, 0], width: 1, height: 2.2 }),
+  ]
+  const nodes = Object.fromEntries(parsedNodes.map((node) => [node.id, node])) as unknown as ArchitectureScene['nodes']
 
   return { nodes, rootNodeIds: ['site_basoul'], metadata: { owner: 'BASOUL', runtime: 'pascal-beta.5' } }
 }
