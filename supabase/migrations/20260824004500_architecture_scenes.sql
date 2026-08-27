@@ -74,8 +74,9 @@ using (
   )
 );
 
-grant select, insert, update, delete on public.architecture_scenes to authenticated;
 revoke all on public.architecture_scenes from anon;
+revoke all on public.architecture_scenes from authenticated;
+grant select, insert, update, delete on public.architecture_scenes to authenticated;
 
 create index if not exists architecture_scenes_org_project_idx
   on public.architecture_scenes (organization_id, project_id);
