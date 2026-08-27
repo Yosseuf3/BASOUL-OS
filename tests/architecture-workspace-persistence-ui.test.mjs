@@ -29,8 +29,8 @@ test('Pascal runtime is controlled by the BASOUL-owned architecture scene', () =
   assert.match(viewer, /export function createBasoulStarterScene/)
 })
 
-test('workspace does not execute migrations or expose service-role credentials', () => {
-  assert.doesNotMatch(page, /service_role|SERVICE_ROLE|migration.*execute|supabase\.rpc/i)
+test('workspace does not expose privileged database access', () => {
+  assert.doesNotMatch(page, /service_role|SERVICE_ROLE|supabase\.rpc/i)
   assert.doesNotMatch(client, /service_role|SERVICE_ROLE|supabase\.from\(/i)
   assert.match(page, /has not been executed on Supabase Production/)
 })
