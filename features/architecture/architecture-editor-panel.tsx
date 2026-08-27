@@ -68,7 +68,10 @@ export function ArchitectureEditorPanel({
           <span className="bx-kicker">ARCHITECTURE EDITOR · DIRECT MANIPULATION</span>
           <h3>{text('تحرير العناصر الهندسية', 'Architectural element editing')}</h3>
         </div>
-        <span className="bx-chip">SELECTION · SYNCED</span>
+        <div className="bx-hero-tags">
+          <span className="bx-chip">EDITOR · LIVE</span>
+          <span className="bx-chip">SELECTION · SYNCED</span>
+        </div>
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, .8fr) minmax(280px, 1.2fr)', gap: 18 }}>
