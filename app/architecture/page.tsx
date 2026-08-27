@@ -127,6 +127,7 @@ export default function ArchitectureWorkspacePage() {
             <span className="bx-chip">ENGINE BOUNDARY · READY</span>
             <span className="bx-chip">3D RUNTIME · LIVE</span>
             <span className="bx-chip">PERSISTENCE UI · WIRED</span>
+            <span className="bx-chip">IFC GATEWAY · READY</span>
             <span className="bx-chip">AI TOOLS · GUARDED</span>
           </div>
         </div>
