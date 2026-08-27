@@ -151,7 +151,7 @@ function BasoulDirectManipulator({
       z: object.position.z - start[2],
     }
     if (Math.hypot(delta.x, delta.y, delta.z) < 0.001) return
-    onSceneChange(translateEditableElement(scene, selectedId, delta))
+    onSceneChange?.(translateEditableElement(scene, selectedId, delta))
   }
 
   return (
