@@ -28,3 +28,9 @@ test('architecture scenes RLS enforces project and organization integrity', () =
   assert.match(migration, /p\.organization_id = architecture_scenes\.organization_id/i)
   assert.match(migration, /user_id = \(select auth\.uid\(\)\)/i)
 })
+
+test('architecture scenes grants authenticated users CRUD only', () => {
+  assert.match(migration, /revoke all on public\.architecture_scenes from authenticated/i)
+  assert.match(migration, /grant select, insert, update, delete on public\.architecture_scenes to authenticated/i)
+  assert.doesNotMatch(migration, /grant\s+all\s+on\s+public\.architecture_scenes\s+to\s+authenticated/i)
+})
