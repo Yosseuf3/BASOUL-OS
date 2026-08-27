@@ -17,6 +17,7 @@ const nextConfig = {
     "@basoul/ui-tokens",
     "@yosseuf/platform",
     "@basoul/platform",
+    "@pascal-app/editor",
   ],
   async headers() {
     return [{

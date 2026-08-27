@@ -21,6 +21,7 @@ export default function ArchitectureWorkspacePage() {
             "The live 3D runtime now runs behind the BASOUL architecture boundary while persistence, IFC and AI remain governed by BASOUL gates.",
           )}</p>
           <div className="bx-hero-tags">
+            <span className="bx-chip">ENGINE BOUNDARY · READY</span>
             <span className="bx-chip">3D RUNTIME · LIVE</span>
             <span className="bx-chip">IFC GATEWAY · READY</span>
             <span className="bx-chip">AI TOOLS · GUARDED</span>
