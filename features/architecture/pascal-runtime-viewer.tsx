@@ -14,20 +14,27 @@ import {
 } from '@pascal-app/core'
 import { Viewer } from '@pascal-app/viewer'
 import { CameraControls, type CameraControlsImpl } from '@react-three/drei'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ArchitectureScene } from '../../packages/architecture-engine/src/index'
 import { ensurePascalBuiltins } from './pascal-bootstrap'
 
 ensurePascalBuiltins()
 
-export function PascalRuntimeViewer() {
+export function PascalRuntimeViewer({
+  scene,
+  sceneKey = 'basoul-architecture-scene',
+}: {
+  scene?: ArchitectureScene | null
+  sceneKey?: string
+}) {
   const setScene = useScene((state) => state.setScene)
   const [ready, setReady] = useState(false)
-  const scene = useMemo(() => createBasoulStarterScene(), [])
+  const activeScene = scene ?? createBasoulStarterScene()
 
   useEffect(() => {
-    setScene(scene.nodes as Record<AnyNodeId, AnyNode>, scene.rootNodeIds as AnyNodeId[])
-  }, [scene, setScene])
+    setReady(false)
+    setScene(activeScene.nodes as Record<AnyNodeId, AnyNode>, activeScene.rootNodeIds as AnyNodeId[])
+  }, [activeScene, setScene])
 
   return (
     <section className="bx-panel" aria-label="BASOUL Architecture 3D runtime">
@@ -39,26 +46,26 @@ export function PascalRuntimeViewer() {
         <span className="bx-chip">{ready ? 'SCENE · READY' : 'SCENE · LOADING'}</span>
       </header>
       <div style={{ height: 'min(68vh, 720px)', minHeight: 420, overflow: 'hidden', borderRadius: 18 }}>
-        <Viewer sceneReadyKey="basoul-starter-v1" onSceneReadyChange={setReady}>
-          <BasoulCamera />
+        <Viewer sceneReadyKey={sceneKey} onSceneReadyChange={setReady}>
+          <BasoulCamera sceneKey={sceneKey} />
         </Viewer>
       </div>
-      <p>Live BASOUL-owned starter scene: building, level, four walls, slab, door and window. No Production persistence is activated.</p>
+      <p>Live BASOUL-owned scene rendered behind the Architecture Engine boundary. Persistence remains tenant/project scoped.</p>
     </section>
   )
 }
 
-function BasoulCamera() {
+function BasoulCamera({ sceneKey }: { sceneKey: string }) {
   const controls = useRef<CameraControlsImpl>(null)
 
   useEffect(() => {
     void controls.current?.setLookAt(12, 9, 12, 4, 1.4, 3, false)
-  }, [])
+  }, [sceneKey])
 
   return <CameraControls ref={controls} makeDefault />
 }
 
-function createBasoulStarterScene(): ArchitectureScene {
+export function createBasoulStarterScene(): ArchitectureScene {
   const parsedNodes: AnyNode[] = [
     SiteNode.parse({ id: 'site_basoul', parentId: null, children: ['building_basoul'] }),
     BuildingNode.parse({ id: 'building_basoul', parentId: 'site_basoul', children: ['level_ground'], position: [0, 0, 0], rotation: [0, 0, 0] }),
