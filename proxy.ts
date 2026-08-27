@@ -9,4 +9,4 @@ export function proxy(request: NextRequest) {
   return NextResponse.next({ request: { headers } });
 }
 
-export const config = { matcher: ["/api/platform/:path*", "/api/workspace/:path*"] };
+export const config = { matcher: ["/api/platform/:path*", "/api/workspace/:path*", "/api/architecture/:path*"] };
