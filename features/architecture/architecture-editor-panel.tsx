@@ -1,6 +1,6 @@
 'use client'
 
-import { DoorOpen, Plus, Ruler, Trash2, Wall, Square } from 'lucide-react'
+import { Box, DoorOpen, Plus, Ruler, Trash2, Square } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { ArchitectureScene } from '../../packages/architecture-engine/src'
 import {
@@ -75,7 +75,7 @@ export function ArchitectureEditorPanel({
           </label>
 
           <div className="bx-actions" style={{ margin: 0, flexWrap: 'wrap' }}>
-            <button type="button" onClick={addNewWall}><Wall size={16} /><Plus size={14} />{text('جدار', 'Wall')}</button>
+            <button type="button" onClick={addNewWall}><Box size={16} /><Plus size={14} />{text('جدار', 'Wall')}</button>
             <button type="button" onClick={() => addNewOpening('door')} disabled={!selected || (!descriptor || (descriptor.kind !== 'wall' && typeof selected.wallId !== 'string'))}><DoorOpen size={16} /><Plus size={14} />{text('باب', 'Door')}</button>
             <button type="button" onClick={() => addNewOpening('window')} disabled={!selected || (!descriptor || (descriptor.kind !== 'wall' && typeof selected.wallId !== 'string'))}><Square size={16} /><Plus size={14} />{text('نافذة', 'Window')}</button>
           </div>
