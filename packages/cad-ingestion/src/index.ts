@@ -37,13 +37,15 @@ export interface CadClassificationRule {
 }
 
 const match = (value: string | null | undefined, pattern: RegExp) => pattern.test(value ?? '')
+const architecturalSpace = /room|bed|living|kitchen|bath|toilet|wc|hall|corridor|majlis|office|garage|store|laundry|dining|shop|elevator|shaft|غرفة|حمام|مطبخ|صالة|مجلس|ممر|محل|مكتب|مستودع|مصعد|منور/i
 
 export function classifyCadEntity(entity: CadEntity): CadClassificationRule {
   const layer = entity.layer.toLowerCase()
   const block = (entity.blockName ?? '').toLowerCase()
-  const text = (entity.text ?? '').toLowerCase()
+  const text = entity.text ?? ''
 
   if (entity.type === 'DIMENSION') return { kind: 'dimension', confidence: 0.99, reason: 'Native CAD DIMENSION entity.' }
+  if ((entity.type === 'TEXT' || entity.type === 'MTEXT') && match(text, architecturalSpace)) return { kind: 'room', confidence: 0.84, reason: 'Semantic room label from native CAD text.' }
   if (entity.type === 'TEXT' || entity.type === 'MTEXT') return { kind: 'label', confidence: 0.92, reason: 'Native CAD text entity.' }
   if (entity.type === 'INSERT' && (match(block, /door|dr\b|باب/) || match(layer, /door|a-door|باب/))) return { kind: 'door', confidence: 0.96, reason: 'Door block/layer semantics.' }
   if (entity.type === 'INSERT' && (match(block, /window|win\b|نافذ/) || match(layer, /window|a-glaz|نافذ/))) return { kind: 'window', confidence: 0.96, reason: 'Window block/layer semantics.' }
@@ -51,7 +53,6 @@ export function classifyCadEntity(entity: CadEntity): CadClassificationRule {
   if (entity.type === 'INSERT' && (match(block, /column|col\b|عمود/) || match(layer, /column|a-col|عمود/))) return { kind: 'column', confidence: 0.94, reason: 'Column block/layer semantics.' }
   if (['LINE','LWPOLYLINE','POLYLINE'].includes(entity.type) && match(layer, /wall|a-wall|walls|جدار|حوائط/)) return { kind: 'wall', confidence: 0.97, reason: 'Geometry is explicitly on a wall layer.' }
   if (['LWPOLYLINE','POLYLINE','HATCH'].includes(entity.type) && entity.closed && match(layer, /room|space|area|zone|غرف|فراغ/)) return { kind: 'room', confidence: 0.9, reason: 'Closed room/space geometry.' }
-  if ((entity.type === 'TEXT' || entity.type === 'MTEXT') && match(text, /room|bed|living|kitchen|bath|غرفة|حمام|مطبخ|صالة|محل/)) return { kind: 'room', confidence: 0.8, reason: 'Semantic room label.' }
   return { kind: 'item', confidence: 0.45, reason: 'Unclassified CAD entity retained for review.' }
 }
 
@@ -73,7 +74,7 @@ function nodeFromEntity(entity: CadEntity): ArchitectureNode | null {
   if (classification.kind === 'wall') {
     const points = entity.points ?? []
     if (points.length < 2) return null
-    return { ...common, start: points[0], end: points[points.length - 1], thickness: entity.metadata?.lineweight ?? null }
+    return { ...common, start: points[0], end: points[points.length - 1], path: points, thickness: entity.metadata?.lineweight ?? null }
   }
   if (classification.kind === 'door' || classification.kind === 'window' || classification.kind === 'stair' || classification.kind === 'column') {
     if (!entity.insert) return { ...common, transform: { rotation: entity.rotation ?? 0, scale: entity.scale ?? { x: 1, y: 1, z: 1 } } }
