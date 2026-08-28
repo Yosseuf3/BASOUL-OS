@@ -28,6 +28,8 @@ Priority signals:
 - Native dimensions and measurements.
 - Text and MTEXT labels plus text style, SHX/TTF font, big-font and DWG codepage metadata.
 
+Block semantics take precedence over layer semantics when both exist, so blocks such as `DR_D01` remain doors even when inserted on a broader glazing/window layer.
+
 Classification is intentionally rule-based first. AI may resolve ambiguous layer/block naming later, but it must not replace native geometry.
 
 ## Real architectural DWG benchmark
@@ -40,12 +42,15 @@ Recovered modelspace facts:
 - 5 named blocks, including `DR_D01`, `WD_00_X2`, `WD_00_X1`, `WD_WIN4`.
 - 618 modelspace entities: 455 `LINE`, 80 `DIMENSION`, 49 `INSERT`, 34 `TEXT`.
 - 425 wall lines directly on the `wall` layer.
-- 14 door block inserts on the `door` layer, plus 4 door-layer line entities.
-- 35 window block inserts on the `WINDOW` layer.
+- 25 `DR_D01` door block inserts; 14 are on `door` and 11 are inserted on `WINDOW`, demonstrating why block semantics must outrank layer semantics.
+- 4 additional door-layer line entities.
+- 24 window block inserts (`WD_00_X2`, `WD_00_X1`, `WD_WIN4`).
 - 26 stair line entities on the misspelled `stiars` layer.
 - 80 native dimensions.
 - 34 Arabic labels using text style `mas` and `xarab.shx`; the converted text is legacy SHX-encoded and therefore requires a dedicated text-decoding phase rather than Vision/OCR guessing.
 - Drawing units are meters (`$INSUNITS = 6`).
+
+With the v1 benchmark rules, all 618 modelspace entities are accounted for by native semantics: 425 wall, 29 door, 24 window, 26 stair, 80 dimension and 34 label entities. Room names are intentionally not guessed until the legacy Arabic SHX text is decoded or spaces are derived topologically.
 
 This benchmark materially exceeds the PDF/Vision fallback: native CAD geometry recovers hundreds of trustworthy architectural elements with exact coordinates before any AI inference.
 
