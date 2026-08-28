@@ -6,7 +6,10 @@ const cad = await readFile(new URL('../packages/cad-ingestion/src/index.ts', imp
 const floorGraph = await readFile(new URL('../packages/cad-ingestion/src/floor-graph.ts', import.meta.url), 'utf8')
 const pascalCad = await readFile(new URL('../features/architecture/pascal-cad-scene.ts', import.meta.url), 'utf8')
 const gateway = await readFile(new URL('../tools/cad-ingestion/cad_ingest.py', import.meta.url), 'utf8')
+const gatewayServer = await readFile(new URL('../tools/cad-ingestion/server.py', import.meta.url), 'utf8')
 const dockerfile = await readFile(new URL('../tools/cad-ingestion/Dockerfile', import.meta.url), 'utf8')
+const vercelDockerfile = await readFile(new URL('../tools/cad-ingestion/Dockerfile.vercel', import.meta.url), 'utf8')
+const vercelConfig = await readFile(new URL('../vercel.json', import.meta.url), 'utf8')
 
 test('CAD ingestion normalizes native CAD semantics before ArchitectureScene', () => {
   assert.match(cad, /basoul\.cad\.v1/)
@@ -60,6 +63,21 @@ test('DWG decoding is isolated behind LibreDWG and ezdxf gateway', () => {
   assert.match(dockerfile, /sha256sum -c/)
   assert.match(dockerfile, /--disable-bindings --disable-python --disable-docs --disable-shared/)
   assert.match(dockerfile, /USER cad/)
+})
+
+test('Vercel CAD gateway is a private service binding with bounded HTTP ingestion', () => {
+  assert.match(gatewayServer, /MAX_CAD_BYTES = 25 \* 1024 \* 1024/)
+  assert.match(gatewayServer, /ALLOWED_EXTENSIONS = \{"\.dwg", "\.dxf"\}/)
+  assert.match(gatewayServer, /projectId: str = Form/)
+  assert.match(gatewayServer, /organizationId: str = Form/)
+  assert.match(gatewayServer, /data = normalize\(source\)/)
+  assert.match(vercelDockerfile, /LIBREDWG_VERSION=0\.14\.8531/)
+  assert.match(vercelDockerfile, /uvicorn server:app/)
+  assert.match(vercelDockerfile, /USER cad/)
+  assert.match(vercelConfig, /"service": "cad_gateway"/)
+  assert.match(vercelConfig, /"env": "CAD_GATEWAY_URL"/)
+  assert.match(vercelConfig, /"runtime": "container"/)
+  assert.doesNotMatch(vercelConfig, /destination"\s*:\s*\{\s*"service"\s*:\s*"cad_gateway"/)
 })
 
 test('CAD semantic core does not depend directly on LibreDWG or ezdxf', () => {

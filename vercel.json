@@ -4,5 +4,32 @@
     "deploymentEnabled": {
       "main": false
     }
-  }
+  },
+  "services": {
+    "web": {
+      "root": ".",
+      "framework": "nextjs",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "cad_gateway",
+          "format": "url",
+          "env": "CAD_GATEWAY_URL"
+        }
+      ]
+    },
+    "cad_gateway": {
+      "root": "tools/cad-ingestion",
+      "runtime": "container",
+      "entrypoint": "Dockerfile.vercel"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "web"
+      }
+    }
+  ]
 }
