@@ -133,6 +133,8 @@ export default function ArchitectureWorkspacePage() {
           <p>{text("DWG/DXF أصبح المصدر الهندسي عالي الدقة: مراجعة 2D أولًا، ثم فتح Pascal فقط بعد نجاح CAD Geometry Gate.", "DWG/DXF is now the high-fidelity geometry source: review in 2D first, then open Pascal only after the CAD Geometry Gate passes.")}</p>
           <div className="bx-hero-tags">
             <span className="bx-chip">ENGINE BOUNDARY · READY</span>
+            <span className="bx-chip">IFC GATEWAY · READY</span>
+            <span className="bx-chip">AI TOOLS · GUARDED</span>
             <span className="bx-chip">CAD INGESTION · READY</span>
             <span className="bx-chip">FLOOR GRAPH · LIVE</span>
             <span className="bx-chip">2D REVIEW · LIVE</span>
