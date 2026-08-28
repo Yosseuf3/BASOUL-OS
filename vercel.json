@@ -26,12 +26,6 @@
   },
   "rewrites": [
     {
-      "source": "/__cad-smoke/(.*)",
-      "destination": {
-        "service": "cad_gateway"
-      }
-    },
-    {
       "source": "/(.*)",
       "destination": {
         "service": "web"
