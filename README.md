@@ -1,9 +1,9 @@
 # BASOUL
 
-Current beta baseline: **BASOUL Beta 1 · v4.0.0-rc.1 · Platform Foundation**
+Current stable baseline: **BASOUL v4.0.0**
 
-![Version](https://img.shields.io/badge/version-v4.0.0--rc.1-2563EB)
-![Channel](https://img.shields.io/badge/channel-beta-8B5CF6)
+![Version](https://img.shields.io/badge/version-v4.0.0-2563EB)
+![Channel](https://img.shields.io/badge/channel-stable-16A34A)
 ![Node](https://img.shields.io/badge/node-22.x-43853d)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
@@ -11,24 +11,26 @@ Current beta baseline: **BASOUL Beta 1 · v4.0.0-rc.1 · Platform Foundation**
 
 BASOUL is the technology masterbrand. YOSSEUF RADWAN remains the founder and personal identity. First-party copyright is held by **ELSHENAWY RADWAN**.
 
-BASOUL OS unifies projects, tasks, clients, content, knowledge, finance, activity, notifications, administration, and executive decision support inside one governed workspace.
+BASOUL OS unifies projects, tasks, clients, content, knowledge, finance, activity, notifications, administration, executive decision support, and an emerging Architecture workspace inside one governed platform.
 
 > **What should I do now?**
 
 ![BASOUL OS Executive Dashboard](docs/assets/screenshots/executive-dashboard-v1.0.0.png)
 
-## Current beta status
+## Current product status
 
 - Product package: `basoul-platform`
-- Product version: `v4.0.0-rc.1`
-- Release channel: **Beta**
+- Stable product version: `v4.0.0`
+- Release channel: **Stable**
+- Current `main`: stable baseline plus post-release Architecture development that has passed the repository quality gate
+- Architecture: BASOUL-owned scene contracts, Pascal 3D runtime, project-scoped persistence, IFC gateway, guarded AI tools, scene editing and direct 3D manipulation
 - Web identity: approved BASOUL Symbol + Wordmark
 - Visual palette: Navy / Electric Blue / Cyan / Violet
-- Development authentication: Email + Password
+- Authentication: Email + Password
 - RTL and responsive surfaces: enabled
-- Production identifiers and Supabase Production: unchanged
+- Production identifiers remain intentionally unchanged until a separately approved identifier migration
 
-The evidence-backed Beta 1 verification record is maintained at `docs/releases/BASOUL_BETA_1_RUNTIME_VERIFICATION_2026-08-10.md`.
+Historical Beta and Release Candidate verification records remain under `docs/releases/` as immutable release evidence.
 
 ## Core capabilities
 
@@ -45,6 +47,7 @@ The evidence-backed Beta 1 verification record is maintained at `docs/releases/B
 - Secure member invitations
 - Keyboard-first workflows
 - Shared intelligence architecture for BASOUL AI integration
+- Architecture workspace with governed 3D scene editing and persistence
 
 ## Architecture
 
@@ -79,6 +82,7 @@ YVL governs mechanics such as spacing, radii, motion, accessibility, RTL, and in
 - GitHub Actions
 - Vercel
 - Expo / React Native
+- Pascal 3D runtime boundary
 - Node.js
 
 ## Quick start
@@ -104,7 +108,7 @@ Open `http://localhost:3000`.
 npm run quality
 ```
 
-Security and quality gates must not be weakened to make a beta appear green. Known dependency advisories are tracked explicitly until a supported fix is verified.
+Security and quality gates must not be weakened to make a release appear green. Known dependency advisories are tracked explicitly until a supported fix is verified.
 
 ## Documentation
 
@@ -113,7 +117,7 @@ Security and quality gates must not be weakened to make a beta appear green. Kno
 - [Security](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
 - [BASOUL Brand Foundation](brand/basoul/README.md)
-- [Beta 1 runtime verification](docs/releases/BASOUL_BETA_1_RUNTIME_VERIFICATION_2026-08-10.md)
+- [Runtime and repository registry](docs/operations/BASOUL_RUNTIME_REGISTRY_2026-08-28.md)
 - [Ecosystem Pass C](docs/architecture/BASOUL_ECOSYSTEM_PASS_C_2026-08-10.md)
 - [Workspace architecture](docs/WORKSPACE_ARCHITECTURE.md)
 - [Product principles](docs/PRODUCT_PRINCIPLES.md)
