@@ -37,3 +37,19 @@ jobs:
             echo 'Expected unsupported input to fail' >&2
             exit 1
           fi
+      - name: Export LibreDWG runtime tools
+        run: |
+          mkdir -p cad-runtime
+          cid="$(docker create basoul-cad-gateway)"
+          docker cp "$cid:/usr/local/bin/dwgread" cad-runtime/dwgread
+          docker cp "$cid:/usr/local/bin/dwg2dxf" cad-runtime/dwg2dxf
+          docker rm "$cid"
+          chmod +x cad-runtime/dwgread cad-runtime/dwg2dxf
+          sha256sum cad-runtime/* > cad-runtime/SHA256SUMS
+      - name: Upload CAD runtime artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: basoul-cad-runtime-linux-x64
+          path: cad-runtime/
+          if-no-files-found: error
+          retention-days: 1
