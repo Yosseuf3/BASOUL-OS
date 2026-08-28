@@ -160,3 +160,5 @@ export function summarizeCadDocument(document: NormalizedCadDocument) {
     classified: counts,
   }
 }
+
+export * from './floor-graph'
