@@ -1,6 +1,10 @@
 import { supabase } from "@/lib/supabase";
 
-export type PlanElementType = "wall" | "opening" | "door" | "window" | "room" | "stair" | "column" | "shaft" | "label" | "dimension";
+export const PLAN_ELEMENT_TYPES = ["wall", "opening", "door", "window", "room", "stair", "column", "shaft", "label", "dimension"] as const;
+export type KnownPlanElementType = (typeof PLAN_ELEMENT_TYPES)[number];
+// Persisted recognition taxonomies evolve independently from a deployed client.
+// Keep the transport type forward-compatible while UI/editor surfaces use PLAN_ELEMENT_TYPES for known options.
+export type PlanElementType = string;
 export type PlanElementStatus = "detected" | "confirmed" | "corrected" | "rejected";
 
 export type CloudPlanElement = {
@@ -43,6 +47,10 @@ export type PlanElementLocation = {
 
 function finiteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+export function isKnownPlanElementType(value: string): value is KnownPlanElementType {
+  return (PLAN_ELEMENT_TYPES as readonly string[]).includes(value);
 }
 
 export function getPlanElementLocation(element: Pick<CloudPlanElement, "geometry">): PlanElementLocation {
