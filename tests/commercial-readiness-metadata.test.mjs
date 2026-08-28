@@ -22,6 +22,6 @@ test("runtime registry preserves external identifiers and authority boundaries",
 
   assert.match(registry, /okghyypmkymxvtsuvdvb/);
   assert.match(registry, /ogqdfucxwjutkpoahezn/);
-  assert.match(registry, /do not create an independent organization authority/i);
+  assert.match(registry, /must not create an independent organization authority/i);
   assert.match(registry, /not renamed as cosmetic cleanup/i);
 });
