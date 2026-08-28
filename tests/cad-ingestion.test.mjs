@@ -11,6 +11,8 @@ test('CAD ingestion normalizes native CAD semantics before ArchitectureScene', (
   assert.match(cad, /cadDocumentToArchitectureScene/)
   assert.match(cad, /Door block\/layer semantics/)
   assert.match(cad, /Geometry is explicitly on a wall layer/)
+  assert.match(cad, /Semantic room label from native CAD text/)
+  assert.match(cad, /path: points/)
 })
 
 test('DWG decoding is isolated behind LibreDWG and ezdxf gateway', () => {
