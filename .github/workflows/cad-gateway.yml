@@ -1,0 +1,39 @@
+name: CAD Gateway
+
+on:
+  pull_request:
+    paths:
+      - 'tools/cad-ingestion/**'
+      - 'packages/cad-ingestion/**'
+      - 'tests/cad-ingestion.test.mjs'
+      - '.github/workflows/cad-gateway.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/cad-ingestion/**'
+      - 'packages/cad-ingestion/**'
+      - 'tests/cad-ingestion.test.mjs'
+      - '.github/workflows/cad-gateway.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build isolated CAD gateway
+        run: docker build -f tools/cad-ingestion/Dockerfile -t basoul-cad-gateway .
+      - name: Verify LibreDWG tools
+        run: |
+          docker run --rm --entrypoint dwgread basoul-cad-gateway --version
+          docker run --rm --entrypoint dwg2dxf basoul-cad-gateway --version
+      - name: Verify gateway rejects unsupported input safely
+        run: |
+          printf 'not a cad file\n' > unsupported.txt
+          if docker run --rm -v "$PWD:/work:ro" basoul-cad-gateway /work/unsupported.txt; then
+            echo 'Expected unsupported input to fail' >&2
+            exit 1
+          fi
