@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -52,7 +51,7 @@ def entity_text(entity):
     return None
 
 
-def normalize_entity(entity, index):
+def normalize_entity(entity, index, text_style_map):
     kind = entity.dxftype()
     block_name = safe_get(entity, "name", None) if kind == "INSERT" else None
     insert = point(safe_get(entity, "insert", None)) if kind == "INSERT" else None
@@ -72,6 +71,10 @@ def normalize_entity(entity, index):
             measurement = float(entity.get_measurement())
         except Exception:
             measurement = None
+
+    text_style = str(safe_get(entity, "style", "")) if kind in {"TEXT", "MTEXT"} else ""
+    style_info = text_style_map.get(text_style, {})
+
     return {
         "id": str(getattr(entity.dxf, "handle", None) or f"entity-{index}"),
         "type": kind if kind in {"LINE", "LWPOLYLINE", "POLYLINE", "ARC", "CIRCLE", "INSERT", "TEXT", "MTEXT", "DIMENSION", "HATCH"} else "UNKNOWN",
@@ -88,6 +91,9 @@ def normalize_entity(entity, index):
             "color": safe_get(entity, "color", None),
             "lineweight": safe_get(entity, "lineweight", None),
             "linetype": safe_get(entity, "linetype", None),
+            "textStyle": text_style or None,
+            "font": style_info.get("font"),
+            "bigFont": style_info.get("bigFont"),
         },
     }
 
@@ -95,7 +101,7 @@ def normalize_entity(entity, index):
 def convert_dwg_to_dxf(source: Path, target: Path):
     converter = shutil.which("dwg2dxf")
     if converter:
-        subprocess.run([converter, str(source), "-o", str(target)], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run([converter, "-y", "-o", str(target), str(source)], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return "LibreDWG dwg2dxf"
     dwgread = shutil.which("dwgread")
     if dwgread:
@@ -118,7 +124,19 @@ def normalize(path: Path):
     try:
         doc = ezdxf.readfile(dxf_path)
         modelspace = doc.modelspace()
-        entities = [normalize_entity(entity, i) for i, entity in enumerate(modelspace)]
+
+        text_styles = []
+        text_style_map = {}
+        for style in doc.styles:
+            item = {
+                "name": str(style.dxf.name),
+                "font": str(safe_get(style, "font", "") or "") or None,
+                "bigFont": str(safe_get(style, "bigfont", "") or "") or None,
+            }
+            text_styles.append(item)
+            text_style_map[item["name"]] = item
+
+        entities = [normalize_entity(entity, i, text_style_map) for i, entity in enumerate(modelspace)]
         layers = [{"name": layer.dxf.name, "color": safe_get(layer, "color", None), "flags": safe_get(layer, "flags", None)} for layer in doc.layers]
         blocks = []
         for block in doc.blocks:
@@ -127,10 +145,16 @@ def normalize(path: Path):
             blocks.append({"name": block.name, "entityCount": sum(1 for _ in block)})
         return {
             "schema": "basoul.cad.v1",
-            "source": {"format": suffix[1:], "filename": path.name, "converter": f"{converter} + ezdxf"},
+            "source": {
+                "format": suffix[1:],
+                "filename": path.name,
+                "converter": f"{converter} + ezdxf",
+                "codepage": str(doc.header.get("$DWGCODEPAGE", "")) or None,
+            },
             "units": str(doc.header.get("$INSUNITS", 0)),
             "layers": layers,
             "blocks": blocks,
+            "textStyles": text_styles,
             "entities": entities,
         }
     finally:
