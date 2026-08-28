@@ -1,9 +1,9 @@
 # BASOUL OS
 
-الحالة الحالية: **BASOUL Beta 1 · v4.0.0-rc.1 · Platform Foundation**
+الحالة المستقرة الحالية: **BASOUL v4.0.0**
 
-![الإصدار](https://img.shields.io/badge/version-v4.0.0--rc.1-2563EB)
-![القناة](https://img.shields.io/badge/channel-beta-8B5CF6)
+![الإصدار](https://img.shields.io/badge/version-v4.0.0-2563EB)
+![القناة](https://img.shields.io/badge/channel-stable-16A34A)
 ![Node](https://img.shields.io/badge/node-22.x-43853d)
 ![الترخيص](https://img.shields.io/badge/license-MIT-blue)
 
@@ -11,24 +11,26 @@
 
 BASOUL هي العلامة التقنية الرئيسية. تبقى YOSSEUF RADWAN هوية المؤسس والشخصية، بينما تعود حقوق النشر للأعمال المملوكة لنا قانونيًا إلى **ELSHENAWY RADWAN**.
 
-يجمع BASOUL OS المشاريع والمهام والعملاء والمحتوى والمعرفة والمالية والنشاط والإشعارات والإدارة ودعم القرار التنفيذي داخل مساحة عمل واحدة محكومة.
+يجمع BASOUL OS المشاريع والمهام والعملاء والمحتوى والمعرفة والمالية والنشاط والإشعارات والإدارة ودعم القرار التنفيذي، مع مساحة Architecture متقدمة قيد التوسع، داخل منصة واحدة محكومة.
 
 > **ماذا يجب أن أفعل الآن؟**
 
 ![لوحة القيادة في BASOUL OS](docs/assets/screenshots/executive-dashboard-v1.0.0.png)
 
-## حالة النسخة التجريبية
+## حالة المنتج الحالية
 
 - حزمة المنتج: `basoul-platform`
-- إصدار المنتج: `v4.0.0-rc.1`
-- قناة الإصدار: **Beta**
+- الإصدار المستقر: `v4.0.0`
+- قناة الإصدار: **Stable**
+- الفرع `main`: أساس v4.0.0 المستقر مضافًا إليه تطوير Architecture اللاحق الذي اجتاز بوابة الجودة في المستودع
+- Architecture: عقود مشاهد مملوكة لـBASOUL، Pascal 3D runtime، حفظ مرتبط بالمشروع، IFC gateway، أدوات AI محكومة، تحرير المشهد والتحريك المباشر ثلاثي الأبعاد
 - الهوية: Symbol وWordmark الأصليان المعتمدان لـBASOUL
 - الألوان: Navy / Electric Blue / Cyan / Violet
-- تسجيل الدخول للتطوير: Email + Password
+- تسجيل الدخول: Email + Password
 - RTL والاستجابة للشاشات: مفعّلان
-- معرّفات الإنتاج وSupabase Production: بدون تغيير
+- معرّفات Production التقنية الحالية تبقى دون تغيير إلى أن يعتمد ترحيل منفصل لها
 
-سجل التحقق المعتمد للنسخة موجود في `docs/releases/BASOUL_BETA_1_RUNTIME_VERIFICATION_2026-08-10.md`.
+تبقى سجلات Beta وRelease Candidate التاريخية محفوظة تحت `docs/releases/` كأدلة إصدار ولا يعاد تعريفها على أنها الحالة الحالية.
 
 ## الإمكانات الأساسية
 
@@ -45,6 +47,7 @@ BASOUL هي العلامة التقنية الرئيسية. تبقى YOSSEUF RAD
 - دعوات الأعضاء الآمنة
 - اختصارات لوحة المفاتيح
 - بنية ذكاء مشتركة جاهزة لتكامل BASOUL AI
+- مساحة Architecture مع تحرير وحفظ محكوم للمشهد ثلاثي الأبعاد
 
 ## البنية المعمارية
 
@@ -93,7 +96,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 npm run quality
 ```
 
-لا يتم تخفيف بوابات الجودة أو الأمان لتبدو النسخة التجريبية سليمة. أي تحذير اعتماد معروف يبقى موثقًا حتى يتوفر إصلاح مدعوم ومختبر.
+لا يتم تخفيف بوابات الجودة أو الأمان لإظهار أي إصدار على أنه سليم. أي تحذير اعتماد معروف يبقى موثقًا حتى يتوفر إصلاح مدعوم ومختبر.
 
 ## التوثيق
 
@@ -102,7 +105,7 @@ npm run quality
 - [الأمان](SECURITY.md)
 - [المساهمة](CONTRIBUTING.md)
 - [BASOUL Brand Foundation](brand/basoul/README.md)
-- [سجل تحقق Beta 1](docs/releases/BASOUL_BETA_1_RUNTIME_VERIFICATION_2026-08-10.md)
+- [سجل بيئات التشغيل والمستودعات](docs/operations/BASOUL_RUNTIME_REGISTRY_2026-08-28.md)
 - [Ecosystem Pass C](docs/architecture/BASOUL_ECOSYSTEM_PASS_C_2026-08-10.md)
 - [بنية مساحة العمل](docs/WORKSPACE_ARCHITECTURE.md)
 - [مبادئ المنتج](docs/PRODUCT_PRINCIPLES.md)
