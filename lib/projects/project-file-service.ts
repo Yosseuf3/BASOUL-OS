@@ -6,6 +6,7 @@ export const MAX_PROJECT_FILE_SIZE = 100 * 1024 * 1024;
 export type ProjectFile = {
   id: string;
   user_id: string;
+  organization_id: string;
   project_id: string;
   name: string;
   storage_path: string;
@@ -28,6 +29,17 @@ const categoryFor = (file: File): ProjectFile["category"] => {
   return "other";
 };
 
+async function projectOrganizationId(projectId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("organization_id")
+    .eq("id", projectId)
+    .single();
+  if (error) throw error;
+  if (!data?.organization_id) throw new Error("تعذر تحديد مؤسسة المشروع.");
+  return data.organization_id as string;
+}
+
 export async function listProjectFiles(projectId: string): Promise<ProjectFile[]> {
   const { data, error } = await supabase
     .from("project_files")
@@ -42,6 +54,8 @@ export async function uploadProjectFile(projectId: string, file: File): Promise<
   if (file.size > MAX_PROJECT_FILE_SIZE) throw new Error("حجم الملف يتجاوز الحد المسموح: 100 MB.");
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw userError ?? new Error("يلزم تسجيل الدخول لرفع الملفات.");
+
+  const organizationId = await projectOrganizationId(projectId);
   const storagePath = `${userData.user.id}/${projectId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
   const mimeType = file.type || "application/octet-stream";
   const { error: uploadError } = await supabase.storage
@@ -51,6 +65,7 @@ export async function uploadProjectFile(projectId: string, file: File): Promise<
 
   const { data, error } = await supabase.from("project_files").insert({
     user_id: userData.user.id,
+    organization_id: organizationId,
     project_id: projectId,
     name: file.name,
     storage_path: storagePath,
