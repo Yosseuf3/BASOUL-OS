@@ -42,6 +42,8 @@ const match = (value: string | null | undefined, pattern: RegExp) => pattern.tes
 const architecturalSpace = /room|bed|living|kitchen|bath|toilet|wc|hall|corridor|majlis|office|garage|store|laundry|dining|shop|elevator|shaft|غرفة|حمام|مطبخ|صالة|مجلس|ممر|محل|مكتب|مستودع|مصعد|منور/i
 const geometryEntityTypes: CadEntityType[] = ['LINE', 'LWPOLYLINE', 'POLYLINE', 'ARC']
 const isGeometry = (entity: CadEntity) => geometryEntityTypes.includes(entity.type)
+const doorBlockPattern = /door|(?:^|[_-])dr(?:[_-]|$)|^dr[_-]|باب/i
+const windowBlockPattern = /window|win(?:[_-]|$)|^wd[_-]|نافذ/i
 
 export function classifyCadEntity(entity: CadEntity): CadClassificationRule {
   const layer = entity.layer.toLowerCase()
@@ -52,10 +54,15 @@ export function classifyCadEntity(entity: CadEntity): CadClassificationRule {
   if ((entity.type === 'TEXT' || entity.type === 'MTEXT') && match(text, architecturalSpace)) return { kind: 'room', confidence: 0.84, reason: 'Semantic room label from native CAD text.' }
   if (entity.type === 'TEXT' || entity.type === 'MTEXT') return { kind: 'label', confidence: 0.92, reason: 'Native CAD text entity.' }
 
-  if (entity.type === 'INSERT' && (match(block, /door|dr\b|باب/) || match(layer, /door|a-door|باب/))) return { kind: 'door', confidence: 0.96, reason: 'Door block/layer semantics.' }
-  if (entity.type === 'INSERT' && (match(block, /window|win\b|نافذ/) || match(layer, /window|a-glaz|نافذ/))) return { kind: 'window', confidence: 0.96, reason: 'Window block/layer semantics.' }
-  if (entity.type === 'INSERT' && (match(block, /stair|stairs|step|درج|سلم/) || match(layer, /stair|stairs|stiars|a-stair|درج|سلم/))) return { kind: 'stair', confidence: 0.94, reason: 'Stair block/layer semantics.' }
-  if (entity.type === 'INSERT' && (match(block, /column|col\b|عمود/) || match(layer, /column|a-col|عمود/))) return { kind: 'column', confidence: 0.94, reason: 'Column block/layer semantics.' }
+  if (entity.type === 'INSERT' && match(block, doorBlockPattern)) return { kind: 'door', confidence: 0.98, reason: 'Door block semantics.' }
+  if (entity.type === 'INSERT' && match(block, windowBlockPattern)) return { kind: 'window', confidence: 0.98, reason: 'Window block semantics.' }
+  if (entity.type === 'INSERT' && match(block, /stair|stairs|step|درج|سلم/)) return { kind: 'stair', confidence: 0.96, reason: 'Stair block semantics.' }
+  if (entity.type === 'INSERT' && match(block, /column|col(?:[_-]|$)|عمود/)) return { kind: 'column', confidence: 0.96, reason: 'Column block semantics.' }
+
+  if (entity.type === 'INSERT' && match(layer, /door|a-door|باب/)) return { kind: 'door', confidence: 0.94, reason: 'Door layer semantics.' }
+  if (entity.type === 'INSERT' && match(layer, /window|a-glaz|نافذ/)) return { kind: 'window', confidence: 0.94, reason: 'Window layer semantics.' }
+  if (entity.type === 'INSERT' && match(layer, /stair|stairs|stiars|a-stair|درج|سلم/)) return { kind: 'stair', confidence: 0.94, reason: 'Stair layer semantics.' }
+  if (entity.type === 'INSERT' && match(layer, /column|a-col|عمود/)) return { kind: 'column', confidence: 0.94, reason: 'Column layer semantics.' }
 
   if (isGeometry(entity) && match(layer, /wall|a-wall|walls|جدار|حوائط/)) return { kind: 'wall', confidence: 0.97, reason: 'Geometry is explicitly on a wall layer.' }
   if (isGeometry(entity) && match(layer, /door|a-door|باب/)) return { kind: 'door', confidence: 0.88, reason: 'Native CAD geometry is explicitly on a door layer.' }
