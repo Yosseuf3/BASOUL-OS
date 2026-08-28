@@ -95,6 +95,10 @@ export default function ArchitectureWorkspacePage() {
     setStatusMessage(message);
   }
 
+  function applyDirectManipulation(next: ArchitectureScene) {
+    applyEditedScene(next, text("تم تحريك العنصر مباشرة داخل المشهد ثلاثي الأبعاد.", "The selected element was moved directly in the 3D scene."));
+  }
+
   function applyCadScene(next: ArchitectureScene, message: string) {
     setScene(next);
     setSelectedElementId("");
@@ -128,10 +132,13 @@ export default function ArchitectureWorkspacePage() {
           <h2>{text("مساحة العمل الهندسية", "Architecture workspace")}</h2>
           <p>{text("DWG/DXF أصبح المصدر الهندسي عالي الدقة: مراجعة 2D أولًا، ثم فتح Pascal فقط بعد نجاح CAD Geometry Gate.", "DWG/DXF is now the high-fidelity geometry source: review in 2D first, then open Pascal only after the CAD Geometry Gate passes.")}</p>
           <div className="bx-hero-tags">
+            <span className="bx-chip">ENGINE BOUNDARY · READY</span>
             <span className="bx-chip">CAD INGESTION · READY</span>
             <span className="bx-chip">FLOOR GRAPH · LIVE</span>
             <span className="bx-chip">2D REVIEW · LIVE</span>
+            <span className="bx-chip">3D RUNTIME · LIVE</span>
             <span className="bx-chip">3D SAFETY GATE · ACTIVE</span>
+            <span className="bx-chip">PERSISTENCE · PRODUCTION</span>
           </div>
         </div>
       </section>
@@ -149,7 +156,7 @@ export default function ArchitectureWorkspacePage() {
       <CadReviewPanel projectId={selectedProjectId} text={text} onSceneReady={applyCadScene} />
 
       {scene && <ArchitectureEditorPanel scene={scene} selectedId={selectedElementId} onSelectionChange={setSelectedElementId} onSceneChange={applyEditedScene} text={text} />}
-      {scene && <PascalRuntimeViewer scene={scene} sceneKey={`${selectedProjectId}:${sceneRevision}`} selectedId={selectedElementId} onSelectionChange={setSelectedElementId} onSceneChange={(next) => applyEditedScene(next, text("تم تحريك العنصر مباشرة داخل المشهد ثلاثي الأبعاد.", "The selected element was moved directly in the 3D scene."))} />}
+      {scene && <PascalRuntimeViewer scene={scene} sceneKey={`${selectedProjectId}:${sceneRevision}`} selectedId={selectedElementId} onSelectionChange={setSelectedElementId} onSceneChange={applyDirectManipulation} />}
 
       <section className="bx-grid-2" aria-label={text("حالة المنظومة الهندسية", "Architecture system status")}>
         <StatusCard icon={<Box size={20} />} kicker="CAD" title={text("هندسة أصلية من DWG/DXF", "Native DWG/DXF geometry")} detail={text("يتم بناء Floor Graph من إحداثيات CAD الأصلية وليس من تخمين بصري.", "The Floor Graph is built from native CAD coordinates rather than visual guessing.")} />
@@ -158,7 +165,7 @@ export default function ArchitectureWorkspacePage() {
         <StatusCard icon={<BrainCircuit size={20} />} kicker="AI" title={text("AI للدلالة لا للهندسة", "AI for semantics, not geometry")} detail={text("يستخدم AI لاحقًا فقط لفك الغموض الدلالي وأسماء الطبقات والعناصر.", "AI is reserved for semantic ambiguity and layer/entity interpretation.")} />
       </section>
 
-      <section className="bx-panel"><header className="bx-panel-head"><div><span className="bx-kicker">PRODUCTION STATUS</span><h3>{text("حالة قاعدة البيانات", "Database status")}</h3></div><span className="bx-chip">PERSISTENCE · LIVE</span></header><p>{text("يبقى كل مشهد CAD محليًا حتى الضغط على حفظ المشهد؛ الحفظ الحالي يستمر عبر architecture_scenes المعزولة حسب المؤسسة والمشروع.", "Every CAD scene remains local until Save scene is pressed; persistence continues through organization/project-isolated architecture_scenes.")}</p><div className="bx-actions"><button type="button" onClick={() => router.push("/")}>{text("العودة إلى لوحة القيادة", "Back to dashboard")}</button></div></section>
+      <section className="bx-panel"><header className="bx-panel-head"><div><span className="bx-kicker">PRODUCTION STATUS</span><h3>{text("حالة قاعدة البيانات", "Database status")}</h3></div><span className="bx-chip">PERSISTENCE · LIVE</span></header><p>{text("يبقى كل مشهد CAD محليًا حتى الضغط على حفظ المشهد؛ الحفظ الحالي يستمر عبر architecture_scenes على Production مع Forced RLS وعزل المؤسسة والمشروع.", "Every CAD scene remains local until Save scene is pressed; persistence continues through Production architecture_scenes with Forced RLS and organization/project isolation.")}</p><div className="bx-actions"><button type="button" onClick={() => router.push("/")}>{text("العودة إلى لوحة القيادة", "Back to dashboard")}</button></div></section>
     </main>
   );
 }
