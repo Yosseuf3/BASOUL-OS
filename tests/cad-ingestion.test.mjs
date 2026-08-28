@@ -1,0 +1,69 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+
+const cad = await readFile(new URL('../packages/cad-ingestion/src/index.ts', import.meta.url), 'utf8')
+const floorGraph = await readFile(new URL('../packages/cad-ingestion/src/floor-graph.ts', import.meta.url), 'utf8')
+const pascalCad = await readFile(new URL('../features/architecture/pascal-cad-scene.ts', import.meta.url), 'utf8')
+const gateway = await readFile(new URL('../tools/cad-ingestion/cad_ingest.py', import.meta.url), 'utf8')
+const dockerfile = await readFile(new URL('../tools/cad-ingestion/Dockerfile', import.meta.url), 'utf8')
+
+test('CAD ingestion normalizes native CAD semantics before ArchitectureScene', () => {
+  assert.match(cad, /basoul\.cad\.v1/)
+  assert.match(cad, /classifyCadEntity/)
+  assert.match(cad, /cadDocumentToArchitectureScene/)
+  assert.match(cad, /Door block semantics/)
+  assert.match(cad, /Window block semantics/)
+  assert.match(cad, /Geometry is explicitly on a wall layer/)
+  assert.match(cad, /Native CAD geometry is explicitly on a stair layer/)
+  assert.match(cad, /stiars/)
+  assert.match(cad, /Semantic room label from native CAD text/)
+  assert.match(cad, /textStyle/)
+  assert.match(cad, /path: points/)
+  assert.match(cad, /export \* from '\.\/floor-graph'/)
+})
+
+test('CAD floor graph uses native geometry, topology, hosted openings and bounded faces', () => {
+  assert.match(floorGraph, /buildCadFloorGraph/)
+  assert.match(floorGraph, /splitAtIntersections/)
+  assert.match(floorGraph, /segmentIntersection/)
+  assert.match(floorGraph, /pointSegmentDistance/)
+  assert.match(floorGraph, /bestEdge/)
+  assert.match(floorGraph, /CadRoomFace/)
+  assert.match(floorGraph, /signedArea/)
+  assert.match(floorGraph, /drawingEnvelopeArea/)
+  assert.match(floorGraph, /room\.area < drawingEnvelopeArea \* 0\.6/)
+  assert.match(floorGraph, /wallSegments=.*< 12/)
+  assert.match(floorGraph, /junctions=.*< 8/)
+  assert.match(floorGraph, /hostRatio=.*< 0\.45/)
+})
+
+test('Pascal-ready CAD scene is blocked unless deterministic geometry gate passes', () => {
+  assert.match(floorGraph, /cadDocumentToPascalReadyScene/)
+  assert.match(floorGraph, /if \(!graph\.gate\.ready\) return \{ scene: null, graph \}/)
+  assert.match(floorGraph, /cadGeometryReady: true/)
+  assert.match(floorGraph, /hostWallEdgeId/)
+  assert.match(pascalCad, /buildPascalSceneFromCad/)
+  assert.match(pascalCad, /normalizeReconciledSceneForPascal/)
+  assert.match(pascalCad, /!scene \|\| !graph\.gate\.ready/)
+  assert.doesNotMatch(floorGraph, /@pascal-app\//)
+})
+
+test('DWG decoding is isolated behind LibreDWG and ezdxf gateway', () => {
+  assert.match(gateway, /dwg2dxf/)
+  assert.match(gateway, /dwgread/)
+  assert.match(gateway, /import ezdxf/)
+  assert.match(gateway, /Only DWG and DXF are supported/)
+  assert.match(gateway, /DWGCODEPAGE/)
+  assert.match(gateway, /textStyles/)
+  assert.match(dockerfile, /LIBREDWG_VERSION=0\.14\.8531/)
+  assert.match(dockerfile, /sha256sum -c/)
+  assert.match(dockerfile, /--disable-bindings --disable-python --disable-docs --disable-shared/)
+  assert.match(dockerfile, /USER cad/)
+})
+
+test('CAD semantic core does not depend directly on LibreDWG or ezdxf', () => {
+  assert.doesNotMatch(cad, /libredwg/i)
+  assert.doesNotMatch(cad, /ezdxf/i)
+  assert.doesNotMatch(cad, /@pascal-app\//)
+})
