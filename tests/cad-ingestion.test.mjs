@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 
 const cad = await readFile(new URL('../packages/cad-ingestion/src/index.ts', import.meta.url), 'utf8')
 const floorGraph = await readFile(new URL('../packages/cad-ingestion/src/floor-graph.ts', import.meta.url), 'utf8')
+const pascalCad = await readFile(new URL('../features/architecture/pascal-cad-scene.ts', import.meta.url), 'utf8')
 const gateway = await readFile(new URL('../tools/cad-ingestion/cad_ingest.py', import.meta.url), 'utf8')
 const dockerfile = await readFile(new URL('../tools/cad-ingestion/Dockerfile', import.meta.url), 'utf8')
 
@@ -27,9 +28,11 @@ test('CAD floor graph uses native geometry, topology, hosted openings and bounde
   assert.match(floorGraph, /splitAtIntersections/)
   assert.match(floorGraph, /segmentIntersection/)
   assert.match(floorGraph, /pointSegmentDistance/)
-  assert.match(floorGraph, /hostEdgeId/)
+  assert.match(floorGraph, /bestEdge/)
   assert.match(floorGraph, /CadRoomFace/)
   assert.match(floorGraph, /signedArea/)
+  assert.match(floorGraph, /drawingEnvelopeArea/)
+  assert.match(floorGraph, /room\.area < drawingEnvelopeArea \* 0\.6/)
   assert.match(floorGraph, /wallSegments=.*< 12/)
   assert.match(floorGraph, /junctions=.*< 8/)
   assert.match(floorGraph, /hostRatio=.*< 0\.45/)
@@ -40,6 +43,9 @@ test('Pascal-ready CAD scene is blocked unless deterministic geometry gate passe
   assert.match(floorGraph, /if \(!graph\.gate\.ready\) return \{ scene: null, graph \}/)
   assert.match(floorGraph, /cadGeometryReady: true/)
   assert.match(floorGraph, /hostWallEdgeId/)
+  assert.match(pascalCad, /buildPascalSceneFromCad/)
+  assert.match(pascalCad, /normalizeReconciledSceneForPascal/)
+  assert.match(pascalCad, /!scene \|\| !graph\.gate\.ready/)
   assert.doesNotMatch(floorGraph, /@pascal-app\//)
 })
 
