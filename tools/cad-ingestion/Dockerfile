@@ -4,7 +4,7 @@ ARG LIBREDWG_VERSION=0.14.8531
 ARG LIBREDWG_SHA256=87568728aa2c0340f18c09ce438445009077b55bdab5221f960c35758b7131ac
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl xz-utils build-essential autoconf automake libtool pkg-config \
+    ca-certificates curl xz-utils build-essential autoconf automake libtool pkg-config python3 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp/libredwg
@@ -12,7 +12,7 @@ RUN curl -fsSLo libredwg.tar.xz \
       "https://github.com/LibreDWG/libredwg/releases/download/${LIBREDWG_VERSION}/libredwg-${LIBREDWG_VERSION}.tar.xz" \
     && echo "${LIBREDWG_SHA256}  libredwg.tar.xz" | sha256sum -c - \
     && tar -xJf libredwg.tar.xz --strip-components=1 \
-    && ./configure --disable-bindings --disable-docs --disable-shared --prefix=/opt/libredwg \
+    && ./configure --disable-bindings --disable-python --disable-docs --disable-shared --prefix=/opt/libredwg \
     && make -j"$(nproc)" \
     && make install
 
