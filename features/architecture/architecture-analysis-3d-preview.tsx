@@ -16,15 +16,21 @@ const ArchitectureAnalysis3DRuntime = dynamic(
 
 function asDetectedElement(element: CloudPlanElement): DetectedPlanElement | null {
   if (element.status === 'rejected') return null
-  if (!['wall', 'opening', 'room', 'label', 'dimension'].includes(element.element_type)) return null
+  const elementType = element.element_type === 'door' || element.element_type === 'window'
+    ? 'opening'
+    : element.element_type
+  if (!['wall', 'opening', 'room', 'label', 'dimension'].includes(elementType)) return null
   return {
     id: element.id,
-    element_type: element.element_type,
+    element_type: elementType as DetectedPlanElement['element_type'],
     label: element.label,
     value: element.value,
     unit: element.unit,
     confidence_score: element.confidence_score,
-    geometry: element.geometry,
+    geometry: {
+      ...element.geometry,
+      semanticOpeningType: element.element_type === 'door' || element.element_type === 'window' ? element.element_type : undefined,
+    },
     notes: element.notes ?? undefined,
   }
 }
@@ -78,7 +84,7 @@ export function ArchitectureAnalysis3DPreview({ elements, drawingId }: { element
 
   return <section className="panel" aria-label="BASOUL reconciled 3D analysis preview">
     <div className="panel-head"><div><span className="section-kicker">03B · GEOMETRY RECONCILIATION</span><h2>النموذج الهندسي المستنتج</h2></div><span>{wallCount} جدار · {openingCount} فتحة</span></div>
-    <p className="plan-understanding-intro">معاينة ثلاثية الأبعاد ناتجة من عناصر التحليل بعد المطابقة الهندسية. العناصر منخفضة الثقة تظل بحاجة إلى مراجعة بشرية قبل اعتمادها.</p>
+    <p className="plan-understanding-intro">معاينة ثلاثية الأبعاد ناتجة من عناصر التحليل بعد المطابقة الهندسية. السلالم والأعمدة والشافتات تبقى في طبقة المراجعة حاليًا ولا تُدفع إلى Pascal قبل اعتماد هندستها.</p>
     <div className="plan-inspector-summary">
       <span><b>{result.acceptedElementIds.length}</b> مقبول مبدئيًا</span>
       <span><b>{result.reviewElementIds.length}</b> يحتاج مراجعة</span>
