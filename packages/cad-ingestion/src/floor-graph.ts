@@ -1,5 +1,5 @@
 import type { ArchitectureScene } from '../../architecture-engine/src/index'
-import type { CadEntity, CadPoint, NormalizedCadDocument } from './index'
+import type { CadPoint, NormalizedCadDocument } from './index'
 import { cadDocumentToArchitectureScene, classifyCadEntity } from './index'
 
 export interface CadFloorVertex { id: string; x: number; y: number; degree: number }
@@ -144,7 +144,7 @@ export function buildCadFloorGraph(document: NormalizedCadDocument): CadFloorGra
   }
 
   const verticesById = new Map([...vertexMap.values()].map((v) => [v.id, v]))
-  const rooms: CadRoomFace[] = []
+  const roomCandidates: CadRoomFace[] = []
   const visitedHalfEdges = new Set<string>()
   const halfKey = (a: string, b: string) => `${a}>${b}`
   for (const start of edges) {
@@ -176,14 +176,23 @@ export function buildCadFloorGraph(document: NormalizedCadDocument): CadFloorGra
         if (halfKey(from, to) === startKey) {
           const points = cycle.map((id) => verticesById.get(id)!).map((v) => ({ x: v.x, y: v.y }))
           const area = signedArea(points)
-          if (area > scale.minRoomArea && points.length >= 3) rooms.push({ id: `room:${rooms.length}`, vertexIds: [...cycle], area, centroid: centroid(points, area) })
+          if (area > scale.minRoomArea && points.length >= 3) roomCandidates.push({ id: `candidate:${roomCandidates.length}`, vertexIds: [...cycle], area, centroid: centroid(points, area) })
           break
         }
       }
     }
   }
 
-  const originalSegments = rawWallSegments(document)
+  const allVertices = [...vertexMap.values()]
+  const minX = Math.min(...allVertices.map((v) => v.x))
+  const maxX = Math.max(...allVertices.map((v) => v.x))
+  const minY = Math.min(...allVertices.map((v) => v.y))
+  const maxY = Math.max(...allVertices.map((v) => v.y))
+  const drawingEnvelopeArea = Math.max(scale.minRoomArea, (maxX - minX) * (maxY - minY))
+  const rooms = roomCandidates
+    .filter((room) => room.area < drawingEnvelopeArea * 0.6)
+    .map((room, index) => ({ ...room, id: `room:${index}` }))
+
   const openingEntities = document.entities.filter((entity) => {
     const kind = classifyCadEntity(entity).kind
     return kind === 'door' || kind === 'window'
@@ -191,18 +200,20 @@ export function buildCadFloorGraph(document: NormalizedCadDocument): CadFloorGra
   const openings: CadHostedOpening[] = openingEntities.map((entity) => {
     const kind = classifyCadEntity(entity).kind as 'door' | 'window'
     const point = entity.insert ?? entity.points?.[0]
-    if (!point || !originalSegments.length) return { entityId: entity.id, kind, hostEdgeId: null, distance: null }
-    let best: RawSegment | null = null
+    if (!point || !edges.length) return { entityId: entity.id, kind, hostEdgeId: null, distance: null }
+    let bestEdge: CadFloorEdge | null = null
     let bestDistance = Number.POSITIVE_INFINITY
-    for (const segment of originalSegments) {
-      const d = pointSegmentDistance(point, segment)
-      if (d < bestDistance) { best = segment; bestDistance = d }
+    for (const edge of edges) {
+      const a = verticesById.get(edge.a)
+      const b = verticesById.get(edge.b)
+      if (!a || !b) continue
+      const d = pointSegmentDistance(point, { id: edge.id, sourceEntityId: edge.sourceEntityId, a, b })
+      if (d < bestDistance) { bestEdge = edge; bestDistance = d }
     }
-    const hostEdge = best ? edges.find((edge) => edge.sourceEntityId === best!.sourceEntityId) : null
-    return { entityId: entity.id, kind, hostEdgeId: bestDistance <= scale.host ? hostEdge?.id ?? null : null, distance: bestDistance }
+    return { entityId: entity.id, kind, hostEdgeId: bestDistance <= scale.host ? bestEdge?.id ?? null : null, distance: bestDistance }
   })
 
-  const vertices = [...vertexMap.values()].map((v) => ({ id: v.id, x: v.x, y: v.y, degree: v.neighbors.size }))
+  const vertices = allVertices.map((v) => ({ id: v.id, x: v.x, y: v.y, degree: v.neighbors.size }))
   const junctions = vertices.filter((v) => v.degree >= 2).length
   const hostedOpenings = openings.filter((opening) => opening.hostEdgeId).length
   const hostRatio = openings.length ? hostedOpenings / openings.length : 1
