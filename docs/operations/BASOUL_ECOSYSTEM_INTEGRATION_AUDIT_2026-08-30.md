@@ -1,7 +1,7 @@
 # BASOUL Ecosystem Integration Audit
 
 Date: 2026-08-30
-Status: Executed — release readiness blocked by explicit integration/infrastructure gates
+Status: Executed — release readiness blocked by explicit architecture/infrastructure decisions
 Copyright © 2026 ELSHENAWY RADWAN
 
 ## Scope
@@ -31,11 +31,11 @@ Archived history is not current authority: `YOSSEUF-Platform`, `YOSSEUF-Program-
 
 **EXPECTED / NO CHANGE.** Supabase display names, Expo slug, URL scheme, package/bundle identifiers and other external identifiers remain intentionally unchanged. Cosmetic renaming is not release-readiness work and requires a separately approved migration.
 
-### F4 — BASOUL AI canonical tenant boundary
+### F4 — BASOUL AI canonical tenant boundary and OS consumer
 
-**PASS ON AI SIDE.** BASOUL AI authenticates the bearer session, resolves active canonical `organization_memberships` plus `organizations`, fails closed when tenant authority is unavailable, and scopes conversation/session/message/memory access by organization and user. Its canonical tenant test suite explicitly rejects implicit organization selection and legacy membership authority. The current v1.0.1 main CI is green.
+**PASS.** BASOUL AI authenticates the bearer session, resolves active canonical `organization_memberships` plus `organizations`, fails closed when tenant authority is unavailable, and scopes conversation/session/message/memory access by organization and user. Its canonical tenant test suite explicitly rejects implicit organization selection and legacy membership authority. The current v1.0.1 main CI is green.
 
-**OS CONSUMER CONTRACT: NOT YET PROVEN.** Current BASOUL OS search/audit did not identify a concrete runtime consumer/gateway contract to BASOUL AI that can be validated end-to-end. Documentation that AI integration is intended is not treated as runtime proof. This gate remains pending until a concrete OS consumer or gateway plus contract test is established.
+BASOUL OS now exposes a governed server-side streaming gateway at `/api/integrations/ai/conversation`. The gateway requires the caller's Bearer token and delegates tenant validation to `https://ai.basoul.net/api/conversation`. It does not forward cookies, organization claims or service-role authority. Contract tests guard the authority boundary, HTTPS requirement, streaming and no-store behavior.
 
 ### F5 — BASOUL Accounting canonical tenant boundary
 
@@ -45,7 +45,7 @@ Issue `BASOUL-Accounting#71` records the release blocker. No Production migratio
 
 ### F6 — Accounting repository quality automation
 
-**PASS.** Accounting PR `#72` established a read-only CI baseline after the audit found no current `main` workflow history. The new gate passed TypeScript, production build and high-severity production dependency audit and was merged. This quality result is intentionally separate from the canonical-tenant blocker.
+**PASS.** Accounting PR `#72` established a read-only CI baseline. The new gate passed TypeScript, production build and high-severity production dependency audit and was merged. This quality result is intentionally separate from the canonical-tenant blocker.
 
 ### F7 — Design System repository quality
 
@@ -53,7 +53,9 @@ Issue `BASOUL-Accounting#71` records the release blocker. No Production migratio
 
 ### F8 — Design System consumption across products
 
-**PENDING.** BASOUL OS currently uses product-local YVL packages/adapters, while AI and Accounting do not declare the standalone Design System workspace packages as dependencies. Ecosystem-wide consumption is therefore not proven. A broad visual refactor is not authorized; adoption must proceed consumer-by-consumer with regression evidence.
+**BLOCKED BY DISTRIBUTION DECISION.** The root workspace is private and no verified package publication/registry contract exists. BASOUL OS currently uses product-local YVL packages/adapters, while AI and Accounting do not declare the standalone Design System workspace packages as dependencies. Consumer migration must not proceed through undocumented copying or an invented dependency path.
+
+`BASOUL-Design-System#6` records the required architecture decision: approved registry publication, approved monorepo/workspace consolidation, or a pinned reproducible source-distribution mechanism. Package/repository renames or publication are not authorized by this audit.
 
 ### F9 — R2 isolation
 
@@ -61,7 +63,7 @@ Issue `BASOUL-Accounting#71` records the release blocker. No Production migratio
 
 ### F10 — BASOUL OS quality and mobile runtime
 
-**PASS FOR CODE/STATIC RUNTIME.** Current PR quality gate and mobile runtime validation are green. Expo Doctor is **21/21 PASS** after aligning Expo to `~57.0.18`.
+**PASS FOR CODE/STATIC RUNTIME.** Web and mobile quality gates are green. Expo Doctor is **21/21 PASS** after aligning Expo to `~57.0.18`.
 
 External mobile build queues remain separate infrastructure gates:
 
@@ -76,19 +78,19 @@ Neither failure indicates a TypeScript/Expo Doctor/application-code regression, 
 | --- | --- | --- |
 | Repository lifecycle | **PASS** | HQ consolidation complete: 6 current + 4 archived |
 | HQ production | **PASS** | HQ production remained READY after consolidation |
-| OS code quality | **PASS** | PR quality workflow green |
-| OS mobile static/runtime | **PASS** | Runtime validation green; Expo Doctor 21/21 |
+| OS code quality | **PASS** | web/mobile quality workflow green |
+| OS mobile static/runtime | **PASS** | runtime validation green; Expo Doctor 21/21 |
 | Android EAS preview build | **BLOCKED — external capacity** | Free-plan Android quota exhausted until 2026-09-01 |
-| iOS EAS development build | **BLOCKED — credentials** | No non-interactive internal-distribution credentials available |
+| iOS EAS development build | **BLOCKED — credentials** | no non-interactive internal-distribution credentials available |
 | AI repository quality | **PASS** | v1.0.1 main CI success |
 | AI canonical tenant boundary | **PASS** | canonical membership resolver + route enforcement + tests |
-| OS ↔ AI runtime consumer contract | **PENDING** | no concrete current OS runtime consumer/gateway proof identified |
+| OS ↔ AI runtime consumer contract | **PASS** | governed Bearer-token streaming gateway + contract tests |
 | Accounting repository quality | **PASS** | PR #72 merged after TypeScript/build/audit gate success |
-| OS ↔ Accounting tenant contract | **BLOCKED** | issue #71; canonical tenant cutover required |
+| OS ↔ Accounting tenant contract | **BLOCKED — approval boundary** | issue #71; canonical tenant cutover required |
 | Design System repository quality | **PASS** | PR #5 merged after green CI |
-| Design System consumer adoption | **PENDING** | consumer-by-consumer migration/equivalence proof required |
+| Design System consumer adoption | **BLOCKED — architecture decision** | issue #6; distribution contract required before migration |
 | R2 isolation | **PASS** | dry-run/no-write/no-secret controls verified |
-| End-to-end ecosystem release gate | **BLOCKED** | waits on tenant/consumer/build gates above |
+| End-to-end ecosystem release gate | **BLOCKED** | waits on Accounting tenant, Design System distribution and mobile build gates |
 
 ## Safety constraints
 
@@ -99,16 +101,17 @@ This audit does **not** authorize:
 - repository, package, domain, Expo slug, URL scheme, Android package or iOS bundle-ID renames.
 - production data movement.
 - product-repository merges.
+- package registry publication.
 - promotion of R2 research into production.
 - canonical Accounting tenant cutover without explicit owner approval for the production/security migration plan.
 
-## Next decision boundary
+## Explicit decision boundary
 
-All currently safe, reversible audit hardening has been executed. Ecosystem release readiness remains **BLOCKED** until the following are resolved:
+All remaining work now crosses a user-approval, external-capacity, signing-credential or external-identifier boundary:
 
-1. Accounting canonical tenant cutover (`BASOUL-Accounting#71`) — this can touch Supabase/Auth/RLS/production tenant authority and therefore crosses the explicit-approval boundary.
-2. A concrete BASOUL OS → BASOUL AI runtime consumer/gateway contract and contract test.
-3. Consumer-by-consumer Design System adoption/equivalence proof.
-4. Successful Android/iOS device-build gates once EAS capacity and iOS internal-distribution credentials are available.
+1. **Accounting canonical tenant cutover** (`BASOUL-Accounting#71`) — requires approval before Supabase/Auth/RLS/production tenant authority changes.
+2. **Design System distribution contract** (`BASOUL-Design-System#6`) — choose registry publication, monorepo/workspace consolidation, or pinned source distribution before consumer migration.
+3. **Android EAS build** — free-plan quota resets on 2026-09-01; paying to bypass the quota is a financial decision.
+4. **iOS EAS build** — provisioning suitable internal-distribution credentials touches signing credentials and requires explicit approval.
 
-The first item is the critical architectural blocker. No production/security mutation has been performed by this audit.
+No production/security/signing/financial/external-identifier mutation has been performed by this audit.
