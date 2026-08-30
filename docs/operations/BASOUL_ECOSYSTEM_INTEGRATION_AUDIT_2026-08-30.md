@@ -45,7 +45,7 @@ Issue `BASOUL-Accounting#71` records the release blocker. No Production migratio
 
 ### F6 — Accounting repository quality automation
 
-**IN PROGRESS.** Accounting had no `main` GitHub Actions history at audit time. PR `BASOUL-Accounting#72` adds a read-only CI baseline covering deterministic install, TypeScript, production build and high-severity production dependency audit. This quality gate is intentionally separate from the canonical-tenant blocker.
+**PASS.** Accounting PR `#72` established a read-only CI baseline after the audit found no current `main` workflow history. The new gate passed TypeScript, production build and high-severity production dependency audit and was merged. This quality result is intentionally separate from the canonical-tenant blocker.
 
 ### F7 — Design System repository quality
 
@@ -83,7 +83,7 @@ Neither failure indicates a TypeScript/Expo Doctor/application-code regression, 
 | AI repository quality | **PASS** | v1.0.1 main CI success |
 | AI canonical tenant boundary | **PASS** | canonical membership resolver + route enforcement + tests |
 | OS ↔ AI runtime consumer contract | **PENDING** | no concrete current OS runtime consumer/gateway proof identified |
-| Accounting repository quality | **IN PROGRESS** | PR #72 adds CI baseline |
+| Accounting repository quality | **PASS** | PR #72 merged after TypeScript/build/audit gate success |
 | OS ↔ Accounting tenant contract | **BLOCKED** | issue #71; canonical tenant cutover required |
 | Design System repository quality | **PASS** | PR #5 merged after green CI |
 | Design System consumer adoption | **PENDING** | consumer-by-consumer migration/equivalence proof required |
@@ -104,7 +104,7 @@ This audit does **not** authorize:
 
 ## Next decision boundary
 
-All currently safe, reversible audit hardening has been executed or placed in review. Ecosystem release readiness remains **BLOCKED** until the following are resolved:
+All currently safe, reversible audit hardening has been executed. Ecosystem release readiness remains **BLOCKED** until the following are resolved:
 
 1. Accounting canonical tenant cutover (`BASOUL-Accounting#71`) — this can touch Supabase/Auth/RLS/production tenant authority and therefore crosses the explicit-approval boundary.
 2. A concrete BASOUL OS → BASOUL AI runtime consumer/gateway contract and contract test.
