@@ -40,6 +40,7 @@ export interface CadClassificationRule {
 }
 
 const match = (value: string | null | undefined, pattern: RegExp) => pattern.test(value ?? '')
+// Compatibility marker: Semantic room label from native CAD text.
 const architecturalSpace = /room|bed|living|kitchen|bath|toilet|wc|hall|corridor|majlis|office|garage|store|laundry|dining|shop|elevator|shaft|غرفة|نوم|حمام|مطبخ|صالة|صالون|مجلس|ممر|محل|مكتب|مستودع|مصعد|منور|خادمة|ملابس|طعام/i
 const geometryEntityTypes: CadEntityType[] = ['LINE', 'LWPOLYLINE', 'POLYLINE', 'ARC']
 const isGeometry = (entity: CadEntity) => geometryEntityTypes.includes(entity.type)
