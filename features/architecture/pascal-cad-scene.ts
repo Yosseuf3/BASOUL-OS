@@ -1,6 +1,6 @@
 import type { ArchitectureScene } from '../../packages/architecture-engine/src'
 import type { CadFloorGraph, NormalizedCadDocument } from '../../packages/cad-ingestion/src'
-import { cadDocumentToPascalReadyScene } from '../../packages/cad-ingestion/src'
+import { applySemanticRoomsToScene, cadDocumentToPascalReadyScene } from '../../packages/cad-ingestion/src'
 import { normalizeReconciledSceneForPascal } from './pascal-reconciled-scene'
 
 export interface PascalCadSceneResult {
@@ -21,10 +21,11 @@ export function buildPascalSceneFromCad(document: NormalizedCadDocument): Pascal
     }
   }
 
+  const semantic = applySemanticRoomsToScene(scene, document)
   return {
     ready: true,
     graph,
-    scene: normalizeReconciledSceneForPascal(scene),
+    scene: normalizeReconciledSceneForPascal(semantic.scene),
     reason: null,
   }
 }
