@@ -1,11 +1,26 @@
 import type { ArchitectureScene } from '../../architecture-engine/src/index'
-import type { CadPoint, NormalizedCadDocument } from './index'
+import type { CadEntity, CadPoint, NormalizedCadDocument } from './index'
 import { cadDocumentToArchitectureScene, classifyCadEntity } from './index'
 
 export interface CadFloorVertex { id: string; x: number; y: number; degree: number }
 export interface CadFloorEdge { id: string; a: string; b: string; sourceEntityId: string; length: number }
-export interface CadHostedOpening { entityId: string; kind: 'door' | 'window'; hostEdgeId: string | null; distance: number | null }
-export interface CadRoomFace { id: string; vertexIds: string[]; area: number; centroid: CadPoint }
+export interface CadHostedOpening {
+  entityId: string
+  kind: 'door' | 'window'
+  hostEdgeId: string | null
+  distance: number | null
+  orientationError: number | null
+}
+export interface CadRoomFace {
+  id: string
+  vertexIds: string[]
+  area: number
+  centroid: CadPoint
+  perimeter: number
+  minSpan: number
+  compactness: number
+  labelEntityId: string | null
+}
 export interface CadGeometryGate { ready: boolean; wallSegments: number; junctions: number; hostedOpenings: number; openings: number; hostRatio: number; rooms: number; reasons: string[] }
 export interface CadFloorGraph {
   vertices: CadFloorVertex[]
@@ -16,6 +31,7 @@ export interface CadFloorGraph {
 }
 
 interface RawSegment { id: string; sourceEntityId: string; a: CadPoint; b: CadPoint }
+interface FloorScale { snap: number; host: number; minRoomArea: number; minRoomSpan: number }
 
 const sq = (n: number) => n * n
 const distance = (a: CadPoint, b: CadPoint) => Math.hypot(a.x - b.x, a.y - b.y)
@@ -24,11 +40,11 @@ const signedArea = (points: CadPoint[]) => points.reduce((sum, p, i) => {
   return sum + p.x * q.y - q.x * p.y
 }, 0) / 2
 
-function scaleFor(document: NormalizedCadDocument) {
+function scaleFor(document: NormalizedCadDocument): FloorScale {
   const units = (document.units ?? '').toLowerCase()
-  if (units.includes('millimeter') || units === 'mm') return { snap: 20, host: 600, minRoomArea: 1_000_000 }
-  if (units.includes('centimeter') || units === 'cm') return { snap: 2, host: 60, minRoomArea: 10_000 }
-  return { snap: 0.02, host: 0.6, minRoomArea: 1 }
+  if (units.includes('millimeter') || units === 'mm' || units === '4') return { snap: 20, host: 600, minRoomArea: 1_000_000, minRoomSpan: 650 }
+  if (units.includes('centimeter') || units === 'cm' || units === '5') return { snap: 2, host: 60, minRoomArea: 10_000, minRoomSpan: 65 }
+  return { snap: 0.02, host: 0.6, minRoomArea: 1, minRoomSpan: 0.65 }
 }
 
 function rawWallSegments(document: NormalizedCadDocument): RawSegment[] {
@@ -114,6 +130,43 @@ function centroid(points: CadPoint[], area: number): CadPoint {
   return { x: cx * k, y: cy * k }
 }
 
+function polygonMetrics(points: CadPoint[], area: number) {
+  let perimeter = 0
+  for (let i = 0; i < points.length; i += 1) perimeter += distance(points[i], points[(i + 1) % points.length])
+  const xs = points.map((point) => point.x)
+  const ys = points.map((point) => point.y)
+  const minSpan = Math.min(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys))
+  const compactness = perimeter > 1e-9 ? (4 * Math.PI * Math.abs(area)) / sq(perimeter) : 0
+  return { perimeter, minSpan, compactness }
+}
+
+function pointInPolygon(point: CadPoint, polygon: CadPoint[]) {
+  let inside = false
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i]
+    const b = polygon[j]
+    const crosses = (a.y > point.y) !== (b.y > point.y)
+      && point.x < ((b.x - a.x) * (point.y - a.y)) / ((b.y - a.y) || 1e-12) + a.x
+    if (crosses) inside = !inside
+  }
+  return inside
+}
+
+function angularDistance(a: number, b: number) {
+  let delta = Math.abs(a - b) % Math.PI
+  if (delta > Math.PI / 2) delta = Math.PI - delta
+  return delta
+}
+
+function openingOrientationError(entity: CadEntity, a: CadPoint, b: CadPoint) {
+  if (entity.rotation == null) return 0
+  const openingAngle = entity.rotation * Math.PI / 180
+  const wallAngle = Math.atan2(b.y - a.y, b.x - a.x)
+  const parallel = angularDistance(openingAngle, wallAngle)
+  const perpendicular = angularDistance(openingAngle + Math.PI / 2, wallAngle)
+  return Math.min(parallel, perpendicular)
+}
+
 export function buildCadFloorGraph(document: NormalizedCadDocument): CadFloorGraph {
   const scale = scaleFor(document)
   const segments = splitAtIntersections(rawWallSegments(document))
@@ -176,11 +229,34 @@ export function buildCadFloorGraph(document: NormalizedCadDocument): CadFloorGra
         if (halfKey(from, to) === startKey) {
           const points = cycle.map((id) => verticesById.get(id)!).map((v) => ({ x: v.x, y: v.y }))
           const area = signedArea(points)
-          if (area > scale.minRoomArea && points.length >= 3) roomCandidates.push({ id: `candidate:${roomCandidates.length}`, vertexIds: [...cycle], area, centroid: centroid(points, area) })
+          if (area > scale.minRoomArea && points.length >= 3) {
+            const metrics = polygonMetrics(points, area)
+            roomCandidates.push({
+              id: `candidate:${roomCandidates.length}`,
+              vertexIds: [...cycle],
+              area,
+              centroid: centroid(points, area),
+              ...metrics,
+              labelEntityId: null,
+            })
+          }
           break
         }
       }
     }
+  }
+
+  const roomLabels = document.entities.filter((entity) => {
+    if (!['TEXT', 'MTEXT'].includes(entity.type)) return false
+    return classifyCadEntity(entity).kind === 'room' && Boolean(entity.insert ?? entity.points?.[0])
+  })
+  for (const room of roomCandidates) {
+    const polygon = room.vertexIds.map((id) => verticesById.get(id)!).map((v) => ({ x: v.x, y: v.y }))
+    const label = roomLabels.find((entity) => {
+      const point = entity.insert ?? entity.points?.[0]
+      return point ? pointInPolygon(point, polygon) : false
+    })
+    room.labelEntityId = label?.id ?? null
   }
 
   const allVertices = [...vertexMap.values()]
@@ -190,7 +266,11 @@ export function buildCadFloorGraph(document: NormalizedCadDocument): CadFloorGra
   const maxY = Math.max(...allVertices.map((v) => v.y))
   const drawingEnvelopeArea = Math.max(scale.minRoomArea, (maxX - minX) * (maxY - minY))
   const rooms = roomCandidates
-    .filter((room) => room.area < drawingEnvelopeArea * 0.6)
+    .filter((room) => {
+      if (room.area >= drawingEnvelopeArea * 0.6) return false
+      if (room.labelEntityId) return true
+      return room.minSpan >= scale.minRoomSpan && room.compactness >= 0.06
+    })
     .map((room, index) => ({ ...room, id: `room:${index}` }))
 
   const openingEntities = document.entities.filter((entity) => {
@@ -200,17 +280,33 @@ export function buildCadFloorGraph(document: NormalizedCadDocument): CadFloorGra
   const openings: CadHostedOpening[] = openingEntities.map((entity) => {
     const kind = classifyCadEntity(entity).kind as 'door' | 'window'
     const point = entity.insert ?? entity.points?.[0]
-    if (!point || !edges.length) return { entityId: entity.id, kind, hostEdgeId: null, distance: null }
+    if (!point || !edges.length) return { entityId: entity.id, kind, hostEdgeId: null, distance: null, orientationError: null }
     let bestEdge: CadFloorEdge | null = null
     let bestDistance = Number.POSITIVE_INFINITY
+    let bestOrientationError = Number.POSITIVE_INFINITY
+    let bestScore = Number.POSITIVE_INFINITY
     for (const edge of edges) {
       const a = verticesById.get(edge.a)
       const b = verticesById.get(edge.b)
       if (!a || !b) continue
       const d = pointSegmentDistance(point, { id: edge.id, sourceEntityId: edge.sourceEntityId, a, b })
-      if (d < bestDistance) { bestEdge = edge; bestDistance = d }
+      if (d > scale.host) continue
+      const orientationError = openingOrientationError(entity, a, b)
+      const score = d / scale.host + (orientationError / (Math.PI / 4)) * 0.2
+      if (score < bestScore) {
+        bestEdge = edge
+        bestDistance = d
+        bestOrientationError = orientationError
+        bestScore = score
+      }
     }
-    return { entityId: entity.id, kind, hostEdgeId: bestDistance <= scale.host ? bestEdge?.id ?? null : null, distance: bestDistance }
+    return {
+      entityId: entity.id,
+      kind,
+      hostEdgeId: bestEdge?.id ?? null,
+      distance: bestEdge ? bestDistance : null,
+      orientationError: bestEdge ? bestOrientationError : null,
+    }
   })
 
   const vertices = allVertices.map((v) => ({ id: v.id, x: v.x, y: v.y, degree: v.neighbors.size }))
@@ -231,11 +327,16 @@ export function cadDocumentToPascalReadyScene(document: NormalizedCadDocument): 
   const graph = buildCadFloorGraph(document)
   if (!graph.gate.ready) return { scene: null, graph }
   const scene = cadDocumentToArchitectureScene(document)
-  scene.metadata = { ...scene.metadata, cadGeometryReady: true, cadFloorGraph: graph.gate }
+  scene.metadata = { ...scene.metadata, cadGeometryReady: true, cadFloorGraph: graph.gate, cadFloorGraphVersion: 2 }
   for (const opening of graph.openings) {
     const node = scene.nodes[`cad:${opening.entityId}`]
     if (!node) continue
-    node.metadata = { ...node.metadata, hostWallEdgeId: opening.hostEdgeId, hostDistance: opening.distance }
+    node.metadata = {
+      ...node.metadata,
+      hostWallEdgeId: opening.hostEdgeId,
+      hostDistance: opening.distance,
+      hostOrientationError: opening.orientationError,
+    }
   }
   for (const room of graph.rooms) {
     scene.nodes[`cad:${room.id}`] = {
@@ -246,7 +347,15 @@ export function cadDocumentToPascalReadyScene(document: NormalizedCadDocument): 
         const v = graph.vertices.find((vertex) => vertex.id === id)!
         return { x: v.x, y: v.y }
       }),
-      metadata: { source: 'cad-floor-graph', area: room.area, centroid: room.centroid },
+      metadata: {
+        source: 'cad-floor-graph-v2',
+        area: room.area,
+        centroid: room.centroid,
+        perimeter: room.perimeter,
+        minSpan: room.minSpan,
+        compactness: room.compactness,
+        labelEntityId: room.labelEntityId,
+      },
     }
   }
   return { scene, graph }

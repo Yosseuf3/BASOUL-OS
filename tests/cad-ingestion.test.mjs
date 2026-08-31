@@ -35,10 +35,22 @@ test('CAD floor graph uses native geometry, topology, hosted openings and bounde
   assert.match(floorGraph, /CadRoomFace/)
   assert.match(floorGraph, /signedArea/)
   assert.match(floorGraph, /drawingEnvelopeArea/)
-  assert.match(floorGraph, /room\.area < drawingEnvelopeArea \* 0\.6/)
+  assert.match(floorGraph, /room\.area >= drawingEnvelopeArea \* 0\.6/)
   assert.match(floorGraph, /wallSegments=.*< 12/)
   assert.match(floorGraph, /junctions=.*< 8/)
   assert.match(floorGraph, /hostRatio=.*< 0\.45/)
+})
+
+test('CAD Floor Graph v2 hardens opening hosting and room semantics', () => {
+  assert.match(floorGraph, /openingOrientationError/)
+  assert.match(floorGraph, /orientationError/)
+  assert.match(floorGraph, /d > scale\.host/)
+  assert.match(floorGraph, /pointInPolygon/)
+  assert.match(floorGraph, /labelEntityId/)
+  assert.match(floorGraph, /minRoomSpan/)
+  assert.match(floorGraph, /compactness >= 0\.06/)
+  assert.match(floorGraph, /cadFloorGraphVersion: 2/)
+  assert.match(floorGraph, /source: 'cad-floor-graph-v2'/)
 })
 
 test('Pascal-ready CAD scene is blocked unless deterministic geometry gate passes', () => {
@@ -77,6 +89,7 @@ test('Vercel CAD gateway is a private service binding with bounded HTTP ingestio
   assert.match(vercelConfig, /"service": "cad_gateway"/)
   assert.match(vercelConfig, /"env": "CAD_GATEWAY_URL"/)
   assert.match(vercelConfig, /"runtime": "container"/)
+  assert.match(vercelConfig, /"main": false/)
   assert.doesNotMatch(vercelConfig, /destination"\s*:\s*\{\s*"service"\s*:\s*"cad_gateway"/)
 })
 
