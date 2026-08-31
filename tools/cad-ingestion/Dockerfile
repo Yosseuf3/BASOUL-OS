@@ -29,6 +29,7 @@ WORKDIR /app
 COPY tools/cad-ingestion/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY tools/cad-ingestion/cad_ingest.py ./cad_ingest.py
+COPY tools/cad-ingestion/shx_decode.py ./shx_decode.py
 
 RUN useradd --create-home --uid 10001 cad && chown -R cad:cad /app
 USER cad
