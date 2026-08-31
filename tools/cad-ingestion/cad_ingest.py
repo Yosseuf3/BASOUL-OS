@@ -10,6 +10,8 @@ from pathlib import Path
 import ezdxf
 from ezdxf import bbox
 
+from shx_decode import decode_legacy_shx_text
+
 
 def point(value):
     if value is None:
@@ -87,13 +89,15 @@ def normalize_entity(entity, index, text_style_map):
 
     text_style = str(safe_get(entity, "style", "")) if kind in {"TEXT", "MTEXT"} else ""
     style_info = text_style_map.get(text_style, {})
+    raw_text = entity_text(entity)
+    decoded_text, text_encoding = decode_legacy_shx_text(raw_text, style_info.get("font"))
 
     return {
         "id": str(getattr(entity.dxf, "handle", None) or f"entity-{index}"),
         "type": kind if kind in {"LINE", "LWPOLYLINE", "POLYLINE", "ARC", "CIRCLE", "INSERT", "TEXT", "MTEXT", "DIMENSION", "HATCH"} else "UNKNOWN",
         "layer": str(safe_get(entity, "layer", "0")),
         "blockName": block_name,
-        "text": entity_text(entity),
+        "text": decoded_text if decoded_text is not None else raw_text,
         "points": [p for p in entity_points(entity) if p is not None],
         "insert": insert,
         "rotation": float(safe_get(entity, "rotation", 0.0) or 0.0) if kind == "INSERT" else None,
@@ -108,6 +112,9 @@ def normalize_entity(entity, index, text_style_map):
             "font": style_info.get("font"),
             "bigFont": style_info.get("bigFont"),
             "insertBounds": insert_bounds(entity),
+            "rawText": raw_text if decoded_text is not None else None,
+            "decodedText": decoded_text,
+            "textEncoding": text_encoding,
         },
     }
 
@@ -157,6 +164,7 @@ def normalize(path: Path):
             if block.name.startswith("*"):
                 continue
             blocks.append({"name": block.name, "entityCount": sum(1 for _ in block)})
+        decoded_count = sum(1 for entity in entities if entity.get("metadata", {}).get("decodedText"))
         return {
             "schema": "basoul.cad.v1",
             "source": {
@@ -170,6 +178,7 @@ def normalize(path: Path):
             "blocks": blocks,
             "textStyles": text_styles,
             "entities": entities,
+            "textDecoding": {"decoder": "xarab-keyboard-v1", "decodedEntities": decoded_count},
         }
     finally:
         if temp_dir is not None:
