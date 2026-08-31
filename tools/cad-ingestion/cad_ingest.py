@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 
 import ezdxf
+from ezdxf import bbox
 
 
 def point(value):
@@ -49,6 +50,18 @@ def entity_text(entity):
         except Exception:
             return entity.text
     return None
+
+
+def insert_bounds(entity):
+    if entity.dxftype() != "INSERT":
+        return None
+    try:
+        box = bbox.extents([entity], fast=True)
+        if not box.has_data:
+            return None
+        return {"min": point(box.extmin), "max": point(box.extmax)}
+    except Exception:
+        return None
 
 
 def normalize_entity(entity, index, text_style_map):
@@ -94,6 +107,7 @@ def normalize_entity(entity, index, text_style_map):
             "textStyle": text_style or None,
             "font": style_info.get("font"),
             "bigFont": style_info.get("bigFont"),
+            "insertBounds": insert_bounds(entity),
         },
     }
 
