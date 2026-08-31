@@ -30,6 +30,7 @@ export interface NormalizedCadDocument {
   blocks: CadBlock[]
   textStyles?: CadTextStyle[]
   entities: CadEntity[]
+  textDecoding?: { decoder: string; decodedEntities: number }
 }
 
 export interface CadClassificationRule {
@@ -39,7 +40,7 @@ export interface CadClassificationRule {
 }
 
 const match = (value: string | null | undefined, pattern: RegExp) => pattern.test(value ?? '')
-const architecturalSpace = /room|bed|living|kitchen|bath|toilet|wc|hall|corridor|majlis|office|garage|store|laundry|dining|shop|elevator|shaft|غرفة|حمام|مطبخ|صالة|مجلس|ممر|محل|مكتب|مستودع|مصعد|منور/i
+const architecturalSpace = /room|bed|living|kitchen|bath|toilet|wc|hall|corridor|majlis|office|garage|store|laundry|dining|shop|elevator|shaft|غرفة|نوم|حمام|مطبخ|صالة|صالون|مجلس|ممر|محل|مكتب|مستودع|مصعد|منور|خادمة|ملابس|طعام/i
 const geometryEntityTypes: CadEntityType[] = ['LINE', 'LWPOLYLINE', 'POLYLINE', 'ARC']
 const isGeometry = (entity: CadEntity) => geometryEntityTypes.includes(entity.type)
 const doorBlockPattern = /door|(?:^|[_-])dr(?:[_-]|$)|^dr[_-]|باب/i
@@ -51,7 +52,7 @@ export function classifyCadEntity(entity: CadEntity): CadClassificationRule {
   const text = entity.text ?? ''
 
   if (entity.type === 'DIMENSION') return { kind: 'dimension', confidence: 0.99, reason: 'Native CAD DIMENSION entity.' }
-  if ((entity.type === 'TEXT' || entity.type === 'MTEXT') && match(text, architecturalSpace)) return { kind: 'room', confidence: 0.84, reason: 'Semantic room label from native CAD text.' }
+  if ((entity.type === 'TEXT' || entity.type === 'MTEXT') && match(text, architecturalSpace)) return { kind: 'room', confidence: 0.9, reason: 'Semantic room label from native or decoded CAD text.' }
   if (entity.type === 'TEXT' || entity.type === 'MTEXT') return { kind: 'label', confidence: 0.92, reason: 'Native CAD text entity.' }
 
   if (entity.type === 'INSERT' && match(block, doorBlockPattern)) return { kind: 'door', confidence: 0.98, reason: 'Door block semantics.' }
@@ -86,6 +87,9 @@ function nodeFromEntity(entity: CadEntity): ArchitectureNode | null {
       textStyle: entity.metadata?.textStyle ?? null,
       font: entity.metadata?.font ?? null,
       bigFont: entity.metadata?.bigFont ?? null,
+      rawText: entity.metadata?.rawText ?? null,
+      decodedText: entity.metadata?.decodedText ?? null,
+      textEncoding: entity.metadata?.textEncoding ?? null,
       confidence: classification.confidence,
       classificationReason: classification.reason,
       source: 'cad',
@@ -122,6 +126,7 @@ export function cadDocumentToArchitectureScene(document: NormalizedCadDocument):
         units: document.units ?? null,
         converter: document.source.converter,
         codepage: document.source.codepage ?? null,
+        textDecoding: document.textDecoding ?? null,
       },
     },
   }
@@ -142,6 +147,7 @@ export function cadDocumentToArchitectureScene(document: NormalizedCadDocument):
       blockCount: document.blocks.length,
       textStyleCount: document.textStyles?.length ?? 0,
       entityCount: document.entities.length,
+      decodedTextCount: document.textDecoding?.decodedEntities ?? 0,
     },
   }
 }
@@ -157,6 +163,7 @@ export function summarizeCadDocument(document: NormalizedCadDocument) {
     blocks: document.blocks.length,
     textStyles: document.textStyles?.length ?? 0,
     entities: document.entities.length,
+    decodedText: document.textDecoding?.decodedEntities ?? 0,
     classified: counts,
   }
 }
