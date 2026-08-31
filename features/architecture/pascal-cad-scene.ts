@@ -18,7 +18,7 @@ export function buildPascalSceneFromCad(document: NormalizedCadDocument): Pascal
       graph: result.graph,
       scene: null,
       diagnostics: result.diagnostics,
-      reason: result.reason ?? result.graph.gate.reasons.join('; ') || 'CAD geometry gate did not pass.',
+      reason: result.reason ?? (result.graph.gate.reasons.join('; ') || 'CAD geometry gate did not pass.'),
     }
   }
 
