@@ -15,7 +15,7 @@ import {
   useScene,
 } from '@pascal-app/core'
 import { Viewer, useViewer } from '@pascal-app/viewer'
-import { CameraControls, TransformControls, type CameraControlsImpl } from '@react-three/drei'
+import { CameraControls, Text, TransformControls, type CameraControlsImpl } from '@react-three/drei'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Group } from 'three'
 import type { ArchitectureScene } from '../../packages/architecture-engine/src/index'
@@ -23,6 +23,15 @@ import { editableElementAnchor, translateEditableElement } from './pascal-scene-
 import { ensurePascalBuiltins } from './pascal-bootstrap'
 
 ensurePascalBuiltins()
+
+type SemanticRoomLabel = {
+  id?: string
+  labelEntityId?: string
+  label?: string
+  seed?: { x?: number; y?: number }
+  area?: number
+  confidence?: number
+}
 
 export function PascalRuntimeViewer({
   scene,
@@ -61,12 +70,49 @@ export function PascalRuntimeViewer({
       <div style={{ height: 'min(68vh, 720px)', minHeight: 420, overflow: 'hidden', borderRadius: 18 }}>
         <Viewer sceneReadyKey={sceneKey} onSceneReadyChange={setReady}>
           <BasoulCamera sceneKey={sceneKey} />
+          <BasoulSemanticRoomLabels scene={activeScene} />
           <BasoulDirectSelection selectedId={selectedId} onSelectionChange={onSelectionChange} />
           <BasoulDirectManipulator scene={activeScene} selectedId={selectedId} onSceneChange={onSceneChange} />
         </Viewer>
       </div>
       <p>Click a wall, door or window to select it. Drag the 3D gizmo to move the selected element; changes stay local until Save scene is pressed.</p>
     </section>
+  )
+}
+
+function BasoulSemanticRoomLabels({ scene }: { scene: ArchitectureScene }) {
+  const rooms = useMemo(() => {
+    const raw = scene.metadata?.semanticRooms
+    if (!Array.isArray(raw)) return []
+    return raw.flatMap((room, index) => {
+      if (!room || typeof room !== 'object') return []
+      const value = room as SemanticRoomLabel
+      const x = value.seed?.x
+      const y = value.seed?.y
+      const label = value.label?.trim()
+      if (typeof x !== 'number' || typeof y !== 'number' || !label) return []
+      return [{ key: value.labelEntityId ?? value.id ?? `semantic-room-label-${index}`, x, y, label }]
+    })
+  }, [scene.metadata?.semanticRooms])
+
+  return (
+    <group name="basoul-semantic-room-labels">
+      {rooms.map((room) => (
+        <Text
+          key={room.key}
+          position={[room.x, 0.08, room.y]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          fontSize={0.32}
+          maxWidth={3.2}
+          textAlign="center"
+          anchorX="center"
+          anchorY="middle"
+          renderOrder={20}
+        >
+          {room.label}
+        </Text>
+      ))}
+    </group>
   )
 }
 
