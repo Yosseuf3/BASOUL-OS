@@ -170,3 +170,4 @@ export function summarizeCadDocument(document: NormalizedCadDocument) {
 }
 
 export * from './floor-graph'
+export * from './semantic-rooms'
