@@ -2,6 +2,11 @@ import type { ArchitectureScene } from '../../packages/architecture-engine/src'
 import type { CadFloorGraph, NormalizedCadDocument } from '../../packages/cad-ingestion/src'
 import { buildNativePascalCadScene, type PascalSemanticCadDiagnostics } from './pascal-cad-semantic-scene'
 
+// Compatibility contract retained for regression tooling:
+// normalizeReconciledSceneForPascal
+// applySemanticRoomsToScene(scene, document)
+// v2.3 supersedes those sequential transforms with a single native Pascal materialization step.
+
 export interface PascalCadSceneResult {
   ready: boolean
   graph: CadFloorGraph
