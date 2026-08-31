@@ -49,8 +49,20 @@ test('CAD Floor Graph v2 hardens opening hosting and room semantics', () => {
   assert.match(floorGraph, /labelEntityId/)
   assert.match(floorGraph, /minRoomSpan/)
   assert.match(floorGraph, /compactness >= 0\.06/)
-  assert.match(floorGraph, /cadFloorGraphVersion: 2/)
   assert.match(floorGraph, /source: 'cad-floor-graph-v2'/)
+})
+
+test('Opening Hosting v2.1 uses transformed INSERT geometry footprint before insertion-point fallback', () => {
+  assert.match(gateway, /from ezdxf import bbox/)
+  assert.match(gateway, /def insert_bounds/)
+  assert.match(gateway, /bbox\.extents\(\[entity\], fast=True\)/)
+  assert.match(gateway, /"insertBounds": insert_bounds\(entity\)/)
+  assert.match(floorGraph, /insertBounds/)
+  assert.match(floorGraph, /segmentIntersectsBounds/)
+  assert.match(floorGraph, /openingGeometryDistance/)
+  assert.match(floorGraph, /insert-footprint/)
+  assert.match(floorGraph, /hostingMethod/)
+  assert.match(floorGraph, /cadFloorGraphVersion: '2\.1'/)
 })
 
 test('Pascal-ready CAD scene is blocked unless deterministic geometry gate passes', () => {
