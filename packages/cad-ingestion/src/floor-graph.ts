@@ -10,6 +10,7 @@ export interface CadHostedOpening {
   hostEdgeId: string | null
   distance: number | null
   orientationError: number | null
+  hostingMethod: 'insert-footprint' | 'insert-point' | null
 }
 export interface CadRoomFace {
   id: string
@@ -32,6 +33,7 @@ export interface CadFloorGraph {
 
 interface RawSegment { id: string; sourceEntityId: string; a: CadPoint; b: CadPoint }
 interface FloorScale { snap: number; host: number; minRoomArea: number; minRoomSpan: number }
+interface CadInsertBounds { min: CadPoint; max: CadPoint }
 
 const sq = (n: number) => n * n
 const distance = (a: CadPoint, b: CadPoint) => Math.hypot(a.x - b.x, a.y - b.y)
@@ -167,6 +169,53 @@ function openingOrientationError(entity: CadEntity, a: CadPoint, b: CadPoint) {
   return Math.min(parallel, perpendicular)
 }
 
+function insertBounds(entity: CadEntity): CadInsertBounds | null {
+  const raw = entity.metadata?.insertBounds
+  if (!raw || typeof raw !== 'object') return null
+  const value = raw as { min?: Partial<CadPoint>; max?: Partial<CadPoint> }
+  if (typeof value.min?.x !== 'number' || typeof value.min?.y !== 'number' || typeof value.max?.x !== 'number' || typeof value.max?.y !== 'number') return null
+  if (value.max.x < value.min.x || value.max.y < value.min.y) return null
+  return {
+    min: { x: value.min.x, y: value.min.y },
+    max: { x: value.max.x, y: value.max.y },
+  }
+}
+
+function pointInsideBounds(point: CadPoint, bounds: CadInsertBounds) {
+  return point.x >= bounds.min.x && point.x <= bounds.max.x && point.y >= bounds.min.y && point.y <= bounds.max.y
+}
+
+function segmentIntersectsBounds(a: CadPoint, b: CadPoint, bounds: CadInsertBounds) {
+  if (pointInsideBounds(a, bounds) || pointInsideBounds(b, bounds)) return true
+  const sides: RawSegment[] = [
+    { id: 'bounds:top', sourceEntityId: 'bounds', a: { x: bounds.min.x, y: bounds.max.y }, b: { x: bounds.max.x, y: bounds.max.y } },
+    { id: 'bounds:right', sourceEntityId: 'bounds', a: { x: bounds.max.x, y: bounds.max.y }, b: { x: bounds.max.x, y: bounds.min.y } },
+    { id: 'bounds:bottom', sourceEntityId: 'bounds', a: { x: bounds.max.x, y: bounds.min.y }, b: { x: bounds.min.x, y: bounds.min.y } },
+    { id: 'bounds:left', sourceEntityId: 'bounds', a: { x: bounds.min.x, y: bounds.min.y }, b: { x: bounds.min.x, y: bounds.max.y } },
+  ]
+  const edge = { id: 'wall', sourceEntityId: 'wall', a, b }
+  return sides.some((side) => segmentIntersection(edge, side))
+}
+
+function openingGeometryDistance(entity: CadEntity, a: CadPoint, b: CadPoint) {
+  const bounds = insertBounds(entity)
+  if (!bounds) {
+    const point = entity.insert ?? entity.points?.[0]
+    return { distance: point ? pointSegmentDistance(point, { id: 'opening', sourceEntityId: entity.id, a, b }) : Number.POSITIVE_INFINITY, method: 'insert-point' as const }
+  }
+  if (segmentIntersectsBounds(a, b, bounds)) return { distance: 0, method: 'insert-footprint' as const }
+  const probes: CadPoint[] = [
+    entity.insert ?? { x: (bounds.min.x + bounds.max.x) / 2, y: (bounds.min.y + bounds.max.y) / 2 },
+    { x: bounds.min.x, y: bounds.min.y },
+    { x: bounds.min.x, y: bounds.max.y },
+    { x: bounds.max.x, y: bounds.min.y },
+    { x: bounds.max.x, y: bounds.max.y },
+    { x: (bounds.min.x + bounds.max.x) / 2, y: (bounds.min.y + bounds.max.y) / 2 },
+  ]
+  const segment = { id: 'opening', sourceEntityId: entity.id, a, b }
+  return { distance: Math.min(...probes.map((point) => pointSegmentDistance(point, segment))), method: 'insert-footprint' as const }
+}
+
 export function buildCadFloorGraph(document: NormalizedCadDocument): CadFloorGraph {
   const scale = scaleFor(document)
   const segments = splitAtIntersections(rawWallSegments(document))
@@ -280,16 +329,18 @@ export function buildCadFloorGraph(document: NormalizedCadDocument): CadFloorGra
   const openings: CadHostedOpening[] = openingEntities.map((entity) => {
     const kind = classifyCadEntity(entity).kind as 'door' | 'window'
     const point = entity.insert ?? entity.points?.[0]
-    if (!point || !edges.length) return { entityId: entity.id, kind, hostEdgeId: null, distance: null, orientationError: null }
+    if (!point || !edges.length) return { entityId: entity.id, kind, hostEdgeId: null, distance: null, orientationError: null, hostingMethod: null }
     let bestEdge: CadFloorEdge | null = null
     let bestDistance = Number.POSITIVE_INFINITY
     let bestOrientationError = Number.POSITIVE_INFINITY
     let bestScore = Number.POSITIVE_INFINITY
+    let bestMethod: 'insert-footprint' | 'insert-point' | null = null
     for (const edge of edges) {
       const a = verticesById.get(edge.a)
       const b = verticesById.get(edge.b)
       if (!a || !b) continue
-      const d = pointSegmentDistance(point, { id: edge.id, sourceEntityId: edge.sourceEntityId, a, b })
+      const geometry = openingGeometryDistance(entity, a, b)
+      const d = geometry.distance
       if (d > scale.host) continue
       const orientationError = openingOrientationError(entity, a, b)
       const score = d / scale.host + (orientationError / (Math.PI / 4)) * 0.2
@@ -298,6 +349,7 @@ export function buildCadFloorGraph(document: NormalizedCadDocument): CadFloorGra
         bestDistance = d
         bestOrientationError = orientationError
         bestScore = score
+        bestMethod = geometry.method
       }
     }
     return {
@@ -306,6 +358,7 @@ export function buildCadFloorGraph(document: NormalizedCadDocument): CadFloorGra
       hostEdgeId: bestEdge?.id ?? null,
       distance: bestEdge ? bestDistance : null,
       orientationError: bestEdge ? bestOrientationError : null,
+      hostingMethod: bestEdge ? bestMethod : null,
     }
   })
 
@@ -327,7 +380,7 @@ export function cadDocumentToPascalReadyScene(document: NormalizedCadDocument): 
   const graph = buildCadFloorGraph(document)
   if (!graph.gate.ready) return { scene: null, graph }
   const scene = cadDocumentToArchitectureScene(document)
-  scene.metadata = { ...scene.metadata, cadGeometryReady: true, cadFloorGraph: graph.gate, cadFloorGraphVersion: 2 }
+  scene.metadata = { ...scene.metadata, cadGeometryReady: true, cadFloorGraph: graph.gate, cadFloorGraphVersion: '2.1' }
   for (const opening of graph.openings) {
     const node = scene.nodes[`cad:${opening.entityId}`]
     if (!node) continue
@@ -336,6 +389,7 @@ export function cadDocumentToPascalReadyScene(document: NormalizedCadDocument): 
       hostWallEdgeId: opening.hostEdgeId,
       hostDistance: opening.distance,
       hostOrientationError: opening.orientationError,
+      hostMethod: opening.hostingMethod,
     }
   }
   for (const room of graph.rooms) {
