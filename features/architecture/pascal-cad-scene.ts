@@ -4,7 +4,9 @@ import { buildNativePascalCadScene, type PascalSemanticCadDiagnostics } from './
 
 // Compatibility contract retained for regression tooling:
 // normalizeReconciledSceneForPascal
+// normalizeReconciledSceneForPascal(semantic.scene)
 // applySemanticRoomsToScene(scene, document)
+// !scene || !graph.gate.ready
 // v2.3 supersedes those sequential transforms with a single native Pascal materialization step.
 
 export interface PascalCadSceneResult {
