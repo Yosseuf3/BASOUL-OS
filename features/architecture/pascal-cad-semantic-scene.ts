@@ -31,6 +31,11 @@ function asSceneNode(node: AnyNode) {
   return node as unknown as ArchitectureScene['nodes'][string]
 }
 
+function pascalId(prefix: string, raw: string | number) {
+  const safe = String(raw).trim().replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'node'
+  return `${prefix}_${safe}`
+}
+
 function boundsWidth(entity: NormalizedCadDocument['entities'][number]) {
   const raw = entity.metadata?.insertBounds
   if (!raw || typeof raw !== 'object') return entity.type === 'INSERT' ? 1 : 0.9
@@ -121,11 +126,14 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
   }
 
   const semanticRooms = recoverSemanticRooms(document)
-  const siteId = 'cad-pascal:site'
-  const buildingId = 'cad-pascal:building'
-  const levelId = 'cad-pascal:level:0'
-  const wallIds = graph.edges.map((edge) => `cad-pascal:wall:${edge.id}`)
-  const slabIds = semanticRooms.map((room) => `cad-pascal:slab:${room.labelEntityId}`)
+  const siteId = 'site_cad_pascal'
+  const buildingId = 'building_cad_pascal'
+  const levelId = 'level_cad_pascal_0'
+  const wallIdFor = (edgeId: string) => pascalId('wall_cad_pascal', edgeId)
+  const slabIdFor = (labelEntityId: string) => pascalId('slab_cad_pascal', labelEntityId)
+  const openingIdFor = (kind: 'door' | 'window', entityId: string) => pascalId(`${kind}_cad_pascal`, entityId)
+  const wallIds = graph.edges.map((edge) => wallIdFor(edge.id))
+  const slabIds = semanticRooms.map((room) => slabIdFor(room.labelEntityId))
   const levelChildren = [...wallIds, ...slabIds]
 
   const parsed: AnyNode[] = [
@@ -141,9 +149,9 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
     const a = vertices.get(edge.a)
     const b = vertices.get(edge.b)
     if (!a || !b) continue
-    const wallId = `cad-pascal:wall:${edge.id}`
+    const wallId = wallIdFor(edge.id)
     const hosted = openingsByEdge.get(edge.id) ?? []
-    const children = hosted.map((opening) => `cad-pascal:${opening.kind}:${opening.entityId}`)
+    const children = hosted.map((opening) => openingIdFor(opening.kind, opening.entityId))
     parsed.push(WallNode.parse({
       id: wallId,
       parentId: levelId,
@@ -159,7 +167,7 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
       const entity = entities.get(opening.entityId)
       const point = entity?.insert ?? entity?.points?.[0]
       if (!entity || !point) continue
-      const id = `cad-pascal:${opening.kind}:${opening.entityId}`
+      const id = openingIdFor(opening.kind, opening.entityId)
       const along = distanceAlongWall(point, a, b)
       const width = boundsWidth(entity)
       if (opening.kind === 'door') {
@@ -173,7 +181,7 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
   }
 
   for (const room of semanticRooms) {
-    parsed.push(SlabNode.parse({ id: `cad-pascal:slab:${room.labelEntityId}`, parentId: levelId, polygon: room.boundary.map((point) => [point.x, point.y]), thickness: 0.12, elevation: 0 }))
+    parsed.push(SlabNode.parse({ id: slabIdFor(room.labelEntityId), parentId: levelId, polygon: room.boundary.map((point) => [point.x, point.y]), thickness: 0.12, elevation: 0 }))
   }
 
   const nodes = Object.fromEntries(parsed.map((node) => [node.id, asSceneNode(node)]))
@@ -219,6 +227,7 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
       pascalSemanticIntegrationVersion: '2.3',
       cadFidelityVersion: '2.4',
       cadOpeningMaterializationVersion: '2.6',
+      pascalNodeIdCompatibilityVersion: '2.7',
       cadSourceFilename: document.source.filename,
       degraded,
       unresolvedOpenings: graph.openings.filter((opening) => !opening.hostEdgeId).map((opening) => ({ entityId: opening.entityId, kind: opening.kind })),
