@@ -15,7 +15,7 @@ import { buildPascalSceneFromCad } from './pascal-cad-scene'
 import type { PascalSemanticCadDiagnostics } from './pascal-cad-semantic-scene'
 
 type TextFn = (ar: string, en: string) => string
-type Stage = 'idle' | 'uploaded' | 'parsing' | 'classified' | 'graph' | 'ready' | 'blocked' | 'error'
+type Stage = 'idle' | 'uploaded' | 'parsing' | 'classified' | 'graph' | 'materializing' | 'ready' | 'degraded' | 'blocked' | 'error'
 
 type Props = {
   projectId: string
@@ -32,6 +32,52 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
   const summary = useMemo(() => document ? summarizeCadDocument(document) : null, [document])
   const layerDiagnostics = useMemo(() => document ? summarizeCadLayers(document) : [], [document])
   const graph = useMemo(() => document ? buildCadFloorGraph(document) : null, [document])
+
+  function materializePascalScene(source: NormalizedCadDocument, scrollToViewer = false) {
+    setStage('materializing')
+    const result = buildPascalSceneFromCad(source)
+    setPascalDiagnostics(result.diagnostics)
+
+    if (!result.ready || !result.scene || !result.graph.gate.ready) {
+      setStage('blocked')
+      setMessage(text(
+        `تم إيقاف 3D لأن هندسة CAD الأساسية لم تجتز البوابة: ${result.reason ?? 'فشل بوابة المشهد.'}`,
+        `3D blocked because core CAD geometry did not pass the gate: ${result.reason ?? 'Scene gate failed.'}`,
+      ))
+      return false
+    }
+
+    const degraded = Boolean(result.diagnostics?.degraded)
+    const unresolved = result.diagnostics?.floatingOpenings ?? 0
+    onSceneReady(
+      result.scene,
+      degraded
+        ? text(
+            `تم إنشاء 3D من نفس هندسة CAD الموثقة. توجد ${unresolved} فتحة غير محلولة ولم يتم اختلاق موقع لها؛ يمكن حفظ المشهد ومتابعة التصحيح.`,
+            `3D was created from the same verified CAD geometry. ${unresolved} opening(s) remain unresolved and were not fabricated; the scene can be saved and corrected.`
+          )
+        : text(
+            'تم إنشاء Pascal 3D مباشرة من نفس ملف CAD بنجاح. احفظ المشهد لتخزينه في المشروع.',
+            'Pascal 3D was created directly from the same CAD file. Save the scene to persist it for the project.'
+          ),
+    )
+    setStage(degraded ? 'degraded' : 'ready')
+    setMessage(
+      degraded
+        ? text(
+            `3D جاهز بحالة DEGRADED: الجدران موثقة بالكامل، و${unresolved} فتحة غير محلولة معروضة في التشخيص.`,
+            `3D is ready in DEGRADED state: walls are fully verified and ${unresolved} unresolved opening(s) are reported in diagnostics.`
+          )
+        : text('3D جاهز من نفس مصدر CAD.', '3D is ready from the same CAD source.')
+    )
+
+    if (scrollToViewer && typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        window.document.getElementById('architecture-3d-runtime')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+    return true
+  }
 
   async function uploadCad(file: File) {
     if (!projectId) return
@@ -69,8 +115,7 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
       const nextGraph = buildCadFloorGraph(parsed)
       setStage('graph')
       if (nextGraph.gate.ready) {
-        setStage('ready')
-        setMessage(text('نجح CAD Geometry Gate. المشهد جاهز للمراجعة ثم 3D.', 'CAD Geometry Gate passed. The scene is ready for review and 3D.'))
+        materializePascalScene(parsed)
       } else {
         setStage('blocked')
         setMessage(text(`تم إيقاف 3D: ${nextGraph.gate.reasons.join(' · ')}`, `3D blocked: ${nextGraph.gate.reasons.join(' · ')}`))
@@ -85,18 +130,7 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
 
   function openIn3D() {
     if (!document) return
-    const result = buildPascalSceneFromCad(document)
-    setPascalDiagnostics(result.diagnostics)
-    if (!result.ready || !result.scene || !result.graph.gate.ready) {
-      setStage('blocked')
-      setMessage(text(
-        `تم إيقاف Pascal v2.3: ${result.reason ?? 'فشل بوابة المشهد الدلالي.'}`,
-        `Pascal v2.3 blocked: ${result.reason ?? 'Semantic scene gate failed.'}`,
-      ))
-      return
-    }
-    onSceneReady(result.scene, text('نجحت بوابة Pascal 3D v2.3 وتم إنشاء المشهد الدلالي الأصلي. احفظ المشهد لتخزينه في المشروع.', 'Pascal 3D v2.3 gate passed and the native semantic scene was created. Save the scene to persist it for the project.'))
-    setMessage(text('Pascal 3D v2.3 جاهز: جميع الفتحات مستضافة والغرف الدلالية مادية داخل المشهد.', 'Pascal 3D v2.3 ready: all openings are hosted and semantic rooms are materialized in the scene.'))
+    materializePascalScene(document, true)
   }
 
   return (
@@ -109,8 +143,8 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
       <div style={{ display: 'grid', gap: 14 }}>
         <label style={{ display: 'grid', gap: 8, border: '1px dashed rgba(120,160,255,.35)', borderRadius: 14, padding: 16, cursor: projectId ? 'pointer' : 'not-allowed' }}>
           <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}><FileUp size={18} /> {text('رفع DWG أو DXF', 'Upload DWG or DXF')}</span>
-          <small>{text('يتم التحليل عبر BASOUL CAD Gateway المعزول. يمكن تحميل basoul.cad.v1 JSON للاختبار المحلي.', 'Analysis runs through the isolated BASOUL CAD Gateway. basoul.cad.v1 JSON can be loaded for local testing.')}</small>
-          <input type="file" accept=".dwg,.dxf,.json,application/json" disabled={!projectId || stage === 'parsing'} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadCad(file) }} />
+          <small>{text('يتم التحليل عبر BASOUL CAD Gateway المعزول، ثم يبنى 2D و3D من نفس المستند المطبّع.', 'Analysis runs through the isolated BASOUL CAD Gateway, then 2D and 3D are built from the same normalized document.')}</small>
+          <input type="file" accept=".dwg,.dxf,.json,application/json" disabled={!projectId || stage === 'parsing' || stage === 'materializing'} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadCad(file) }} />
         </label>
 
         {message && <p aria-live="polite">{message}</p>}
@@ -126,7 +160,7 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
           <CadLayerDiagnostics diagnostics={layerDiagnostics} text={text} />
           <CadFloorGraphOverlay graph={graph} />
           <div className="bx-actions" style={{ margin: 0 }}>
-            <button type="button" onClick={openIn3D} disabled={!graph.gate.ready}><Box size={16} /> {text('فتح المشهد في 3D', 'Open scene in 3D')}</button>
+            <button type="button" onClick={openIn3D} disabled={!graph.gate.ready || stage === 'materializing'}><Box size={16} /> {text('عرض المشهد في 3D', 'View scene in 3D')}</button>
           </div>
           {pascalDiagnostics && <PascalAcceptanceDiagnostics diagnostics={pascalDiagnostics} text={text} />}
         </>}
@@ -168,20 +202,22 @@ function CadLayerDiagnostics({ diagnostics, text }: { diagnostics: ReturnType<ty
 const cellStyle: React.CSSProperties = { padding: '10px 12px', borderBottom: '1px solid rgba(120,160,255,.14)', textAlign: 'start', verticalAlign: 'top' }
 
 function PascalAcceptanceDiagnostics({ diagnostics, text }: { diagnostics: PascalSemanticCadDiagnostics; text: TextFn }) {
-  const pass = diagnostics.floatingOpenings === 0 && diagnostics.hostedOpenings === diagnostics.doors + diagnostics.windows && diagnostics.semanticRooms === diagnostics.roomSlabs
+  const wallReady = diagnostics.missingCadWallEntities === 0 && diagnostics.graphEdgeCoverage === 1
+  const status = !wallReady ? 'BLOCKED' : diagnostics.degraded ? 'DEGRADED' : 'PASS'
   return <section aria-label={text('تشخيص قبول Pascal 3D', 'Pascal 3D acceptance diagnostics')} style={{ display: 'grid', gap: 12 }}>
     <div className="bx-panel-head" style={{ margin: 0 }}>
-      <div><span className="bx-kicker">PASCAL 3D · SEMANTIC v2.3</span><h3>{text('بوابة القبول الحية', 'Live acceptance gate')}</h3></div>
-      <span className="bx-chip">{pass ? 'PASCAL v2.3 · PASS' : 'PASCAL v2.3 · BLOCKED'}</span>
+      <div><span className="bx-kicker">PASCAL 3D · UNIFIED CAD RUNTIME</span><h3>{text('تشخيص التحويل إلى 3D', '3D materialization diagnostics')}</h3></div>
+      <span className="bx-chip">PASCAL · {status}</span>
     </div>
     <div className="bx-grid-2">
       <Metric icon={<Network size={18} />} label={text('جدران Pascal', 'Pascal walls')} value={diagnostics.walls} />
-      <Metric icon={<Box size={18} />} label={text('الأبواب', 'Doors')} value={diagnostics.doors} />
-      <Metric icon={<Box size={18} />} label={text('النوافذ', 'Windows')} value={diagnostics.windows} />
+      <Metric icon={<Box size={18} />} label={text('الأبواب', 'Doors')} value={`${diagnostics.doors}/${diagnostics.expectedDoors}`} />
+      <Metric icon={<Box size={18} />} label={text('النوافذ', 'Windows')} value={`${diagnostics.windows}/${diagnostics.expectedWindows}`} />
       <Metric icon={<CheckCircle2 size={18} />} label={text('الفتحات المستضافة', 'Hosted openings')} value={diagnostics.hostedOpenings} />
-      <Metric icon={diagnostics.floatingOpenings === 0 ? <CheckCircle2 size={18} /> : <ShieldAlert size={18} />} label={text('فتحات طافية', 'Floating openings')} value={diagnostics.floatingOpenings} />
+      <Metric icon={diagnostics.floatingOpenings === 0 ? <CheckCircle2 size={18} /> : <ShieldAlert size={18} />} label={text('فتحات غير محلولة', 'Unresolved openings')} value={diagnostics.floatingOpenings} />
       <Metric icon={<Box size={18} />} label={text('الغرف الدلالية', 'Semantic rooms')} value={diagnostics.semanticRooms} />
       <Metric icon={<Box size={18} />} label={text('أرضيات الغرف', 'Room slabs')} value={diagnostics.roomSlabs} />
+      <Metric icon={wallReady ? <CheckCircle2 size={18} /> : <ShieldAlert size={18} />} label={text('تغطية حواف الجدران', 'Wall edge coverage')} value={`${Math.round(diagnostics.graphEdgeCoverage * 1000) / 10}%`} />
     </div>
   </section>
 }
@@ -215,8 +251,10 @@ function stageLabel(stage: Stage) {
   if (stage === 'parsing') return 'CAD · PARSING'
   if (stage === 'classified') return 'CAD · CLASSIFIED'
   if (stage === 'graph') return 'CAD · FLOOR GRAPH'
-  if (stage === 'ready') return 'CAD · 3D READY'
-  if (stage === 'blocked') return 'CAD · 3D BLOCKED'
+  if (stage === 'materializing') return '3D · MATERIALIZING'
+  if (stage === 'ready') return '3D · READY'
+  if (stage === 'degraded') return '3D · DEGRADED'
+  if (stage === 'blocked') return '3D · BLOCKED'
   if (stage === 'error') return 'CAD · ERROR'
   return 'CAD · IDLE'
 }
