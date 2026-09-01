@@ -210,12 +210,23 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
 
   const expectedDoors = document.entities.filter((entity) => classifyCadEntity(entity).kind === 'door').length
   const expectedWindows = document.entities.filter((entity) => classifyCadEntity(entity).kind === 'window').length
-  if (graphEdgeCoverage !== 1 || floatingOpenings || doors !== expectedDoors || windows !== expectedWindows) {
+
+  // v2.3 semantic compatibility gate remains exact; v2.4 fidelity is additive.
+  if (floatingOpenings || doors !== expectedDoors || windows !== expectedWindows) {
     return {
       scene: null,
       graph,
       diagnostics,
-      reason: `Pascal fidelity gate failed: wallCoverage=${coverage.representedCadWallEntities}/${coverage.cadWallEntities}, graphEdges=${graphEdgesMaterialized}/${graph.edges.length}, floating=${floatingOpenings}, doors=${doors}/${expectedDoors}, windows=${windows}/${expectedWindows}`,
+      reason: `Pascal semantic gate failed: floating=${floatingOpenings}, doors=${doors}/${expectedDoors}, windows=${windows}/${expectedWindows}`,
+    }
+  }
+
+  if (graphEdgeCoverage !== 1) {
+    return {
+      scene: null,
+      graph,
+      diagnostics,
+      reason: `Pascal fidelity gate failed: wallCoverage=${coverage.representedCadWallEntities}/${coverage.cadWallEntities}, graphEdges=${graphEdgesMaterialized}/${graph.edges.length}`,
     }
   }
 
@@ -223,12 +234,13 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
     nodes,
     rootNodeIds: [siteId],
     metadata: {
-      source: 'cad-pascal-semantic-v2.4',
+      source: 'cad-pascal-semantic-v2.3',
       runtime: 'pascal-beta.5',
       cadGeometryReady: true,
       cadFloorGraphVersion: '2.1',
       semanticRoomRecoveryVersion: '2.2',
-      pascalSemanticIntegrationVersion: '2.4',
+      pascalSemanticIntegrationVersion: '2.3',
+      cadFidelityVersion: '2.4',
       cadSourceFilename: document.source.filename,
       diagnostics,
       semanticRooms: semanticRooms.map((room) => ({
