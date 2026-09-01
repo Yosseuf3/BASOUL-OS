@@ -21,7 +21,7 @@ test('CAD ingestion normalizes native CAD semantics before ArchitectureScene', (
   assert.match(cad, /Geometry is explicitly on a normalized wall layer/)
   assert.match(cad, /Native CAD geometry is explicitly on a normalized stair layer/)
   assert.match(cad, /stiars/)
-  assert.match(cad, /Semantic room label from native CAD text/)
+  assert.match(cad, /Semantic room label on an explicit room\/space layer/)
   assert.match(cad, /textStyle/)
   assert.match(cad, /path: points/)
   assert.match(cad, /export \* from '\.\/floor-graph'/)
@@ -40,6 +40,14 @@ test('CAD layer semantics v2.5 canonicalize separators, xrefs and Arabic aliases
   assert.match(cad, /أبواب/)
   assert.match(cad, /سلالم/)
   assert.match(cad, /أعمدة/)
+})
+
+test('CAD text semantics v2.6 keep annotation layers such as tx-arab as labels, not rooms', () => {
+  assert.match(cad, /isTextAnnotationLayer/)
+  assert.match(cad, /'text', 'txt', 'tx', 'arab', 'arabic'/)
+  assert.match(cad, /if \(isTextAnnotationLayer\(layer\)\) return 'label'/)
+  assert.match(cad, /Native CAD text on an explicit annotation\/text layer/)
+  assert.match(cad, /text content alone does not create room geometry/)
 })
 
 test('CAD review exposes per-layer diagnostics before the 3D gate', () => {
