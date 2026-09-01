@@ -16,9 +16,11 @@ test('Pascal CAD v2.3 materializes native walls, hosted doors/windows and room s
   assert.match(adapter, /pascalSemanticIntegrationVersion: '2\.3'/)
 })
 
-test('Pascal semantic gate fails closed on missing opening hosts', () => {
-  assert.match(adapter, /if \(floatingOpenings \|\| doors !== expectedDoors \|\| windows !== expectedWindows\)/)
-  assert.match(adapter, /Pascal semantic gate failed/)
+test('Pascal keeps verified wall geometry available when some openings cannot be hosted', () => {
+  assert.match(adapter, /const degraded = floatingOpenings > 0 \|\| doors !== expectedDoors \|\| windows !== expectedWindows/)
+  assert.match(adapter, /unresolvedOpenings/)
+  assert.match(adapter, /unresolved opening\(s\); unresolved openings were not fabricated in 3D/)
+  assert.doesNotMatch(adapter, /Pascal semantic gate failed/)
 })
 
 test('CAD Pascal entrypoint uses the native semantic adapter', () => {

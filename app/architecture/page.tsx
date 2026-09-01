@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, BrainCircuit, FileBox, Save, ShieldCheck } from "lucide-react";
+import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/components/i18n/language-provider";
@@ -12,7 +12,7 @@ import {
   saveArchitectureScene,
   type ArchitectureProject,
 } from "@/features/architecture/architecture-persistence-client";
-import { PascalRuntimeViewer, createBasoulStarterScene } from "@/features/architecture/pascal-runtime-viewer";
+import { PascalRuntimeViewer, isCadPascalScene } from "@/features/architecture/pascal-runtime-viewer";
 import type { ArchitectureScene } from "@/packages/architecture-engine/src";
 import "@/features/dashboard/dashboard-visual-truth.css";
 
@@ -31,6 +31,7 @@ export default function ArchitectureWorkspacePage() {
   const [sceneRevision, setSceneRevision] = useState(0);
 
   const selectedProject = useMemo(() => projects.find((project) => project.id === selectedProjectId) ?? null, [projects, selectedProjectId]);
+  const cadSceneReady = isCadPascalScene(scene);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,21 +60,23 @@ export default function ArchitectureWorkspacePage() {
     setStatusMessage(text("جارٍ تحميل المشهد…", "Loading scene…"));
     void loadArchitectureScene(selectedProjectId).then((record) => {
       if (cancelled) return;
-      if (record) {
+      if (record && isCadPascalScene(record.scene)) {
         setScene(record.scene);
         setSceneName(record.name);
         setStatus("saved");
-        setStatusMessage(text("تم تحميل آخر مشهد محفوظ.", "Latest saved scene loaded."));
+        setStatusMessage(text("تم تحميل آخر مشهد CAD ثلاثي الأبعاد محفوظ.", "Latest saved CAD 3D scene loaded."));
       } else {
-        setScene(createBasoulStarterScene());
+        setScene(null);
         setSceneName(selectedProject ? `${selectedProject.name} · Architecture` : "Architecture scene");
-        setStatus("unsaved");
-        setStatusMessage(text("لا يوجد مشهد محفوظ بعد. تم تجهيز مشهد بداية محلي.", "No saved scene exists yet. A local starter scene is ready."));
+        setStatus("idle");
+        setStatusMessage(record
+          ? text("المشهد المحفوظ قديم وغير مشتق من CAD؛ ارفع DWG/DXF لإعادة بناء المصدر الحقيقي.", "The saved scene is legacy/non-CAD; upload DWG/DXF to rebuild the verified source.")
+          : text("لا يوجد مشهد CAD محفوظ. ارفع DWG/DXF لبدء المسار الموحد 2D → 3D.", "No saved CAD scene exists. Upload DWG/DXF to start the unified 2D → 3D flow."));
       }
       setSceneRevision((value) => value + 1);
     }).catch((error: unknown) => {
       if (cancelled) return;
-      setScene(createBasoulStarterScene());
+      setScene(null);
       setSceneRevision((value) => value + 1);
       setStatus("error");
       setStatusMessage(error instanceof Error ? error.message : "architecture.scene.load_failed");
@@ -81,15 +84,8 @@ export default function ArchitectureWorkspacePage() {
     return () => { cancelled = true; };
   }, [selectedProjectId, selectedProject, text]);
 
-  function resetStarterScene() {
-    setScene(createBasoulStarterScene());
-    setSelectedElementId("");
-    setSceneRevision((value) => value + 1);
-    setStatus("unsaved");
-    setStatusMessage(text("تم إنشاء نسخة بداية محلية. اضغط حفظ لتخزينها للمشروع.", "A local starter scene was created. Save it to persist it for this project."));
-  }
-
   function applyEditedScene(next: ArchitectureScene, message: string) {
+    if (!isCadPascalScene(next)) return;
     setScene(next);
     setStatus("unsaved");
     setStatusMessage(message);
@@ -100,6 +96,11 @@ export default function ArchitectureWorkspacePage() {
   }
 
   function applyCadScene(next: ArchitectureScene, message: string) {
+    if (!isCadPascalScene(next)) {
+      setStatus("error");
+      setStatusMessage(text("رفض المشهد: المصدر ليس CAD/Pascal موثقًا.", "Scene rejected: source is not a verified CAD/Pascal scene."));
+      return;
+    }
     setScene(next);
     setSelectedElementId("");
     setSceneRevision((value) => value + 1);
@@ -108,16 +109,17 @@ export default function ArchitectureWorkspacePage() {
   }
 
   async function saveScene() {
-    if (!selectedProjectId || !scene || status === "saving") return;
+    if (!selectedProjectId || !scene || !cadSceneReady || status === "saving") return;
     setStatus("saving");
     setStatusMessage(text("جارٍ الحفظ…", "Saving…"));
     try {
       const saved = await saveArchitectureScene({ projectId: selectedProjectId, name: sceneName, scene });
+      if (!isCadPascalScene(saved.scene)) throw new Error("architecture.scene.invalid_cad_runtime")
       setScene(saved.scene);
       setSceneName(saved.name);
       setSceneRevision((value) => value + 1);
       setStatus("saved");
-      setStatusMessage(text("تم حفظ المشهد بنجاح.", "Scene saved successfully."));
+      setStatusMessage(text("تم حفظ مشهد CAD/Pascal بنجاح.", "CAD/Pascal scene saved successfully."));
     } catch (error) {
       setStatus("error");
       setStatusMessage(error instanceof Error ? error.message : "architecture.scene.save_failed");
@@ -130,16 +132,11 @@ export default function ArchitectureWorkspacePage() {
         <div>
           <span className="bx-kicker">BASOUL · ARCHITECTURE</span>
           <h2>{text("مساحة العمل الهندسية", "Architecture workspace")}</h2>
-          <p>{text("DWG/DXF أصبح المصدر الهندسي عالي الدقة: مراجعة 2D أولًا، ثم فتح Pascal فقط بعد نجاح CAD Geometry Gate.", "DWG/DXF is now the high-fidelity geometry source: review in 2D first, then open Pascal only after the CAD Geometry Gate passes.")}</p>
+          <p>{text("مسار واحد من DWG/DXF: قراءة 2D، بناء Floor Graph، ثم إنشاء Pascal 3D من نفس المصدر دون مشاهد بديلة.", "One DWG/DXF pipeline: 2D parsing, Floor Graph construction, then Pascal 3D from the same source with no substitute scenes.")}</p>
           <div className="bx-hero-tags">
-            <span className="bx-chip">ENGINE BOUNDARY · READY</span>
-            <span className="bx-chip">IFC GATEWAY · READY</span>
-            <span className="bx-chip">AI TOOLS · GUARDED</span>
-            <span className="bx-chip">CAD INGESTION · READY</span>
+            <span className="bx-chip">CAD SOURCE · SINGLE</span>
             <span className="bx-chip">FLOOR GRAPH · LIVE</span>
-            <span className="bx-chip">2D REVIEW · LIVE</span>
-            <span className="bx-chip">3D RUNTIME · LIVE</span>
-            <span className="bx-chip">3D SAFETY GATE · ACTIVE</span>
+            <span className="bx-chip">2D → 3D · UNIFIED</span>
             <span className="bx-chip">PERSISTENCE · PRODUCTION</span>
           </div>
         </div>
@@ -150,24 +147,17 @@ export default function ArchitectureWorkspacePage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, alignItems: "end" }}>
           <label style={{ display: "grid", gap: 8 }}><span className="bx-kicker">{text("المشروع", "PROJECT")}</span><select value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)} disabled={!projects.length || status === "saving"} style={{ minHeight: 44, borderRadius: 12, padding: "0 12px", background: "transparent", color: "inherit" }}>{!projects.length && <option value="">{text("لا توجد مشاريع", "No projects")}</option>}{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
           <label style={{ display: "grid", gap: 8 }}><span className="bx-kicker">{text("اسم المشهد", "SCENE NAME")}</span><input value={sceneName} onChange={(event) => { setSceneName(event.target.value); if (status === "saved") setStatus("unsaved"); }} maxLength={120} disabled={!selectedProjectId || status === "loading" || status === "saving"} style={{ minHeight: 44, borderRadius: 12, padding: "0 12px", background: "transparent", color: "inherit" }} /></label>
-          <div className="bx-actions" style={{ margin: 0 }}><button type="button" onClick={resetStarterScene} disabled={!selectedProjectId || status === "loading" || status === "saving"}>{text("مشهد بداية جديد", "New starter scene")}</button><button type="button" onClick={() => void saveScene()} disabled={!selectedProjectId || !scene || status === "loading" || status === "saving"}><Save size={16} /> {text("حفظ المشهد", "Save scene")}</button></div>
+          <div className="bx-actions" style={{ margin: 0 }}><button type="button" onClick={() => void saveScene()} disabled={!selectedProjectId || !cadSceneReady || status === "loading" || status === "saving"}><Save size={16} /> {text("حفظ مشهد CAD", "Save CAD scene")}</button></div>
         </div>
         <p aria-live="polite">{statusMessage}</p>
       </section>
 
       <CadReviewPanel projectId={selectedProjectId} text={text} onSceneReady={applyCadScene} />
 
-      {scene && <ArchitectureEditorPanel scene={scene} selectedId={selectedElementId} onSelectionChange={setSelectedElementId} onSceneChange={applyEditedScene} text={text} />}
-      {scene && <PascalRuntimeViewer scene={scene} sceneKey={`${selectedProjectId}:${sceneRevision}`} selectedId={selectedElementId} onSelectionChange={setSelectedElementId} onSceneChange={applyDirectManipulation} />}
+      {cadSceneReady && scene && <ArchitectureEditorPanel scene={scene} selectedId={selectedElementId} onSelectionChange={setSelectedElementId} onSceneChange={applyEditedScene} text={text} />}
+      {cadSceneReady && scene && <div id="architecture-3d-runtime"><PascalRuntimeViewer scene={scene} sceneKey={`${selectedProjectId}:${sceneRevision}`} selectedId={selectedElementId} onSelectionChange={setSelectedElementId} onSceneChange={applyDirectManipulation} /></div>}
 
-      <section className="bx-grid-2" aria-label={text("حالة المنظومة الهندسية", "Architecture system status")}>
-        <StatusCard icon={<Box size={20} />} kicker="CAD" title={text("هندسة أصلية من DWG/DXF", "Native DWG/DXF geometry")} detail={text("يتم بناء Floor Graph من إحداثيات CAD الأصلية وليس من تخمين بصري.", "The Floor Graph is built from native CAD coordinates rather than visual guessing.")} />
-        <StatusCard icon={<ShieldCheck size={20} />} kicker="GATE" title={text("بوابة أمان قبل 3D", "3D safety gate")} detail={text("Pascal لا يستقبل مشهد CAD إلا بعد نجاح topology وhost ratio والفراغات المغلقة.", "Pascal receives no CAD scene until topology, host ratio and bounded-space checks pass.")} />
-        <StatusCard icon={<FileBox size={20} />} kicker="IFC" title={text("بوابة IFC محفوظة", "IFC gateway retained")} detail={text("مسار IFC يبقى مستقلًا بجانب CAD وPDF fallback.", "The IFC path remains independent alongside CAD and the PDF fallback.")} />
-        <StatusCard icon={<BrainCircuit size={20} />} kicker="AI" title={text("AI للدلالة لا للهندسة", "AI for semantics, not geometry")} detail={text("يستخدم AI لاحقًا فقط لفك الغموض الدلالي وأسماء الطبقات والعناصر.", "AI is reserved for semantic ambiguity and layer/entity interpretation.")} />
-      </section>
-
-      <section className="bx-panel"><header className="bx-panel-head"><div><span className="bx-kicker">PRODUCTION STATUS</span><h3>{text("حالة قاعدة البيانات", "Database status")}</h3></div><span className="bx-chip">PERSISTENCE · LIVE</span></header><p>{text("يبقى كل مشهد CAD محليًا حتى الضغط على حفظ المشهد؛ الحفظ الحالي يستمر عبر architecture_scenes على Production مع Forced RLS وعزل المؤسسة والمشروع.", "Every CAD scene remains local until Save scene is pressed; persistence continues through Production architecture_scenes with Forced RLS and organization/project isolation.")}</p><div className="bx-actions"><button type="button" onClick={() => router.push("/")}>{text("العودة إلى لوحة القيادة", "Back to dashboard")}</button></div></section>
+      <section className="bx-panel"><header className="bx-panel-head"><div><span className="bx-kicker">PRODUCTION STATUS</span><h3>{text("حالة قاعدة البيانات", "Database status")}</h3></div><span className="bx-chip">PERSISTENCE · LIVE</span></header><p>{text("لا يتم حفظ أي مشهد بديل؛ الحفظ مخصص فقط لمشهد CAD/Pascal المشتق من الملف المرفوع.", "No substitute scene is persisted; saving is restricted to the CAD/Pascal scene derived from the uploaded file.")}</p><div className="bx-actions"><button type="button" onClick={() => router.push("/")}>{text("العودة إلى لوحة القيادة", "Back to dashboard")}</button></div></section>
     </main>
   );
 }
@@ -176,11 +166,7 @@ function statusLabel(status: PersistenceStatus) {
   if (status === "loading") return "SCENE · LOADING";
   if (status === "saving") return "SCENE · SAVING";
   if (status === "saved") return "SCENE · SAVED";
-  if (status === "unsaved") return "SCENE · UNSAVED";
+  if (status === "unsaved") return "SCENE · CAD READY";
   if (status === "error") return "SCENE · ERROR";
-  return "SCENE · IDLE";
-}
-
-function StatusCard({ icon, kicker, title, detail }: { icon: React.ReactNode; kicker: string; title: string; detail: string }) {
-  return <article className="bx-card blue"><div className="bx-icon">{icon}</div><span className="bx-kicker">{kicker}</span><h3>{title}</h3><p>{detail}</p></article>;
+  return "SCENE · EMPTY";
 }

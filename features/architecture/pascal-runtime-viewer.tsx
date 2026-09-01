@@ -1,13 +1,6 @@
 'use client'
 
 import {
-  BuildingNode,
-  DoorNode,
-  LevelNode,
-  SiteNode,
-  SlabNode,
-  WallNode,
-  WindowNode,
   emitter,
   type AnyNode,
   type AnyNodeId,
@@ -40,6 +33,24 @@ type ScenePlanBounds = {
   maxY: number
 }
 
+type WallGeometry = {
+  id?: string
+  type?: string
+  start?: [number, number]
+  end?: [number, number]
+  thickness?: number
+}
+
+type DoorGeometry = {
+  id?: string
+  type?: string
+  parentId?: string | null
+  wallId?: string
+  position?: [number, number, number]
+  width?: number
+  height?: number
+}
+
 export function isCadPascalScene(scene: ArchitectureScene | null | undefined) {
   const source = scene?.metadata?.source
   return typeof source === 'string' && source.startsWith('cad-pascal-') && scene?.metadata?.cadGeometryReady === true
@@ -69,25 +80,7 @@ export function PascalRuntimeViewer({
     setScene(activeScene.nodes as Record<AnyNodeId, AnyNode>, activeScene.rootNodeIds as AnyNodeId[])
   }, [activeScene, cadProvenanceReady, setScene])
 
-  if (!activeScene || !cadProvenanceReady) {
-    return (
-      <section className="bx-panel" aria-label="BASOUL Architecture 3D runtime">
-        <header className="bx-panel-head">
-          <div>
-            <span className="bx-kicker">PASCAL CORE + VIEWER · CAD FIDELITY v2.4</span>
-            <h3>3D Runtime</h3>
-          </div>
-          <div className="bx-hero-tags">
-            <span className="bx-chip">SCENE · BLOCKED</span>
-            <span className="bx-chip">CAD PROVENANCE · REQUIRED</span>
-          </div>
-        </header>
-        <p role="alert">
-          3D is blocked because the active scene is not a verified CAD-derived Pascal scene. Upload DWG/DXF and pass the CAD/Pascal gates; starter or persisted non-CAD scenes are never substituted for CAD geometry.
-        </p>
-      </section>
-    )
-  }
+  if (!activeScene || !cadProvenanceReady) return null
 
   return (
     <section className="bx-panel" aria-label="BASOUL Architecture 3D runtime">
@@ -106,12 +99,72 @@ export function PascalRuntimeViewer({
         <Viewer sceneReadyKey={sceneKey} onSceneReadyChange={setReady}>
           <BasoulCamera sceneKey={sceneKey} scene={activeScene} />
           <BasoulSemanticRoomLabels scene={activeScene} />
+          <BasoulCadDoorLeaves scene={activeScene} selectedId={selectedId} onSelectionChange={onSelectionChange} />
           <BasoulDirectSelection selectedId={selectedId} onSelectionChange={onSelectionChange} />
           <BasoulDirectManipulator scene={activeScene} selectedId={selectedId} onSceneChange={onSceneChange} />
         </Viewer>
       </div>
       <p>Click a wall, door or window to select it. Drag the 3D gizmo to move the selected element; changes stay local until Save scene is pressed.</p>
     </section>
+  )
+}
+
+function BasoulCadDoorLeaves({ scene, selectedId, onSelectionChange }: { scene: ArchitectureScene; selectedId: string; onSelectionChange?: (nodeId: string) => void }) {
+  const doors = useMemo(() => {
+    const result: Array<{ id: string; x: number; z: number; y: number; width: number; height: number; rotationY: number; thickness: number }> = []
+    for (const raw of Object.values(scene.nodes)) {
+      const door = raw as unknown as DoorGeometry
+      if (String(door.type) !== 'door' || !door.id || !Array.isArray(door.position)) continue
+      const wallRaw = scene.nodes[String(door.wallId ?? door.parentId ?? '')]
+      const wall = wallRaw as unknown as WallGeometry | undefined
+      if (!wall || !Array.isArray(wall.start) || !Array.isArray(wall.end)) continue
+      const [sx, sy] = wall.start
+      const [ex, ey] = wall.end
+      const dx = ex - sx
+      const dy = ey - sy
+      const length = Math.hypot(dx, dy)
+      if (length <= 1e-9) continue
+      const along = Math.max(0, Math.min(length, Number(door.position[0]) || 0))
+      const ux = dx / length
+      const uy = dy / length
+      const normalX = -uy
+      const normalY = ux
+      const wallThickness = typeof wall.thickness === 'number' && wall.thickness > 0 ? wall.thickness : 0.2
+      const width = typeof door.width === 'number' && door.width > 0 ? door.width : 1
+      const height = typeof door.height === 'number' && door.height > 0 ? door.height : 2.2
+      result.push({
+        id: door.id,
+        x: sx + ux * along + normalX * 0.01,
+        z: sy + uy * along + normalY * 0.01,
+        y: height / 2,
+        width,
+        height,
+        rotationY: -Math.atan2(dy, dx),
+        thickness: Math.max(0.045, Math.min(0.09, wallThickness * 0.35)),
+      })
+    }
+    return result
+  }, [scene])
+
+  return (
+    <group name="basoul-cad-door-leaves">
+      {doors.map((door) => (
+        <group key={door.id} position={[door.x, door.y, door.z]} rotation={[0, door.rotationY, 0]}>
+          <mesh
+            onClick={(event) => { event.stopPropagation(); onSelectionChange?.(door.id) }}
+            castShadow
+            receiveShadow
+          >
+            <boxGeometry args={[door.width, door.height, door.thickness]} />
+            <meshStandardMaterial color={selectedId === door.id ? '#4fc3f7' : '#8b684d'} roughness={0.72} metalness={0.02} />
+          </mesh>
+          <mesh position={[door.width * 0.36, 0, door.thickness * 0.7]}>
+            <sphereGeometry args={[0.045, 12, 12]} />
+            <meshStandardMaterial color="#d6b36a" metalness={0.55} roughness={0.35} />
+          </mesh>
+        </group>
+      ))}
+    </group>
   )
 }
 
@@ -278,24 +331,15 @@ function BasoulDirectManipulator({
     const object = gizmo.current
     dragStart.current = null
     if (!start || !object) return
-    const delta = {
-      x: object.position.x - start[0],
-      y: object.position.y - start[1],
-      z: object.position.z - start[2],
-    }
-    if (Math.hypot(delta.x, delta.y, delta.z) < 0.001) return
-    onSceneChange?.(translateEditableElement(scene, selectedId, delta))
+    const dx = object.position.x - start[0]
+    const dz = object.position.z - start[2]
+    if (Math.abs(dx) < 1e-6 && Math.abs(dz) < 1e-6) return
+    onSceneChange?.(translateEditableElement(scene, selectedId, { x: dx, y: 0, z: dz }))
   }
 
   return (
-    <TransformControls
-      mode="translate"
-      translationSnap={0.1}
-      size={0.82}
-      onMouseDown={beginDrag}
-      onMouseUp={finishDrag}
-    >
-      <group ref={gizmo} position={anchor}>
+    <TransformControls mode="translate" showY={false} onMouseDown={beginDrag} onMouseUp={finishDrag}>
+      <group ref={gizmo}>
         <mesh>
           <sphereGeometry args={[0.11, 16, 16]} />
           <meshBasicMaterial transparent opacity={0.68} depthTest={false} />
@@ -303,22 +347,4 @@ function BasoulDirectManipulator({
       </group>
     </TransformControls>
   )
-}
-
-export function createBasoulStarterScene(): ArchitectureScene {
-  const parsedNodes: AnyNode[] = [
-    SiteNode.parse({ id: 'site_basoul', parentId: null, children: ['building_basoul'] }),
-    BuildingNode.parse({ id: 'building_basoul', parentId: 'site_basoul', children: ['level_ground'], position: [0, 0, 0], rotation: [0, 0, 0] }),
-    LevelNode.parse({ id: 'level_ground', parentId: 'building_basoul', children: ['slab_ground', 'wall_north', 'wall_east', 'wall_south', 'wall_west'], name: 'Ground', level: 0, baseElevation: 0, height: 3.2 }),
-    SlabNode.parse({ id: 'slab_ground', parentId: 'level_ground', polygon: [[0, 0], [8, 0], [8, 6], [0, 6]], thickness: 0.2, elevation: 0 }),
-    WallNode.parse({ id: 'wall_north', parentId: 'level_ground', children: ['window_north'], start: [0, 0], end: [8, 0], height: 3.2, thickness: 0.2 }),
-    WallNode.parse({ id: 'wall_east', parentId: 'level_ground', start: [8, 0], end: [8, 6], height: 3.2, thickness: 0.2 }),
-    WallNode.parse({ id: 'wall_south', parentId: 'level_ground', children: ['door_south'], start: [8, 6], end: [0, 6], height: 3.2, thickness: 0.2 }),
-    WallNode.parse({ id: 'wall_west', parentId: 'level_ground', start: [0, 6], end: [0, 0], height: 3.2, thickness: 0.2 }),
-    WindowNode.parse({ id: 'window_north', parentId: 'wall_north', wallId: 'wall_north', position: [4, 1.6, 0], rotation: [0, 0, 0], width: 1.5, height: 1.4 }),
-    DoorNode.parse({ id: 'door_south', parentId: 'wall_south', wallId: 'wall_south', position: [4, 1.1, 0], rotation: [0, 0, 0], width: 1, height: 2.2 }),
-  ]
-  const nodes = Object.fromEntries(parsedNodes.map((node) => [node.id, node])) as unknown as ArchitectureScene['nodes']
-
-  return { nodes, rootNodeIds: ['site_basoul'], metadata: { owner: 'BASOUL', runtime: 'pascal-beta.5', source: 'starter-scene' } }
 }
