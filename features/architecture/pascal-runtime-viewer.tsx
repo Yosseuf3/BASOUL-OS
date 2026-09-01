@@ -40,6 +40,11 @@ type ScenePlanBounds = {
   maxY: number
 }
 
+export function isCadPascalScene(scene: ArchitectureScene | null | undefined) {
+  const source = scene?.metadata?.source
+  return typeof source === 'string' && source.startsWith('cad-pascal-') && scene?.metadata?.cadGeometryReady === true
+}
+
 export function PascalRuntimeViewer({
   scene,
   sceneKey = 'basoul-architecture-scene',
@@ -55,21 +60,44 @@ export function PascalRuntimeViewer({
 }) {
   const setScene = useScene((state) => state.setScene)
   const [ready, setReady] = useState(false)
-  const activeScene = scene ?? createBasoulStarterScene()
+  const activeScene = scene ?? null
+  const cadProvenanceReady = isCadPascalScene(activeScene)
 
   useEffect(() => {
     setReady(false)
+    if (!activeScene || !cadProvenanceReady) return
     setScene(activeScene.nodes as Record<AnyNodeId, AnyNode>, activeScene.rootNodeIds as AnyNodeId[])
-  }, [activeScene, setScene])
+  }, [activeScene, cadProvenanceReady, setScene])
+
+  if (!activeScene || !cadProvenanceReady) {
+    return (
+      <section className="bx-panel" aria-label="BASOUL Architecture 3D runtime">
+        <header className="bx-panel-head">
+          <div>
+            <span className="bx-kicker">PASCAL CORE + VIEWER · CAD FIDELITY v2.4</span>
+            <h3>3D Runtime</h3>
+          </div>
+          <div className="bx-hero-tags">
+            <span className="bx-chip">SCENE · BLOCKED</span>
+            <span className="bx-chip">CAD PROVENANCE · REQUIRED</span>
+          </div>
+        </header>
+        <p role="alert">
+          3D is blocked because the active scene is not a verified CAD-derived Pascal scene. Upload DWG/DXF and pass the CAD/Pascal gates; starter or persisted non-CAD scenes are never substituted for CAD geometry.
+        </p>
+      </section>
+    )
+  }
 
   return (
     <section className="bx-panel" aria-label="BASOUL Architecture 3D runtime">
       <header className="bx-panel-head">
         <div>
-          <span className="bx-kicker">PASCAL CORE + VIEWER · PINNED BETA.5</span>
+          <span className="bx-kicker">PASCAL CORE + VIEWER · CAD FIDELITY v2.4</span>
           <h3>3D Runtime</h3>
         </div>
         <div className="bx-hero-tags">
+          <span className="bx-chip">CAD PROVENANCE · VERIFIED</span>
           <span className="bx-chip">DIRECT SELECT · LIVE</span>
           <span className="bx-chip">{ready ? 'SCENE · READY' : 'SCENE · LOADING'}</span>
         </div>
@@ -292,5 +320,5 @@ export function createBasoulStarterScene(): ArchitectureScene {
   ]
   const nodes = Object.fromEntries(parsedNodes.map((node) => [node.id, node])) as unknown as ArchitectureScene['nodes']
 
-  return { nodes, rootNodeIds: ['site_basoul'], metadata: { owner: 'BASOUL', runtime: 'pascal-beta.5' } }
+  return { nodes, rootNodeIds: ['site_basoul'], metadata: { owner: 'BASOUL', runtime: 'pascal-beta.5', source: 'starter-scene' } }
 }
