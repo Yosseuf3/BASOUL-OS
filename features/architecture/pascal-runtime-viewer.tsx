@@ -33,6 +33,13 @@ type SemanticRoomLabel = {
   confidence?: number
 }
 
+type ScenePlanBounds = {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+}
+
 export function PascalRuntimeViewer({
   scene,
   sceneKey = 'basoul-architecture-scene',
@@ -69,7 +76,7 @@ export function PascalRuntimeViewer({
       </header>
       <div style={{ height: 'min(68vh, 720px)', minHeight: 420, overflow: 'hidden', borderRadius: 18 }}>
         <Viewer sceneReadyKey={sceneKey} onSceneReadyChange={setReady}>
-          <BasoulCamera sceneKey={sceneKey} />
+          <BasoulCamera sceneKey={sceneKey} scene={activeScene} />
           <BasoulSemanticRoomLabels scene={activeScene} />
           <BasoulDirectSelection selectedId={selectedId} onSelectionChange={onSelectionChange} />
           <BasoulDirectManipulator scene={activeScene} selectedId={selectedId} onSceneChange={onSceneChange} />
@@ -116,13 +123,65 @@ function BasoulSemanticRoomLabels({ scene }: { scene: ArchitectureScene }) {
   )
 }
 
-function BasoulCamera({ sceneKey }: { sceneKey: string }) {
+function scenePlanBounds(scene: ArchitectureScene): ScenePlanBounds | null {
+  let minX = Number.POSITIVE_INFINITY
+  let minY = Number.POSITIVE_INFINITY
+  let maxX = Number.NEGATIVE_INFINITY
+  let maxY = Number.NEGATIVE_INFINITY
+
+  const include = (point: unknown) => {
+    if (!Array.isArray(point) || point.length < 2) return
+    const [x, y] = point
+    if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y)) return
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x)
+    maxY = Math.max(maxY, y)
+  }
+
+  for (const node of Object.values(scene.nodes)) {
+    if (!node || typeof node !== 'object') continue
+    const geometry = node as unknown as { start?: unknown; end?: unknown; polygon?: unknown }
+    include(geometry.start)
+    include(geometry.end)
+    if (Array.isArray(geometry.polygon)) {
+      for (const point of geometry.polygon) include(point)
+    }
+  }
+
+  if (![minX, minY, maxX, maxY].every(Number.isFinite)) return null
+  return { minX, minY, maxX, maxY }
+}
+
+function BasoulCamera({ sceneKey, scene }: { sceneKey: string; scene: ArchitectureScene }) {
   const controls = useRef<CameraControlsImpl>(null)
   const inputDragging = useViewer((state) => state.inputDragging)
+  const bounds = useMemo(() => scenePlanBounds(scene), [scene])
 
   useEffect(() => {
-    void controls.current?.setLookAt(12, 9, 12, 4, 1.4, 3, false)
-  }, [sceneKey])
+    if (!bounds) {
+      void controls.current?.setLookAt(12, 9, 12, 4, 1.4, 3, false)
+      return
+    }
+
+    const centerX = (bounds.minX + bounds.maxX) / 2
+    const centerZ = (bounds.minY + bounds.maxY) / 2
+    const width = Math.max(bounds.maxX - bounds.minX, 1)
+    const depth = Math.max(bounds.maxY - bounds.minY, 1)
+    const span = Math.max(width, depth, 8)
+    const offset = span * 0.9
+    const height = Math.max(span * 1.05, 9)
+
+    void controls.current?.setLookAt(
+      centerX + offset,
+      height,
+      centerZ + offset,
+      centerX,
+      0.8,
+      centerZ,
+      false,
+    )
+  }, [bounds, sceneKey])
 
   return <CameraControls ref={controls} makeDefault enabled={!inputDragging} />
 }
@@ -216,6 +275,8 @@ function BasoulDirectManipulator({
       </group>
     </TransformControls>
   )
+
+  return null
 }
 
 export function createBasoulStarterScene(): ArchitectureScene {
