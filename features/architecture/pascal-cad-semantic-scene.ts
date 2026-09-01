@@ -48,6 +48,21 @@ function distanceAlongWall(point: CadPoint, a: CadPoint, b: CadPoint) {
   return Math.max(0, Math.min(length, ((point.x - a.x) * dx + (point.y - a.y) * dy) / length))
 }
 
+function wallCoverage(document: NormalizedCadDocument, graph: CadFloorGraph) {
+  const expected = document.entities
+    .filter((entity) => classifyCadEntity(entity).kind === 'wall')
+    .filter((entity) => (entity.points?.length ?? 0) >= 2)
+    .map((entity) => entity.id)
+  const represented = new Set(graph.edges.map((edge) => edge.sourceEntityId))
+  const missing = expected.filter((entityId) => !represented.has(entityId))
+  return {
+    cadWallEntities: expected.length,
+    representedCadWallEntities: expected.length - missing.length,
+    missingCadWallEntities: missing.length,
+    wallEntityCoverage: expected.length ? (expected.length - missing.length) / expected.length : 0,
+  }
+}
+
 export interface PascalSemanticCadDiagnostics {
   walls: number
   doors: number
@@ -56,11 +71,38 @@ export interface PascalSemanticCadDiagnostics {
   floatingOpenings: number
   semanticRooms: number
   roomSlabs: number
+  cadWallEntities: number
+  representedCadWallEntities: number
+  missingCadWallEntities: number
+  wallEntityCoverage: number
+  graphEdgesMaterialized: number
+  graphEdgeCoverage: number
 }
 
 export function buildNativePascalCadScene(document: NormalizedCadDocument, inputGraph?: CadFloorGraph) {
   const graph = inputGraph ?? buildCadFloorGraph(document)
   if (!graph.gate.ready) return { scene: null, graph, diagnostics: null, reason: graph.gate.reasons.join('; ') || 'CAD geometry gate did not pass.' }
+
+  const coverage = wallCoverage(document, graph)
+  if (coverage.missingCadWallEntities > 0) {
+    return {
+      scene: null,
+      graph,
+      diagnostics: {
+        walls: 0,
+        doors: 0,
+        windows: 0,
+        hostedOpenings: 0,
+        floatingOpenings: graph.openings.filter((opening) => !opening.hostEdgeId).length,
+        semanticRooms: 0,
+        roomSlabs: 0,
+        ...coverage,
+        graphEdgesMaterialized: 0,
+        graphEdgeCoverage: 0,
+      },
+      reason: `CAD fidelity gate failed: ${coverage.missingCadWallEntities}/${coverage.cadWallEntities} classified wall entities are missing from the floor graph.`,
+    }
+  }
 
   const vertices = new Map(graph.vertices.map((vertex) => [vertex.id, vertex]))
   const entities = new Map(document.entities.map((entity) => [entity.id, entity]))
@@ -88,6 +130,7 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
 
   let doors = 0
   let windows = 0
+  let graphEdgesMaterialized = 0
   for (const edge of graph.edges) {
     const a = vertices.get(edge.a)
     const b = vertices.get(edge.b)
@@ -104,6 +147,7 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
       height: WALL_HEIGHT,
       thickness: WALL_THICKNESS,
     }))
+    graphEdgesMaterialized += 1
 
     for (const opening of hosted) {
       const entity = entities.get(opening.entityId)
@@ -150,24 +194,39 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
 
   const nodes = Object.fromEntries(parsed.map((node) => [node.id, asSceneNode(node)]))
   const floatingOpenings = graph.openings.filter((opening) => !opening.hostEdgeId).length
+  const graphEdgeCoverage = graph.edges.length ? graphEdgesMaterialized / graph.edges.length : 0
   const diagnostics: PascalSemanticCadDiagnostics = {
-    walls: graph.edges.length,
+    walls: graphEdgesMaterialized,
     doors,
     windows,
     hostedOpenings: doors + windows,
     floatingOpenings,
     semanticRooms: semanticRooms.length,
     roomSlabs: semanticRooms.length,
+    ...coverage,
+    graphEdgesMaterialized,
+    graphEdgeCoverage,
   }
 
   const expectedDoors = document.entities.filter((entity) => classifyCadEntity(entity).kind === 'door').length
   const expectedWindows = document.entities.filter((entity) => classifyCadEntity(entity).kind === 'window').length
+
+  // v2.3 semantic compatibility gate remains exact; v2.4 fidelity is additive.
   if (floatingOpenings || doors !== expectedDoors || windows !== expectedWindows) {
     return {
       scene: null,
       graph,
       diagnostics,
       reason: `Pascal semantic gate failed: floating=${floatingOpenings}, doors=${doors}/${expectedDoors}, windows=${windows}/${expectedWindows}`,
+    }
+  }
+
+  if (graphEdgeCoverage !== 1) {
+    return {
+      scene: null,
+      graph,
+      diagnostics,
+      reason: `Pascal fidelity gate failed: wallCoverage=${coverage.representedCadWallEntities}/${coverage.cadWallEntities}, graphEdges=${graphEdgesMaterialized}/${graph.edges.length}`,
     }
   }
 
@@ -181,6 +240,8 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
       cadFloorGraphVersion: '2.1',
       semanticRoomRecoveryVersion: '2.2',
       pascalSemanticIntegrationVersion: '2.3',
+      cadFidelityVersion: '2.4',
+      cadSourceFilename: document.source.filename,
       diagnostics,
       semanticRooms: semanticRooms.map((room) => ({
         id: room.id,
