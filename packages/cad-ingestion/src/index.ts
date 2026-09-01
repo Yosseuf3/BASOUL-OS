@@ -52,14 +52,12 @@ export interface CadLayerDiagnostic {
 }
 
 const match = (value: string | null | undefined, pattern: RegExp) => pattern.test(value ?? '')
-// Compatibility marker: Semantic room label from native CAD text.
 const architecturalSpace = /room|bed|living|kitchen|bath|toilet|wc|hall|corridor|majlis|office|garage|store|laundry|dining|shop|elevator|shaft|غرفة|نوم|حمام|مطبخ|صالة|صالون|مجلس|ممر|محل|مكتب|مستودع|مصعد|منور|خادمة|ملابس|طعام/i
 const geometryEntityTypes: CadEntityType[] = ['LINE', 'LWPOLYLINE', 'POLYLINE', 'ARC']
 const isGeometry = (entity: CadEntity) => geometryEntityTypes.includes(entity.type)
 
 const doorBlockPattern = /door|(?:^|[_-])dr(?:[_-]|$)|^dr[_-]|باب/i
 const windowBlockPattern = /window|win(?:[_-]|$)|^wd[_-]|نافذ/i
-
 const arabicDiacritics = /[\u064B-\u065F\u0670\u06D6-\u06ED]/g
 
 export function normalizeCadLayerName(value: string | null | undefined): string {
@@ -85,7 +83,12 @@ function layerHasToken(layer: string, aliases: readonly string[]) {
   })
 }
 
+function isTextAnnotationLayer(layer: string) {
+  return layerHasToken(layer, ['text', 'txt', 'tx', 'arab', 'arabic', 'annotation', 'annotations', 'annot', 'label', 'labels', 'كتابة', 'نص', 'نصوص', 'تسمية', 'تسميات'])
+}
+
 function layerSemanticKind(layer: string): CadSemanticKind | null {
+  if (isTextAnnotationLayer(layer)) return 'label'
   if (layerHasToken(layer, ['wall', 'walls', 'a-wall', 'arch-wall', 'architectural-wall', 'جدار', 'جدران', 'حوائط', 'حائط'])) return 'wall'
   if (layerHasToken(layer, ['door', 'doors', 'a-door', 'dr', 'باب', 'ابواب', 'أبواب'])) return 'door'
   if (layerHasToken(layer, ['window', 'windows', 'a-glaz', 'glaz', 'win', 'wd', 'نافذة', 'نوافذ', 'نافذ'])) return 'window'
@@ -103,8 +106,11 @@ export function classifyCadEntity(entity: CadEntity): CadClassificationRule {
   const layerKind = layerSemanticKind(layer)
 
   if (entity.type === 'DIMENSION') return { kind: 'dimension', confidence: 0.99, reason: 'Native CAD DIMENSION entity.' }
-  if ((entity.type === 'TEXT' || entity.type === 'MTEXT') && match(text, architecturalSpace)) return { kind: 'room', confidence: 0.9, reason: 'Semantic room label from native or decoded CAD text.' }
-  if (entity.type === 'TEXT' || entity.type === 'MTEXT') return { kind: 'label', confidence: 0.92, reason: 'Native CAD text entity.' }
+  if (entity.type === 'TEXT' || entity.type === 'MTEXT') {
+    if (layerKind === 'label') return { kind: 'label', confidence: 0.99, reason: 'Native CAD text on an explicit annotation/text layer.' }
+    if (layerKind === 'room' && match(text, architecturalSpace)) return { kind: 'room', confidence: 0.95, reason: 'Semantic room label on an explicit room/space layer.' }
+    return { kind: 'label', confidence: 0.92, reason: 'Native CAD text entity retained as annotation; text content alone does not create room geometry.' }
+  }
 
   if (entity.type === 'INSERT' && match(block, doorBlockPattern)) return { kind: 'door', confidence: 0.98, reason: 'Door block semantics.' }
   if (entity.type === 'INSERT' && match(block, windowBlockPattern)) return { kind: 'window', confidence: 0.98, reason: 'Window block semantics.' }
@@ -173,67 +179,26 @@ export function cadDocumentToArchitectureScene(document: NormalizedCadDocument):
     [rootId]: {
       id: rootId,
       type: 'level',
-      metadata: {
-        sourceFormat: document.source.format,
-        filename: document.source.filename,
-        units: document.units ?? null,
-        converter: document.source.converter,
-        codepage: document.source.codepage ?? null,
-        textDecoding: document.textDecoding ?? null,
-      },
+      metadata: { sourceFormat: document.source.format, filename: document.source.filename, units: document.units ?? null, converter: document.source.converter, codepage: document.source.codepage ?? null, textDecoding: document.textDecoding ?? null },
     },
   }
-
   for (const entity of document.entities) {
     const node = nodeFromEntity(entity)
     if (!node) continue
     nodes[node.id] = { ...node, parentId: rootId }
   }
-
-  return {
-    nodes,
-    rootNodeIds: [rootId],
-    metadata: {
-      source: 'cad',
-      cadSchema: document.schema,
-      layerCount: document.layers.length,
-      blockCount: document.blocks.length,
-      textStyleCount: document.textStyles?.length ?? 0,
-      entityCount: document.entities.length,
-      decodedTextCount: document.textDecoding?.decodedEntities ?? 0,
-    },
-  }
+  return { nodes, rootNodeIds: [rootId], metadata: { source: 'cad', cadSchema: document.schema, layerCount: document.layers.length, blockCount: document.blocks.length, textStyleCount: document.textStyles?.length ?? 0, entityCount: document.entities.length, decodedTextCount: document.textDecoding?.decodedEntities ?? 0 } }
 }
 
 export function summarizeCadLayers(document: NormalizedCadDocument): CadLayerDiagnostic[] {
   const layers = new Map<string, CadLayerDiagnostic & { confidenceTotal: number }>()
-
   for (const declared of document.layers) {
     const rawLayerName = String(declared.name ?? '0')
-    layers.set(rawLayerName, {
-      rawLayerName,
-      normalizedLayerName: normalizeCadLayerName(rawLayerName),
-      entityCount: 0,
-      entityTypes: {},
-      classified: { wall: 0, door: 0, window: 0, room: 0, stair: 0, column: 0, dimension: 0, label: 0, item: 0 },
-      dominantKind: 'item',
-      averageConfidence: 0,
-      confidenceTotal: 0,
-    })
+    layers.set(rawLayerName, { rawLayerName, normalizedLayerName: normalizeCadLayerName(rawLayerName), entityCount: 0, entityTypes: {}, classified: { wall: 0, door: 0, window: 0, room: 0, stair: 0, column: 0, dimension: 0, label: 0, item: 0 }, dominantKind: 'item', averageConfidence: 0, confidenceTotal: 0 })
   }
-
   for (const entity of document.entities) {
     const rawLayerName = String(entity.layer || '0')
-    const current = layers.get(rawLayerName) ?? {
-      rawLayerName,
-      normalizedLayerName: normalizeCadLayerName(rawLayerName),
-      entityCount: 0,
-      entityTypes: {},
-      classified: { wall: 0, door: 0, window: 0, room: 0, stair: 0, column: 0, dimension: 0, label: 0, item: 0 },
-      dominantKind: 'item' as CadSemanticKind,
-      averageConfidence: 0,
-      confidenceTotal: 0,
-    }
+    const current = layers.get(rawLayerName) ?? { rawLayerName, normalizedLayerName: normalizeCadLayerName(rawLayerName), entityCount: 0, entityTypes: {}, classified: { wall: 0, door: 0, window: 0, room: 0, stair: 0, column: 0, dimension: 0, label: 0, item: 0 }, dominantKind: 'item' as CadSemanticKind, averageConfidence: 0, confidenceTotal: 0 }
     const classification = classifyCadEntity(entity)
     current.entityCount += 1
     current.entityTypes[entity.type] = (current.entityTypes[entity.type] ?? 0) + 1
@@ -241,19 +206,9 @@ export function summarizeCadLayers(document: NormalizedCadDocument): CadLayerDia
     current.confidenceTotal += classification.confidence
     layers.set(rawLayerName, current)
   }
-
   return [...layers.values()].map((layer) => {
-    const dominantKind = (Object.entries(layer.classified) as [CadSemanticKind, number][])
-      .sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'item'
-    return {
-      rawLayerName: layer.rawLayerName,
-      normalizedLayerName: layer.normalizedLayerName,
-      entityCount: layer.entityCount,
-      entityTypes: layer.entityTypes,
-      classified: layer.classified,
-      dominantKind,
-      averageConfidence: layer.entityCount ? layer.confidenceTotal / layer.entityCount : 0,
-    }
+    const dominantKind = (Object.entries(layer.classified) as [CadSemanticKind, number][]).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'item'
+    return { rawLayerName: layer.rawLayerName, normalizedLayerName: layer.normalizedLayerName, entityCount: layer.entityCount, entityTypes: layer.entityTypes, classified: layer.classified, dominantKind, averageConfidence: layer.entityCount ? layer.confidenceTotal / layer.entityCount : 0 }
   }).sort((a, b) => b.entityCount - a.entityCount || a.rawLayerName.localeCompare(b.rawLayerName))
 }
 
@@ -263,14 +218,7 @@ export function summarizeCadDocument(document: NormalizedCadDocument) {
     const kind = classifyCadEntity(entity).kind
     counts[kind] = (counts[kind] ?? 0) + 1
   }
-  return {
-    layers: document.layers.length,
-    blocks: document.blocks.length,
-    textStyles: document.textStyles?.length ?? 0,
-    entities: document.entities.length,
-    decodedText: document.textDecoding?.decodedEntities ?? 0,
-    classified: counts,
-  }
+  return { layers: document.layers.length, blocks: document.blocks.length, textStyles: document.textStyles?.length ?? 0, entities: document.entities.length, decodedText: document.textDecoding?.decodedEntities ?? 0, classified: counts }
 }
 
 export * from './floor-graph'
