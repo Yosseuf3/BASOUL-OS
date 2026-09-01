@@ -47,6 +47,7 @@ type DoorGeometry = {
   parentId?: string | null
   wallId?: string
   position?: [number, number, number]
+  rotation?: [number, number, number]
   width?: number
   height?: number
 }
@@ -86,7 +87,7 @@ export function PascalRuntimeViewer({
     <section className="bx-panel" aria-label="BASOUL Architecture 3D runtime">
       <header className="bx-panel-head">
         <div>
-          <span className="bx-kicker">PASCAL CORE + VIEWER · CAD FIDELITY v2.4</span>
+          <span className="bx-kicker">PASCAL CORE + VIEWER · CAD FIDELITY v3.1</span>
           <h3>3D Runtime</h3>
         </div>
         <div className="bx-hero-tags">
@@ -132,6 +133,9 @@ function BasoulCadDoorLeaves({ scene, selectedId, onSelectionChange }: { scene: 
       const wallThickness = typeof wall.thickness === 'number' && wall.thickness > 0 ? wall.thickness : 0.2
       const width = typeof door.width === 'number' && door.width > 0 ? door.width : 1
       const height = typeof door.height === 'number' && door.height > 0 ? door.height : 2.2
+      const cadRotationY = Array.isArray(door.rotation) && typeof door.rotation[1] === 'number' && Math.abs(door.rotation[1]) > 1e-9
+        ? door.rotation[1]
+        : null
       result.push({
         id: door.id,
         x: sx + ux * along + normalX * 0.01,
@@ -139,7 +143,7 @@ function BasoulCadDoorLeaves({ scene, selectedId, onSelectionChange }: { scene: 
         y: height / 2,
         width,
         height,
-        rotationY: -Math.atan2(dy, dx),
+        rotationY: cadRotationY ?? -Math.atan2(dy, dx),
         thickness: Math.max(0.045, Math.min(0.09, wallThickness * 0.35)),
       })
     }
