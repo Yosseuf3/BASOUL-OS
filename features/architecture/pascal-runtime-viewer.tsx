@@ -275,8 +275,6 @@ function BasoulDirectManipulator({
       </group>
     </TransformControls>
   )
-
-  return null
 }
 
 export function createBasoulStarterScene(): ArchitectureScene {
