@@ -334,7 +334,7 @@ function BasoulDirectManipulator({
     const dx = object.position.x - start[0]
     const dz = object.position.z - start[2]
     if (Math.abs(dx) < 1e-6 && Math.abs(dz) < 1e-6) return
-    onSceneChange?.(translateEditableElement(scene, selectedId, dx, dz))
+    onSceneChange?.(translateEditableElement(scene, selectedId, { x: dx, y: 0, z: dz }))
   }
 
   return (
