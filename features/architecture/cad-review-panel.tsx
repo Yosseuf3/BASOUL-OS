@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import {
   buildCadFloorGraph,
   summarizeCadDocument,
+  summarizeCadLayers,
   type CadFloorGraph,
   type NormalizedCadDocument,
 } from '@/packages/cad-ingestion/src'
@@ -29,6 +30,7 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
   const [pascalDiagnostics, setPascalDiagnostics] = useState<PascalSemanticCadDiagnostics | null>(null)
 
   const summary = useMemo(() => document ? summarizeCadDocument(document) : null, [document])
+  const layerDiagnostics = useMemo(() => document ? summarizeCadLayers(document) : [], [document])
   const graph = useMemo(() => document ? buildCadFloorGraph(document) : null, [document])
 
   async function uploadCad(file: File) {
@@ -116,10 +118,12 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
         {summary && graph && <>
           <div className="bx-grid-2">
             <Metric icon={<Box size={18} />} label={text('العناصر', 'Entities')} value={summary.entities} />
+            <Metric icon={<Network size={18} />} label={text('الطبقات', 'Layers')} value={summary.layers} />
             <Metric icon={<Network size={18} />} label={text('حواف الجدران', 'Wall edges')} value={graph.gate.wallSegments} />
             <Metric icon={<Network size={18} />} label={text('التقاطعات', 'Junctions')} value={graph.gate.junctions} />
             <Metric icon={graph.gate.ready ? <CheckCircle2 size={18} /> : <ShieldAlert size={18} />} label="HOST RATIO" value={`${Math.round(graph.gate.hostRatio * 1000) / 10}%`} />
           </div>
+          <CadLayerDiagnostics diagnostics={layerDiagnostics} text={text} />
           <CadFloorGraphOverlay graph={graph} />
           <div className="bx-actions" style={{ margin: 0 }}>
             <button type="button" onClick={openIn3D} disabled={!graph.gate.ready}><Box size={16} /> {text('فتح المشهد في 3D', 'Open scene in 3D')}</button>
@@ -130,6 +134,38 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
     </section>
   )
 }
+
+function CadLayerDiagnostics({ diagnostics, text }: { diagnostics: ReturnType<typeof summarizeCadLayers>; text: TextFn }) {
+  if (!diagnostics.length) return null
+  return <section aria-label={text('تشخيص قراءة الطبقات', 'Layer reading diagnostics')} style={{ display: 'grid', gap: 10 }}>
+    <div className="bx-panel-head" style={{ margin: 0 }}>
+      <div><span className="bx-kicker">CAD LAYERS · NORMALIZED</span><h3>{text('تشخيص قراءة الطبقات', 'Layer reading diagnostics')}</h3></div>
+      <span className="bx-chip">{diagnostics.length} LAYERS</span>
+    </div>
+    <div style={{ overflowX: 'auto', border: '1px solid rgba(120,160,255,.2)', borderRadius: 14 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+        <thead><tr>
+          <th style={cellStyle}>{text('الطبقة الأصلية', 'Raw layer')}</th>
+          <th style={cellStyle}>{text('بعد التطبيع', 'Normalized')}</th>
+          <th style={cellStyle}>{text('العناصر', 'Entities')}</th>
+          <th style={cellStyle}>{text('النوع الغالب', 'Dominant kind')}</th>
+          <th style={cellStyle}>{text('الثقة', 'Confidence')}</th>
+          <th style={cellStyle}>{text('أنواع CAD', 'CAD types')}</th>
+        </tr></thead>
+        <tbody>{diagnostics.map((layer) => <tr key={layer.rawLayerName}>
+          <td style={cellStyle}><code>{layer.rawLayerName}</code></td>
+          <td style={cellStyle}><code>{layer.normalizedLayerName || '0'}</code></td>
+          <td style={cellStyle}>{layer.entityCount}</td>
+          <td style={cellStyle}>{layer.dominantKind.toUpperCase()}</td>
+          <td style={cellStyle}>{layer.entityCount ? `${Math.round(layer.averageConfidence * 100)}%` : '—'}</td>
+          <td style={cellStyle}>{Object.entries(layer.entityTypes).map(([kind, count]) => `${kind}:${count}`).join(' · ') || '—'}</td>
+        </tr>)}</tbody>
+      </table>
+    </div>
+  </section>
+}
+
+const cellStyle: React.CSSProperties = { padding: '10px 12px', borderBottom: '1px solid rgba(120,160,255,.14)', textAlign: 'start', verticalAlign: 'top' }
 
 function PascalAcceptanceDiagnostics({ diagnostics, text }: { diagnostics: PascalSemanticCadDiagnostics; text: TextFn }) {
   const pass = diagnostics.floatingOpenings === 0 && diagnostics.hostedOpenings === diagnostics.doors + diagnostics.windows && diagnostics.semanticRooms === diagnostics.roomSlabs
