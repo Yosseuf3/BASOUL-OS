@@ -76,3 +76,5 @@ jobs:
           console.log(`EAS build status: ${build.status ?? 'queued'}`);
           if (build.buildDetailsPageUrl) console.log(`Build URL: ${build.buildDetailsPageUrl}`);
           NODE
+
+# Non-functional trigger for the 2026-09-01 free-plan quota reset verification.
