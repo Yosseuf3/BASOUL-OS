@@ -80,6 +80,12 @@ function cadWindowSill(entity: NormalizedCadDocument['entities'][number]) {
   return typeof insertZ === 'number' && insertZ >= 0.2 && insertZ <= 3.5 ? insertZ : WINDOW_SILL
 }
 
+function cadDoorRotation(entity: NormalizedCadDocument['entities'][number]) {
+  if (typeof entity.rotation !== 'number' || !Number.isFinite(entity.rotation)) return null
+  const normalized = ((entity.rotation % 360) + 360) % 360
+  return normalized * Math.PI / 180
+}
+
 function distanceAlongWall(point: CadPoint, a: CadPoint, b: CadPoint) {
   const dx = b.x - a.x
   const dy = b.y - a.y
@@ -180,6 +186,7 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
   let doors = 0
   let windows = 0
   let graphEdgesMaterialized = 0
+  const cadDoorOrientations: Array<{ id: string; entityId: string; rotationRadians: number }> = []
   for (const edge of graph.edges) {
     const a = vertices.get(edge.a)
     const b = vertices.get(edge.b)
@@ -207,7 +214,10 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
       const width = projectedOpeningWidth(entity, a, b)
       if (opening.kind === 'door') {
         const height = cadOpeningHeight(entity, DOOR_HEIGHT)
-        parsed.push(DoorNode.parse({ id, parentId: wallId, wallId, position: [along, height / 2, 0], rotation: [0, 0, 0], width, height }))
+        const cadRotation = cadDoorRotation(entity)
+        const rotationY = cadRotation == null ? 0 : -cadRotation
+        parsed.push(DoorNode.parse({ id, parentId: wallId, wallId, position: [along, height / 2, 0], rotation: [0, rotationY, 0], width, height }))
+        if (cadRotation != null) cadDoorOrientations.push({ id, entityId: opening.entityId, rotationRadians: cadRotation })
         doors += 1
       } else {
         const height = cadOpeningHeight(entity, WINDOW_HEIGHT)
@@ -257,18 +267,19 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
     nodes,
     rootNodeIds: [siteId],
     metadata: {
-      source: 'cad-pascal-semantic-v3.0',
+      source: 'cad-pascal-semantic-v3.1',
       runtime: 'pascal-beta.5',
       cadGeometryReady: true,
       cadFloorGraphVersion: '2.1',
       semanticRoomRecoveryVersion: '2.2',
-      pascalSemanticIntegrationVersion: '3.0',
-      cadFidelityVersion: '3.0',
-      cadOpeningMaterializationVersion: '3.0',
+      pascalSemanticIntegrationVersion: '3.1',
+      cadFidelityVersion: '3.1',
+      cadOpeningMaterializationVersion: '3.1',
       pascalNodeIdCompatibilityVersion: '2.7',
       cadSourceFilename: document.source.filename,
       degraded,
       unresolvedOpenings: graph.openings.filter((opening) => !opening.hostEdgeId).map((opening) => ({ entityId: opening.entityId, kind: opening.kind })),
+      cadDoorOrientations,
       diagnostics,
       semanticRooms: semanticRooms.map((room) => ({ id: room.id, labelEntityId: room.labelEntityId, label: room.label, seed: room.seed, area: room.area, confidence: room.confidence })),
     },
