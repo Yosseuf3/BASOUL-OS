@@ -6,15 +6,15 @@ const adapter = await readFile(new URL('../features/architecture/pascal-cad-sema
 const gateway = await readFile(new URL('../features/architecture/pascal-cad-scene.ts', import.meta.url), 'utf8')
 const viewer = await readFile(new URL('../features/architecture/pascal-runtime-viewer.tsx', import.meta.url), 'utf8')
 
-test('Pascal CAD v3.0 materializes native walls, hosted doors/windows and room slabs', () => {
+test('Pascal CAD v3.1 materializes native walls, hosted doors/windows and room slabs', () => {
   assert.match(adapter, /WallNode\.parse/)
   assert.match(adapter, /DoorNode\.parse/)
   assert.match(adapter, /WindowNode\.parse/)
   assert.match(adapter, /SlabNode\.parse/)
   assert.match(adapter, /recoverSemanticRooms/)
   assert.match(adapter, /floatingOpenings/)
-  assert.match(adapter, /pascalSemanticIntegrationVersion: '3\.0'/)
-  assert.match(adapter, /cadFidelityVersion: '3\.0'/)
+  assert.match(adapter, /pascalSemanticIntegrationVersion: '3\.1'/)
+  assert.match(adapter, /cadFidelityVersion: '3\.1'/)
 })
 
 test('3D Fidelity v3 derives opening width along the host wall and uses trustworthy CAD Z extents', () => {
@@ -24,7 +24,17 @@ test('3D Fidelity v3 derives opening width along the host wall and uses trustwor
   assert.match(adapter, /cadOpeningHeight/)
   assert.match(adapter, /height >= 0\.5 && height <= 4\.5/)
   assert.match(adapter, /cadWindowSill/)
-  assert.match(adapter, /cadOpeningMaterializationVersion: '3\.0'/)
+  assert.match(adapter, /cadOpeningMaterializationVersion: '3\.1'/)
+})
+
+test('3D Fidelity v3.1 preserves CAD door block orientation through Pascal and the visible leaf', () => {
+  assert.match(adapter, /cadDoorRotation/)
+  assert.match(adapter, /rotation: \[0, rotationY, 0\]/)
+  assert.match(adapter, /cadDoorOrientations/)
+  assert.match(viewer, /rotation\?: \[number, number, number\]/)
+  assert.match(viewer, /cadRotationY/)
+  assert.match(viewer, /rotationY: cadRotationY \?\? -Math\.atan2/)
+  assert.match(viewer, /CAD FIDELITY v3\.1/)
 })
 
 test('Pascal keeps verified wall geometry available when some openings cannot be hosted', () => {
