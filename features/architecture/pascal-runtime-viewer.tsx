@@ -308,7 +308,7 @@ function BasoulDirectManipulator({
 export function createBasoulStarterScene(): ArchitectureScene {
   const parsedNodes: AnyNode[] = [
     SiteNode.parse({ id: 'site_basoul', parentId: null, children: ['building_basoul'] }),
-    BuildingNode.parse({ id: 'building_basoul', parentId: site_basoul, children: ['level_ground'], position: [0, 0, 0], rotation: [0, 0, 0] }),
+    BuildingNode.parse({ id: 'building_basoul', parentId: 'site_basoul', children: ['level_ground'], position: [0, 0, 0], rotation: [0, 0, 0] }),
     LevelNode.parse({ id: 'level_ground', parentId: 'building_basoul', children: ['slab_ground', 'wall_north', 'wall_east', 'wall_south', 'wall_west'], name: 'Ground', level: 0, baseElevation: 0, height: 3.2 }),
     SlabNode.parse({ id: 'slab_ground', parentId: 'level_ground', polygon: [[0, 0], [8, 0], [8, 6], [0, 6]], thickness: 0.2, elevation: 0 }),
     WallNode.parse({ id: 'wall_north', parentId: 'level_ground', children: ['window_north'], start: [0, 0], end: [8, 0], height: 3.2, thickness: 0.2 }),
