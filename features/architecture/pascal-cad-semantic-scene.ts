@@ -36,13 +36,48 @@ function pascalId(prefix: string, raw: string | number) {
   return `${prefix}_${safe}`
 }
 
-function boundsWidth(entity: NormalizedCadDocument['entities'][number]) {
+type InsertBounds = { min?: Partial<CadPoint>; max?: Partial<CadPoint> }
+
+function readInsertBounds(entity: NormalizedCadDocument['entities'][number]): InsertBounds | null {
   const raw = entity.metadata?.insertBounds
-  if (!raw || typeof raw !== 'object') return entity.type === 'INSERT' ? 1 : 0.9
-  const bounds = raw as { min?: Partial<CadPoint>; max?: Partial<CadPoint> }
-  if (typeof bounds.min?.x !== 'number' || typeof bounds.min?.y !== 'number' || typeof bounds.max?.x !== 'number' || typeof bounds.max?.y !== 'number') return 1
-  const width = Math.max(Math.abs(bounds.max.x - bounds.min.x), Math.abs(bounds.max.y - bounds.min.y))
+  return raw && typeof raw === 'object' ? raw as InsertBounds : null
+}
+
+function projectedOpeningWidth(entity: NormalizedCadDocument['entities'][number], a: CadPoint, b: CadPoint) {
+  const bounds = readInsertBounds(entity)
+  if (!bounds || typeof bounds.min?.x !== 'number' || typeof bounds.min?.y !== 'number' || typeof bounds.max?.x !== 'number' || typeof bounds.max?.y !== 'number') return entity.type === 'INSERT' ? 1 : 0.9
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const length = Math.hypot(dx, dy)
+  if (length <= 1e-9) return 1
+  const ux = dx / length
+  const uy = dy / length
+  const corners = [
+    [bounds.min.x, bounds.min.y],
+    [bounds.min.x, bounds.max.y],
+    [bounds.max.x, bounds.min.y],
+    [bounds.max.x, bounds.max.y],
+  ] as const
+  const projections = corners.map(([x, y]) => x * ux + y * uy)
+  const width = Math.max(...projections) - Math.min(...projections)
   return Math.max(0.45, Math.min(3, width || 1))
+}
+
+function cadOpeningHeight(entity: NormalizedCadDocument['entities'][number], fallback: number) {
+  const bounds = readInsertBounds(entity)
+  const minZ = bounds?.min?.z
+  const maxZ = bounds?.max?.z
+  if (typeof minZ !== 'number' || typeof maxZ !== 'number') return fallback
+  const height = Math.abs(maxZ - minZ)
+  return height >= 0.5 && height <= 4.5 ? height : fallback
+}
+
+function cadWindowSill(entity: NormalizedCadDocument['entities'][number]) {
+  const bounds = readInsertBounds(entity)
+  const minZ = bounds?.min?.z
+  if (typeof minZ === 'number' && minZ >= 0.2 && minZ <= 3.5) return minZ
+  const insertZ = entity.insert?.z
+  return typeof insertZ === 'number' && insertZ >= 0.2 && insertZ <= 3.5 ? insertZ : WINDOW_SILL
 }
 
 function distanceAlongWall(point: CadPoint, a: CadPoint, b: CadPoint) {
@@ -169,12 +204,15 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
       if (!entity || !point) continue
       const id = openingIdFor(opening.kind, opening.entityId)
       const along = distanceAlongWall(point, a, b)
-      const width = boundsWidth(entity)
+      const width = projectedOpeningWidth(entity, a, b)
       if (opening.kind === 'door') {
-        parsed.push(DoorNode.parse({ id, parentId: wallId, wallId, position: [along, DOOR_HEIGHT / 2, 0], rotation: [0, 0, 0], width, height: DOOR_HEIGHT }))
+        const height = cadOpeningHeight(entity, DOOR_HEIGHT)
+        parsed.push(DoorNode.parse({ id, parentId: wallId, wallId, position: [along, height / 2, 0], rotation: [0, 0, 0], width, height }))
         doors += 1
       } else {
-        parsed.push(WindowNode.parse({ id, parentId: wallId, wallId, position: [along, WINDOW_SILL + WINDOW_HEIGHT / 2, 0], rotation: [0, 0, 0], width, height: WINDOW_HEIGHT }))
+        const height = cadOpeningHeight(entity, WINDOW_HEIGHT)
+        const sill = cadWindowSill(entity)
+        parsed.push(WindowNode.parse({ id, parentId: wallId, wallId, position: [along, sill + height / 2, 0], rotation: [0, 0, 0], width, height }))
         windows += 1
       }
     }
@@ -219,14 +257,14 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
     nodes,
     rootNodeIds: [siteId],
     metadata: {
-      source: 'cad-pascal-semantic-v2.3',
+      source: 'cad-pascal-semantic-v3.0',
       runtime: 'pascal-beta.5',
       cadGeometryReady: true,
       cadFloorGraphVersion: '2.1',
       semanticRoomRecoveryVersion: '2.2',
-      pascalSemanticIntegrationVersion: '2.3',
-      cadFidelityVersion: '2.4',
-      cadOpeningMaterializationVersion: '2.6',
+      pascalSemanticIntegrationVersion: '3.0',
+      cadFidelityVersion: '3.0',
+      cadOpeningMaterializationVersion: '3.0',
       pascalNodeIdCompatibilityVersion: '2.7',
       cadSourceFilename: document.source.filename,
       degraded,
