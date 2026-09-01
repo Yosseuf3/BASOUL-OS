@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, BrainCircuit, FileBox, Save, ShieldCheck } from "lucide-react";
+import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/components/i18n/language-provider";
@@ -12,7 +12,7 @@ import {
   saveArchitectureScene,
   type ArchitectureProject,
 } from "@/features/architecture/architecture-persistence-client";
-import { PascalRuntimeViewer, createBasoulStarterScene } from "@/features/architecture/pascal-runtime-viewer";
+import { PascalRuntimeViewer, createBasoulStarterScene, isCadPascalScene } from "@/features/architecture/pascal-runtime-viewer";
 import type { ArchitectureScene } from "@/packages/architecture-engine/src";
 import "@/features/dashboard/dashboard-visual-truth.css";
 
@@ -158,14 +158,7 @@ export default function ArchitectureWorkspacePage() {
       <CadReviewPanel projectId={selectedProjectId} text={text} onSceneReady={applyCadScene} />
 
       {scene && <ArchitectureEditorPanel scene={scene} selectedId={selectedElementId} onSelectionChange={setSelectedElementId} onSceneChange={applyEditedScene} text={text} />}
-      {scene && <PascalRuntimeViewer scene={scene} sceneKey={`${selectedProjectId}:${sceneRevision}`} selectedId={selectedElementId} onSelectionChange={setSelectedElementId} onSceneChange={applyDirectManipulation} />}
-
-      <section className="bx-grid-2" aria-label={text("حالة المنظومة الهندسية", "Architecture system status")}>
-        <StatusCard icon={<Box size={20} />} kicker="CAD" title={text("هندسة أصلية من DWG/DXF", "Native DWG/DXF geometry")} detail={text("يتم بناء Floor Graph من إحداثيات CAD الأصلية وليس من تخمين بصري.", "The Floor Graph is built from native CAD coordinates rather than visual guessing.")} />
-        <StatusCard icon={<ShieldCheck size={20} />} kicker="GATE" title={text("بوابة أمان قبل 3D", "3D safety gate")} detail={text("Pascal لا يستقبل مشهد CAD إلا بعد نجاح topology وhost ratio والفراغات المغلقة.", "Pascal receives no CAD scene until topology, host ratio and bounded-space checks pass.")} />
-        <StatusCard icon={<FileBox size={20} />} kicker="IFC" title={text("بوابة IFC محفوظة", "IFC gateway retained")} detail={text("مسار IFC يبقى مستقلًا بجانب CAD وPDF fallback.", "The IFC path remains independent alongside CAD and the PDF fallback.")} />
-        <StatusCard icon={<BrainCircuit size={20} />} kicker="AI" title={text("AI للدلالة لا للهندسة", "AI for semantics, not geometry")} detail={text("يستخدم AI لاحقًا فقط لفك الغموض الدلالي وأسماء الطبقات والعناصر.", "AI is reserved for semantic ambiguity and layer/entity interpretation.")} />
-      </section>
+      {scene && isCadPascalScene(scene) && <PascalRuntimeViewer scene={scene} sceneKey={`${selectedProjectId}:${sceneRevision}`} selectedId={selectedElementId} onSelectionChange={setSelectedElementId} onSceneChange={applyDirectManipulation} />}
 
       <section className="bx-panel"><header className="bx-panel-head"><div><span className="bx-kicker">PRODUCTION STATUS</span><h3>{text("حالة قاعدة البيانات", "Database status")}</h3></div><span className="bx-chip">PERSISTENCE · LIVE</span></header><p>{text("يبقى كل مشهد CAD محليًا حتى الضغط على حفظ المشهد؛ الحفظ الحالي يستمر عبر architecture_scenes على Production مع Forced RLS وعزل المؤسسة والمشروع.", "Every CAD scene remains local until Save scene is pressed; persistence continues through Production architecture_scenes with Forced RLS and organization/project isolation.")}</p><div className="bx-actions"><button type="button" onClick={() => router.push("/")}>{text("العودة إلى لوحة القيادة", "Back to dashboard")}</button></div></section>
     </main>
@@ -179,8 +172,4 @@ function statusLabel(status: PersistenceStatus) {
   if (status === "unsaved") return "SCENE · UNSAVED";
   if (status === "error") return "SCENE · ERROR";
   return "SCENE · IDLE";
-}
-
-function StatusCard({ icon, kicker, title, detail }: { icon: React.ReactNode; kicker: string; title: string; detail: string }) {
-  return <article className="bx-card blue"><div className="bx-icon">{icon}</div><span className="bx-kicker">{kicker}</span><h3>{title}</h3><p>{detail}</p></article>;
 }
