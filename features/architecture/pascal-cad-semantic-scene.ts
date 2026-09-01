@@ -67,6 +67,8 @@ export interface PascalSemanticCadDiagnostics {
   walls: number
   doors: number
   windows: number
+  expectedDoors: number
+  expectedWindows: number
   hostedOpenings: number
   floatingOpenings: number
   semanticRooms: number
@@ -77,6 +79,7 @@ export interface PascalSemanticCadDiagnostics {
   wallEntityCoverage: number
   graphEdgesMaterialized: number
   graphEdgeCoverage: number
+  degraded: boolean
 }
 
 export function buildNativePascalCadScene(document: NormalizedCadDocument, inputGraph?: CadFloorGraph) {
@@ -92,6 +95,8 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
         walls: 0,
         doors: 0,
         windows: 0,
+        expectedDoors: document.entities.filter((entity) => classifyCadEntity(entity).kind === 'door').length,
+        expectedWindows: document.entities.filter((entity) => classifyCadEntity(entity).kind === 'window').length,
         hostedOpenings: 0,
         floatingOpenings: graph.openings.filter((opening) => !opening.hostEdgeId).length,
         semanticRooms: 0,
@@ -99,6 +104,7 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
         ...coverage,
         graphEdgesMaterialized: 0,
         graphEdgeCoverage: 0,
+        degraded: false,
       },
       reason: `CAD fidelity gate failed: ${coverage.missingCadWallEntities}/${coverage.cadWallEntities} classified wall entities are missing from the floor graph.`,
     }
@@ -157,48 +163,31 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
       const along = distanceAlongWall(point, a, b)
       const width = boundsWidth(entity)
       if (opening.kind === 'door') {
-        parsed.push(DoorNode.parse({
-          id,
-          parentId: wallId,
-          wallId,
-          position: [along, DOOR_HEIGHT / 2, 0],
-          rotation: [0, 0, 0],
-          width,
-          height: DOOR_HEIGHT,
-        }))
+        parsed.push(DoorNode.parse({ id, parentId: wallId, wallId, position: [along, DOOR_HEIGHT / 2, 0], rotation: [0, 0, 0], width, height: DOOR_HEIGHT }))
         doors += 1
       } else {
-        parsed.push(WindowNode.parse({
-          id,
-          parentId: wallId,
-          wallId,
-          position: [along, WINDOW_SILL + WINDOW_HEIGHT / 2, 0],
-          rotation: [0, 0, 0],
-          width,
-          height: WINDOW_HEIGHT,
-        }))
+        parsed.push(WindowNode.parse({ id, parentId: wallId, wallId, position: [along, WINDOW_SILL + WINDOW_HEIGHT / 2, 0], rotation: [0, 0, 0], width, height: WINDOW_HEIGHT }))
         windows += 1
       }
     }
   }
 
   for (const room of semanticRooms) {
-    parsed.push(SlabNode.parse({
-      id: `cad-pascal:slab:${room.labelEntityId}`,
-      parentId: levelId,
-      polygon: room.boundary.map((point) => [point.x, point.y]),
-      thickness: 0.12,
-      elevation: 0,
-    }))
+    parsed.push(SlabNode.parse({ id: `cad-pascal:slab:${room.labelEntityId}`, parentId: levelId, polygon: room.boundary.map((point) => [point.x, point.y]), thickness: 0.12, elevation: 0 }))
   }
 
   const nodes = Object.fromEntries(parsed.map((node) => [node.id, asSceneNode(node)]))
   const floatingOpenings = graph.openings.filter((opening) => !opening.hostEdgeId).length
   const graphEdgeCoverage = graph.edges.length ? graphEdgesMaterialized / graph.edges.length : 0
+  const expectedDoors = document.entities.filter((entity) => classifyCadEntity(entity).kind === 'door').length
+  const expectedWindows = document.entities.filter((entity) => classifyCadEntity(entity).kind === 'window').length
+  const degraded = floatingOpenings > 0 || doors !== expectedDoors || windows !== expectedWindows
   const diagnostics: PascalSemanticCadDiagnostics = {
     walls: graphEdgesMaterialized,
     doors,
     windows,
+    expectedDoors,
+    expectedWindows,
     hostedOpenings: doors + windows,
     floatingOpenings,
     semanticRooms: semanticRooms.length,
@@ -206,19 +195,7 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
     ...coverage,
     graphEdgesMaterialized,
     graphEdgeCoverage,
-  }
-
-  const expectedDoors = document.entities.filter((entity) => classifyCadEntity(entity).kind === 'door').length
-  const expectedWindows = document.entities.filter((entity) => classifyCadEntity(entity).kind === 'window').length
-
-  // v2.3 semantic compatibility gate remains exact; v2.4 fidelity is additive.
-  if (floatingOpenings || doors !== expectedDoors || windows !== expectedWindows) {
-    return {
-      scene: null,
-      graph,
-      diagnostics,
-      reason: `Pascal semantic gate failed: floating=${floatingOpenings}, doors=${doors}/${expectedDoors}, windows=${windows}/${expectedWindows}`,
-    }
+    degraded,
   }
 
   if (graphEdgeCoverage !== 1) {
@@ -241,17 +218,13 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
       semanticRoomRecoveryVersion: '2.2',
       pascalSemanticIntegrationVersion: '2.3',
       cadFidelityVersion: '2.4',
+      cadOpeningMaterializationVersion: '2.6',
       cadSourceFilename: document.source.filename,
+      degraded,
+      unresolvedOpenings: graph.openings.filter((opening) => !opening.hostEdgeId).map((opening) => ({ entityId: opening.entityId, kind: opening.kind })),
       diagnostics,
-      semanticRooms: semanticRooms.map((room) => ({
-        id: room.id,
-        labelEntityId: room.labelEntityId,
-        label: room.label,
-        seed: room.seed,
-        area: room.area,
-        confidence: room.confidence,
-      })),
+      semanticRooms: semanticRooms.map((room) => ({ id: room.id, labelEntityId: room.labelEntityId, label: room.label, seed: room.seed, area: room.area, confidence: room.confidence })),
     },
   }
-  return { scene, graph, diagnostics, reason: null }
+  return { scene, graph, diagnostics, reason: degraded ? `Verified CAD scene created with ${floatingOpenings} unresolved opening(s); unresolved openings were not fabricated in 3D.` : null }
 }
