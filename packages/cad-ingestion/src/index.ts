@@ -33,10 +33,22 @@ export interface NormalizedCadDocument {
   textDecoding?: { decoder: string; decodedEntities: number }
 }
 
+export type CadSemanticKind = 'wall' | 'door' | 'window' | 'room' | 'stair' | 'column' | 'dimension' | 'label' | 'item'
+
 export interface CadClassificationRule {
-  kind: 'wall' | 'door' | 'window' | 'room' | 'stair' | 'column' | 'dimension' | 'label' | 'item'
+  kind: CadSemanticKind
   confidence: number
   reason: string
+}
+
+export interface CadLayerDiagnostic {
+  rawLayerName: string
+  normalizedLayerName: string
+  entityCount: number
+  entityTypes: Record<string, number>
+  classified: Record<CadSemanticKind, number>
+  dominantKind: CadSemanticKind
+  averageConfidence: number
 }
 
 const match = (value: string | null | undefined, pattern: RegExp) => pattern.test(value ?? '')
@@ -44,13 +56,51 @@ const match = (value: string | null | undefined, pattern: RegExp) => pattern.tes
 const architecturalSpace = /room|bed|living|kitchen|bath|toilet|wc|hall|corridor|majlis|office|garage|store|laundry|dining|shop|elevator|shaft|غرفة|نوم|حمام|مطبخ|صالة|صالون|مجلس|ممر|محل|مكتب|مستودع|مصعد|منور|خادمة|ملابس|طعام/i
 const geometryEntityTypes: CadEntityType[] = ['LINE', 'LWPOLYLINE', 'POLYLINE', 'ARC']
 const isGeometry = (entity: CadEntity) => geometryEntityTypes.includes(entity.type)
+
 const doorBlockPattern = /door|(?:^|[_-])dr(?:[_-]|$)|^dr[_-]|باب/i
 const windowBlockPattern = /window|win(?:[_-]|$)|^wd[_-]|نافذ/i
 
+const arabicDiacritics = /[\u064B-\u065F\u0670\u06D6-\u06ED]/g
+
+export function normalizeCadLayerName(value: string | null | undefined): string {
+  return (value ?? '')
+    .normalize('NFKC')
+    .replace(arabicDiacritics, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\\/|:.]+/g, '-')
+    .replace(/[\s_]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+function layerHasToken(layer: string, aliases: readonly string[]) {
+  const normalized = normalizeCadLayerName(layer)
+  const tokens = new Set(normalized.split('-').filter(Boolean))
+  return aliases.some((alias) => {
+    const candidate = normalizeCadLayerName(alias)
+    if (!candidate) return false
+    if (candidate.includes('-')) return normalized === candidate || normalized.startsWith(`${candidate}-`) || normalized.endsWith(`-${candidate}`) || normalized.includes(`-${candidate}-`)
+    return tokens.has(candidate)
+  })
+}
+
+function layerSemanticKind(layer: string): CadSemanticKind | null {
+  if (layerHasToken(layer, ['wall', 'walls', 'a-wall', 'arch-wall', 'architectural-wall', 'جدار', 'جدران', 'حوائط', 'حائط'])) return 'wall'
+  if (layerHasToken(layer, ['door', 'doors', 'a-door', 'dr', 'باب', 'ابواب', 'أبواب'])) return 'door'
+  if (layerHasToken(layer, ['window', 'windows', 'a-glaz', 'glaz', 'win', 'wd', 'نافذة', 'نوافذ', 'نافذ'])) return 'window'
+  if (layerHasToken(layer, ['stair', 'stairs', 'stiars', 'a-stair', 'step', 'steps', 'درج', 'سلم', 'سلالم'])) return 'stair'
+  if (layerHasToken(layer, ['column', 'columns', 'a-col', 'col', 'عمود', 'اعمدة', 'أعمدة'])) return 'column'
+  if (layerHasToken(layer, ['room', 'rooms', 'space', 'spaces', 'area', 'zone', 'غرفة', 'غرف', 'فراغ', 'فراغات'])) return 'room'
+  return null
+}
+
 export function classifyCadEntity(entity: CadEntity): CadClassificationRule {
-  const layer = entity.layer.toLowerCase()
-  const block = (entity.blockName ?? '').toLowerCase()
+  const rawLayer = entity.layer ?? ''
+  const layer = normalizeCadLayerName(rawLayer)
+  const block = normalizeCadLayerName(entity.blockName ?? '')
   const text = entity.text ?? ''
+  const layerKind = layerSemanticKind(layer)
 
   if (entity.type === 'DIMENSION') return { kind: 'dimension', confidence: 0.99, reason: 'Native CAD DIMENSION entity.' }
   if ((entity.type === 'TEXT' || entity.type === 'MTEXT') && match(text, architecturalSpace)) return { kind: 'room', confidence: 0.9, reason: 'Semantic room label from native or decoded CAD text.' }
@@ -59,21 +109,21 @@ export function classifyCadEntity(entity: CadEntity): CadClassificationRule {
   if (entity.type === 'INSERT' && match(block, doorBlockPattern)) return { kind: 'door', confidence: 0.98, reason: 'Door block semantics.' }
   if (entity.type === 'INSERT' && match(block, windowBlockPattern)) return { kind: 'window', confidence: 0.98, reason: 'Window block semantics.' }
   if (entity.type === 'INSERT' && match(block, /stair|stairs|step|درج|سلم/)) return { kind: 'stair', confidence: 0.96, reason: 'Stair block semantics.' }
-  if (entity.type === 'INSERT' && match(block, /column|col(?:[_-]|$)|عمود/)) return { kind: 'column', confidence: 0.96, reason: 'Column block semantics.' }
+  if (entity.type === 'INSERT' && match(block, /column|col(?:-|$)|عمود/)) return { kind: 'column', confidence: 0.96, reason: 'Column block semantics.' }
 
-  if (entity.type === 'INSERT' && match(layer, /door|a-door|باب/)) return { kind: 'door', confidence: 0.94, reason: 'Door layer semantics.' }
-  if (entity.type === 'INSERT' && match(layer, /window|a-glaz|نافذ/)) return { kind: 'window', confidence: 0.94, reason: 'Window layer semantics.' }
-  if (entity.type === 'INSERT' && match(layer, /stair|stairs|stiars|a-stair|درج|سلم/)) return { kind: 'stair', confidence: 0.94, reason: 'Stair layer semantics.' }
-  if (entity.type === 'INSERT' && match(layer, /column|a-col|عمود/)) return { kind: 'column', confidence: 0.94, reason: 'Column layer semantics.' }
+  if (entity.type === 'INSERT' && layerKind === 'door') return { kind: 'door', confidence: 0.94, reason: 'Normalized door layer semantics.' }
+  if (entity.type === 'INSERT' && layerKind === 'window') return { kind: 'window', confidence: 0.94, reason: 'Normalized window layer semantics.' }
+  if (entity.type === 'INSERT' && layerKind === 'stair') return { kind: 'stair', confidence: 0.94, reason: 'Normalized stair layer semantics.' }
+  if (entity.type === 'INSERT' && layerKind === 'column') return { kind: 'column', confidence: 0.94, reason: 'Normalized column layer semantics.' }
 
-  if (isGeometry(entity) && match(layer, /wall|a-wall|walls|جدار|حوائط/)) return { kind: 'wall', confidence: 0.97, reason: 'Geometry is explicitly on a wall layer.' }
-  if (isGeometry(entity) && match(layer, /door|a-door|باب/)) return { kind: 'door', confidence: 0.88, reason: 'Native CAD geometry is explicitly on a door layer.' }
-  if (isGeometry(entity) && match(layer, /window|a-glaz|glaz|نافذ/)) return { kind: 'window', confidence: 0.88, reason: 'Native CAD geometry is explicitly on a window layer.' }
-  if (isGeometry(entity) && match(layer, /stair|stairs|stiars|a-stair|step|درج|سلم/)) return { kind: 'stair', confidence: 0.9, reason: 'Native CAD geometry is explicitly on a stair layer.' }
-  if (isGeometry(entity) && match(layer, /column|a-col|عمود/)) return { kind: 'column', confidence: 0.9, reason: 'Native CAD geometry is explicitly on a column layer.' }
+  if (isGeometry(entity) && layerKind === 'wall') return { kind: 'wall', confidence: 0.97, reason: 'Geometry is explicitly on a normalized wall layer.' }
+  if (isGeometry(entity) && layerKind === 'door') return { kind: 'door', confidence: 0.88, reason: 'Native CAD geometry is explicitly on a normalized door layer.' }
+  if (isGeometry(entity) && layerKind === 'window') return { kind: 'window', confidence: 0.88, reason: 'Native CAD geometry is explicitly on a normalized window layer.' }
+  if (isGeometry(entity) && layerKind === 'stair') return { kind: 'stair', confidence: 0.9, reason: 'Native CAD geometry is explicitly on a normalized stair layer.' }
+  if (isGeometry(entity) && layerKind === 'column') return { kind: 'column', confidence: 0.9, reason: 'Native CAD geometry is explicitly on a normalized column layer.' }
 
-  if (['LWPOLYLINE','POLYLINE','HATCH'].includes(entity.type) && entity.closed && match(layer, /room|space|area|zone|غرف|فراغ/)) return { kind: 'room', confidence: 0.9, reason: 'Closed room/space geometry.' }
-  return { kind: 'item', confidence: 0.45, reason: 'Unclassified CAD entity retained for review.' }
+  if (['LWPOLYLINE', 'POLYLINE', 'HATCH'].includes(entity.type) && entity.closed && layerKind === 'room') return { kind: 'room', confidence: 0.9, reason: 'Closed room/space geometry on a normalized semantic layer.' }
+  return { kind: 'item', confidence: 0.45, reason: `Unclassified CAD entity retained for review (layer: ${rawLayer || '0'}).` }
 }
 
 function nodeFromEntity(entity: CadEntity): ArchitectureNode | null {
@@ -84,6 +134,8 @@ function nodeFromEntity(entity: CadEntity): ArchitectureNode | null {
     metadata: {
       cadEntityType: entity.type,
       layer: entity.layer,
+      rawLayer: entity.layer,
+      normalizedLayer: normalizeCadLayerName(entity.layer),
       blockName: entity.blockName ?? null,
       textStyle: entity.metadata?.textStyle ?? null,
       font: entity.metadata?.font ?? null,
@@ -151,6 +203,58 @@ export function cadDocumentToArchitectureScene(document: NormalizedCadDocument):
       decodedTextCount: document.textDecoding?.decodedEntities ?? 0,
     },
   }
+}
+
+export function summarizeCadLayers(document: NormalizedCadDocument): CadLayerDiagnostic[] {
+  const layers = new Map<string, CadLayerDiagnostic & { confidenceTotal: number }>()
+
+  for (const declared of document.layers) {
+    const rawLayerName = String(declared.name ?? '0')
+    layers.set(rawLayerName, {
+      rawLayerName,
+      normalizedLayerName: normalizeCadLayerName(rawLayerName),
+      entityCount: 0,
+      entityTypes: {},
+      classified: { wall: 0, door: 0, window: 0, room: 0, stair: 0, column: 0, dimension: 0, label: 0, item: 0 },
+      dominantKind: 'item',
+      averageConfidence: 0,
+      confidenceTotal: 0,
+    })
+  }
+
+  for (const entity of document.entities) {
+    const rawLayerName = String(entity.layer || '0')
+    const current = layers.get(rawLayerName) ?? {
+      rawLayerName,
+      normalizedLayerName: normalizeCadLayerName(rawLayerName),
+      entityCount: 0,
+      entityTypes: {},
+      classified: { wall: 0, door: 0, window: 0, room: 0, stair: 0, column: 0, dimension: 0, label: 0, item: 0 },
+      dominantKind: 'item' as CadSemanticKind,
+      averageConfidence: 0,
+      confidenceTotal: 0,
+    }
+    const classification = classifyCadEntity(entity)
+    current.entityCount += 1
+    current.entityTypes[entity.type] = (current.entityTypes[entity.type] ?? 0) + 1
+    current.classified[classification.kind] += 1
+    current.confidenceTotal += classification.confidence
+    layers.set(rawLayerName, current)
+  }
+
+  return [...layers.values()].map((layer) => {
+    const dominantKind = (Object.entries(layer.classified) as [CadSemanticKind, number][])
+      .sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'item'
+    return {
+      rawLayerName: layer.rawLayerName,
+      normalizedLayerName: layer.normalizedLayerName,
+      entityCount: layer.entityCount,
+      entityTypes: layer.entityTypes,
+      classified: layer.classified,
+      dominantKind,
+      averageConfidence: layer.entityCount ? layer.confidenceTotal / layer.entityCount : 0,
+    }
+  }).sort((a, b) => b.entityCount - a.entityCount || a.rawLayerName.localeCompare(b.rawLayerName))
 }
 
 export function summarizeCadDocument(document: NormalizedCadDocument) {
