@@ -13,12 +13,13 @@ test('architecture workspace exposes CAD review before Pascal', () => {
   assert.match(page, /3D SAFETY GATE · ACTIVE/)
 })
 
-test('CAD review renders floor graph and blocks 3D until geometry gate passes', () => {
+test('CAD review renders floor graph and blocks 3D until geometry and Pascal semantic gates pass', () => {
   assert.match(panel, /buildCadFloorGraph/)
   assert.match(panel, /CadFloorGraphOverlay/)
-  assert.match(panel, /cadDocumentToPascalReadyScene/)
+  assert.match(panel, /buildPascalSceneFromCad/)
   assert.match(panel, /disabled=\{!graph\.gate\.ready\}/)
-  assert.match(panel, /if \(!result\.scene \|\| !result\.graph\.gate\.ready\)/)
+  assert.match(panel, /if \(!result\.ready \|\| !result\.scene \|\| !result\.graph\.gate\.ready\)/)
+  assert.match(panel, /PASCAL v2\.3 · PASS/)
   assert.match(panel, /\.dwg,\.dxf,\.json/)
 })
 

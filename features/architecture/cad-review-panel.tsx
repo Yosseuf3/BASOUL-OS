@@ -5,12 +5,13 @@ import { useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import {
   buildCadFloorGraph,
-  cadDocumentToPascalReadyScene,
   summarizeCadDocument,
   type CadFloorGraph,
   type NormalizedCadDocument,
 } from '@/packages/cad-ingestion/src'
 import type { ArchitectureScene } from '@/packages/architecture-engine/src'
+import { buildPascalSceneFromCad } from './pascal-cad-scene'
+import type { PascalSemanticCadDiagnostics } from './pascal-cad-semantic-scene'
 
 type TextFn = (ar: string, en: string) => string
 type Stage = 'idle' | 'uploaded' | 'parsing' | 'classified' | 'graph' | 'ready' | 'blocked' | 'error'
@@ -25,6 +26,7 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
   const [stage, setStage] = useState<Stage>('idle')
   const [message, setMessage] = useState('')
   const [document, setDocument] = useState<NormalizedCadDocument | null>(null)
+  const [pascalDiagnostics, setPascalDiagnostics] = useState<PascalSemanticCadDiagnostics | null>(null)
 
   const summary = useMemo(() => document ? summarizeCadDocument(document) : null, [document])
   const graph = useMemo(() => document ? buildCadFloorGraph(document) : null, [document])
@@ -33,6 +35,7 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
     if (!projectId) return
     setStage('uploaded')
     setMessage(text('تم استلام الملف محليًا.', 'File received locally.'))
+    setPascalDiagnostics(null)
     try {
       let parsed: NormalizedCadDocument
       if (file.name.toLowerCase().endsWith('.json')) {
@@ -72,6 +75,7 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
       }
     } catch (error) {
       setDocument(null)
+      setPascalDiagnostics(null)
       setStage('error')
       setMessage(error instanceof Error ? error.message : 'architecture.cad.ingest_failed')
     }
@@ -79,13 +83,18 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
 
   function openIn3D() {
     if (!document) return
-    const result = cadDocumentToPascalReadyScene(document)
-    if (!result.scene || !result.graph.gate.ready) {
+    const result = buildPascalSceneFromCad(document)
+    setPascalDiagnostics(result.diagnostics)
+    if (!result.ready || !result.scene || !result.graph.gate.ready) {
       setStage('blocked')
-      setMessage(text('لا يمكن فتح Pascal قبل نجاح CAD Geometry Gate.', 'Pascal cannot open until the CAD Geometry Gate passes.'))
+      setMessage(text(
+        `تم إيقاف Pascal v2.3: ${result.reason ?? 'فشل بوابة المشهد الدلالي.'}`,
+        `Pascal v2.3 blocked: ${result.reason ?? 'Semantic scene gate failed.'}`,
+      ))
       return
     }
-    onSceneReady(result.scene, text('تم إنشاء مشهد CAD محلي جاهز لـPascal. احفظ المشهد لتخزينه في المشروع.', 'A local Pascal-ready CAD scene was created. Save the scene to persist it for the project.'))
+    onSceneReady(result.scene, text('نجحت بوابة Pascal 3D v2.3 وتم إنشاء المشهد الدلالي الأصلي. احفظ المشهد لتخزينه في المشروع.', 'Pascal 3D v2.3 gate passed and the native semantic scene was created. Save the scene to persist it for the project.'))
+    setMessage(text('Pascal 3D v2.3 جاهز: جميع الفتحات مستضافة والغرف الدلالية مادية داخل المشهد.', 'Pascal 3D v2.3 ready: all openings are hosted and semantic rooms are materialized in the scene.'))
   }
 
   return (
@@ -115,10 +124,30 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
           <div className="bx-actions" style={{ margin: 0 }}>
             <button type="button" onClick={openIn3D} disabled={!graph.gate.ready}><Box size={16} /> {text('فتح المشهد في 3D', 'Open scene in 3D')}</button>
           </div>
+          {pascalDiagnostics && <PascalAcceptanceDiagnostics diagnostics={pascalDiagnostics} text={text} />}
         </>}
       </div>
     </section>
   )
+}
+
+function PascalAcceptanceDiagnostics({ diagnostics, text }: { diagnostics: PascalSemanticCadDiagnostics; text: TextFn }) {
+  const pass = diagnostics.floatingOpenings === 0 && diagnostics.hostedOpenings === diagnostics.doors + diagnostics.windows && diagnostics.semanticRooms === diagnostics.roomSlabs
+  return <section aria-label={text('تشخيص قبول Pascal 3D', 'Pascal 3D acceptance diagnostics')} style={{ display: 'grid', gap: 12 }}>
+    <div className="bx-panel-head" style={{ margin: 0 }}>
+      <div><span className="bx-kicker">PASCAL 3D · SEMANTIC v2.3</span><h3>{text('بوابة القبول الحية', 'Live acceptance gate')}</h3></div>
+      <span className="bx-chip">{pass ? 'PASCAL v2.3 · PASS' : 'PASCAL v2.3 · BLOCKED'}</span>
+    </div>
+    <div className="bx-grid-2">
+      <Metric icon={<Network size={18} />} label={text('جدران Pascal', 'Pascal walls')} value={diagnostics.walls} />
+      <Metric icon={<Box size={18} />} label={text('الأبواب', 'Doors')} value={diagnostics.doors} />
+      <Metric icon={<Box size={18} />} label={text('النوافذ', 'Windows')} value={diagnostics.windows} />
+      <Metric icon={<CheckCircle2 size={18} />} label={text('الفتحات المستضافة', 'Hosted openings')} value={diagnostics.hostedOpenings} />
+      <Metric icon={diagnostics.floatingOpenings === 0 ? <CheckCircle2 size={18} /> : <ShieldAlert size={18} />} label={text('فتحات طافية', 'Floating openings')} value={diagnostics.floatingOpenings} />
+      <Metric icon={<Box size={18} />} label={text('الغرف الدلالية', 'Semantic rooms')} value={diagnostics.semanticRooms} />
+      <Metric icon={<Box size={18} />} label={text('أرضيات الغرف', 'Room slabs')} value={diagnostics.roomSlabs} />
+    </div>
+  </section>
 }
 
 function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
