@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      EAS_BUILD_ID: 1eb15013-a059-436d-84c3-b5c335017b35
+      EAS_BUILD_ID: 80640c85-a348-4c4c-81ed-c543b1446589
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
