@@ -228,6 +228,13 @@ function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; 
 
 type CadOpeningEntity = NormalizedCadDocument['entities'][number]
 type InsertBounds2D = { min?: { x?: number; y?: number }; max?: { x?: number; y?: number } }
+type NativeInsertPrimitive2D = { type?: string; points?: Array<{ x?: number; y?: number }> }
+
+function readNativeInsertGeometry(entity: CadOpeningEntity) {
+  const raw = entity.metadata?.insertGeometry
+  if (!Array.isArray(raw)) return [] as NativeInsertPrimitive2D[]
+  return raw.filter((item): item is NativeInsertPrimitive2D => Boolean(item && typeof item === 'object'))
+}
 
 function CadFloorGraphOverlay({ graph, document }: { graph: CadFloorGraph; document: NormalizedCadDocument }) {
   const bounds = useMemo(() => {
@@ -259,6 +266,28 @@ function CadFloorGraphOverlay({ graph, document }: { graph: CadFloorGraph; docum
 
 function CadOpening2D({ entity, kind, sx, sy }: { entity: CadOpeningEntity; kind: 'door' | 'window'; sx: (x: number) => number; sy: (y: number) => number }) {
   const stroke = kind === 'door' ? '#f59e0b' : '#38bdf8'
+  const nativeGeometry = readNativeInsertGeometry(entity)
+  if (nativeGeometry.length) {
+    return <g data-cad-native-opening={kind} data-cad-entity-id={entity.id}>
+      {nativeGeometry.map((primitive, index) => {
+        const primitivePoints = Array.isArray(primitive.points)
+          ? primitive.points.filter((point) => typeof point?.x === 'number' && typeof point?.y === 'number')
+          : []
+        if (primitivePoints.length < 2) return null
+        return <polyline
+          key={`${entity.id}:native:${index}`}
+          points={primitivePoints.map((point) => `${sx(point.x as number)},${sy(point.y as number)}`).join(' ')}
+          fill="none"
+          stroke={stroke}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        ><title>{`${kind.toUpperCase()} · ${entity.id} · native CAD ${primitive.type ?? 'primitive'}`}</title></polyline>
+      })}
+    </g>
+  }
+
   const points = Array.isArray(entity.points)
     ? entity.points.filter((point) => typeof point?.x === 'number' && typeof point?.y === 'number')
     : []
