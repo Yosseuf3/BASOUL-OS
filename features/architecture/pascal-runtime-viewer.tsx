@@ -52,6 +52,15 @@ type DoorGeometry = {
   height?: number
 }
 
+type CadDoorSwingRecord = {
+  doorId?: string
+  entityId?: string
+  confidence?: number
+  hinge?: { x?: number; y?: number }
+  openAngleRadians?: number
+  radius?: number
+}
+
 export function isCadPascalScene(scene: ArchitectureScene | null | undefined) {
   const source = scene?.metadata?.source
   return typeof source === 'string' && source.startsWith('cad-pascal-') && scene?.metadata?.cadGeometryReady === true
@@ -87,7 +96,7 @@ export function PascalRuntimeViewer({
     <section className="bx-panel" aria-label="BASOUL Architecture 3D runtime">
       <header className="bx-panel-head">
         <div>
-          <span className="bx-kicker">PASCAL CORE + VIEWER · CAD FIDELITY v3.1</span>
+          <span className="bx-kicker">PASCAL CORE + VIEWER · CAD FIDELITY v3.3</span>
           <h3>3D Runtime</h3>
         </div>
         <div className="bx-hero-tags">
@@ -112,7 +121,12 @@ export function PascalRuntimeViewer({
 
 function BasoulCadDoorLeaves({ scene, selectedId, onSelectionChange }: { scene: ArchitectureScene; selectedId: string; onSelectionChange?: (nodeId: string) => void }) {
   const doors = useMemo(() => {
-    const result: Array<{ id: string; x: number; z: number; y: number; width: number; height: number; rotationY: number; thickness: number }> = []
+    const swingMeta = scene.metadata?.cadDoorSwings
+    const swingRecords = swingMeta && typeof swingMeta === 'object' && Array.isArray((swingMeta as { records?: unknown }).records)
+      ? ((swingMeta as { records: CadDoorSwingRecord[] }).records)
+      : []
+    const swingByDoorId = new Map(swingRecords.filter((record) => record && typeof record.doorId === 'string').map((record) => [record.doorId as string, record]))
+    const result: Array<{ id: string; x: number; z: number; y: number; width: number; height: number; rotationY: number; thickness: number; hingeAnchored: boolean }> = []
     for (const raw of Object.values(scene.nodes)) {
       const door = raw as unknown as DoorGeometry
       if (String(door.type) !== 'door' || !door.id || !Array.isArray(door.position)) continue
@@ -133,18 +147,26 @@ function BasoulCadDoorLeaves({ scene, selectedId, onSelectionChange }: { scene: 
       const wallThickness = typeof wall.thickness === 'number' && wall.thickness > 0 ? wall.thickness : 0.2
       const width = typeof door.width === 'number' && door.width > 0 ? door.width : 1
       const height = typeof door.height === 'number' && door.height > 0 ? door.height : 2.2
+      const swing = swingByDoorId.get(door.id)
+      const nativeSwingReady = Boolean(
+        swing &&
+        typeof swing.confidence === 'number' && swing.confidence >= 0.82 &&
+        typeof swing.hinge?.x === 'number' && typeof swing.hinge?.y === 'number' &&
+        typeof swing.openAngleRadians === 'number'
+      )
       const cadRotationY = Array.isArray(door.rotation) && typeof door.rotation[1] === 'number' && Math.abs(door.rotation[1]) > 1e-9
         ? door.rotation[1]
         : null
       result.push({
         id: door.id,
-        x: sx + ux * along + normalX * 0.01,
-        z: sy + uy * along + normalY * 0.01,
+        x: nativeSwingReady ? swing!.hinge!.x! : sx + ux * along + normalX * 0.01,
+        z: nativeSwingReady ? swing!.hinge!.y! : sy + uy * along + normalY * 0.01,
         y: height / 2,
-        width,
+        width: nativeSwingReady && typeof swing!.radius === 'number' ? Math.max(0.45, Math.min(2.5, swing!.radius!)) : width,
         height,
-        rotationY: cadRotationY ?? -Math.atan2(dy, dx),
+        rotationY: nativeSwingReady ? -swing!.openAngleRadians! : (cadRotationY ?? -Math.atan2(dy, dx)),
         thickness: Math.max(0.045, Math.min(0.09, wallThickness * 0.35)),
+        hingeAnchored: nativeSwingReady,
       })
     }
     return result
@@ -155,6 +177,7 @@ function BasoulCadDoorLeaves({ scene, selectedId, onSelectionChange }: { scene: 
       {doors.map((door) => (
         <group key={door.id} position={[door.x, door.y, door.z]} rotation={[0, door.rotationY, 0]}>
           <mesh
+            position={door.hingeAnchored ? [door.width / 2, 0, 0] : [0, 0, 0]}
             onClick={(event) => { event.stopPropagation(); onSelectionChange?.(door.id) }}
             castShadow
             receiveShadow
@@ -162,7 +185,7 @@ function BasoulCadDoorLeaves({ scene, selectedId, onSelectionChange }: { scene: 
             <boxGeometry args={[door.width, door.height, door.thickness]} />
             <meshStandardMaterial color={selectedId === door.id ? '#4fc3f7' : '#8b684d'} roughness={0.72} metalness={0.02} />
           </mesh>
-          <mesh position={[door.width * 0.36, 0, door.thickness * 0.7]}>
+          <mesh position={door.hingeAnchored ? [door.width * 0.86, 0, door.thickness * 0.7] : [door.width * 0.36, 0, door.thickness * 0.7]}>
             <sphereGeometry args={[0.045, 12, 12]} />
             <meshStandardMaterial color="#d6b36a" metalness={0.55} roughness={0.35} />
           </mesh>
