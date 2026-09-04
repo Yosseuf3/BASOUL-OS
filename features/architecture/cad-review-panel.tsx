@@ -149,7 +149,7 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
 
         {message && <p aria-live="polite">{message}</p>}
 
-        {summary && graph && <>
+        {summary && graph && document && <>
           <div className="bx-grid-2">
             <Metric icon={<Box size={18} />} label={text('العناصر', 'Entities')} value={summary.entities} />
             <Metric icon={<Network size={18} />} label={text('الطبقات', 'Layers')} value={summary.layers} />
@@ -158,7 +158,7 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
             <Metric icon={graph.gate.ready ? <CheckCircle2 size={18} /> : <ShieldAlert size={18} />} label="HOST RATIO" value={`${Math.round(graph.gate.hostRatio * 1000) / 10}%`} />
           </div>
           <CadLayerDiagnostics diagnostics={layerDiagnostics} text={text} />
-          <CadFloorGraphOverlay graph={graph} />
+          <CadFloorGraphOverlay graph={graph} document={document} />
           <div className="bx-actions" style={{ margin: 0 }}>
             <button type="button" onClick={openIn3D} disabled={!graph.gate.ready || stage === 'materializing'}><Box size={16} /> {text('عرض المشهد في 3D', 'View scene in 3D')}</button>
           </div>
@@ -226,7 +226,10 @@ function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; 
   return <article className="bx-card blue"><div className="bx-icon">{icon}</div><span className="bx-kicker">{label}</span><h3>{value}</h3></article>
 }
 
-function CadFloorGraphOverlay({ graph }: { graph: CadFloorGraph }) {
+type CadOpeningEntity = NormalizedCadDocument['entities'][number]
+type InsertBounds2D = { min?: { x?: number; y?: number }; max?: { x?: number; y?: number } }
+
+function CadFloorGraphOverlay({ graph, document }: { graph: CadFloorGraph; document: NormalizedCadDocument }) {
   const bounds = useMemo(() => {
     if (!graph.vertices.length) return { minX: 0, minY: 0, width: 1, height: 1 }
     const xs = graph.vertices.map((v) => v.x), ys = graph.vertices.map((v) => v.y)
@@ -234,16 +237,75 @@ function CadFloorGraphOverlay({ graph }: { graph: CadFloorGraph }) {
     return { minX, minY, width: Math.max(maxX - minX, 1e-6), height: Math.max(maxY - minY, 1e-6) }
   }, [graph.vertices])
   const byId = useMemo(() => new Map(graph.vertices.map((v) => [v.id, v])), [graph.vertices])
+  const entitiesById = useMemo(() => new Map(document.entities.map((entity) => [entity.id, entity])), [document.entities])
   const sx = (x: number) => 20 + ((x - bounds.minX) / bounds.width) * 960
   const sy = (y: number) => 620 - ((y - bounds.minY) / bounds.height) * 600
 
-  return <div style={{ overflow: 'auto', border: '1px solid rgba(120,160,255,.2)', borderRadius: 14 }}>
-    <svg viewBox="0 0 1000 640" role="img" aria-label="CAD floor graph overlay" style={{ width: '100%', minWidth: 620, display: 'block' }}>
+  return <div style={{ overflow: 'hidden', border: '1px solid rgba(120,160,255,.2)', borderRadius: 14 }}>
+    <svg viewBox="0 0 1000 640" role="img" aria-label="CAD floor graph overlay with doors and windows" style={{ width: '100%', display: 'block' }}>
       {graph.rooms.map((room) => <polygon key={room.id} points={room.vertexIds.map((id) => { const v = byId.get(id)!; return `${sx(v.x)},${sy(v.y)}` }).join(' ')} fill="rgba(72,190,255,.08)" stroke="rgba(72,190,255,.4)" strokeWidth="1" />)}
-      {graph.edges.map((edge) => { const a = byId.get(edge.a), b = byId.get(edge.b); if (!a || !b) return null; return <line key={edge.id} x1={sx(a.x)} y1={sy(a.y)} x2={sx(b.x)} y2={sy(b.y)} stroke="currentColor" strokeWidth="2" /> })}
+      {graph.edges.map((edge) => { const a = byId.get(edge.a), b = byId.get(edge.b); if (!a || !b) return null; return <line key={edge.id} x1={sx(a.x)} y1={sy(a.y)} x2={sx(b.x)} y2={sy(b.y)} stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke" /> })}
+      <g data-cad-opening-overlay="true">
+        {graph.openings.map((opening) => {
+          const entity = entitiesById.get(opening.entityId)
+          if (!entity) return null
+          return <CadOpening2D key={`${opening.kind}:${opening.entityId}`} entity={entity} kind={opening.kind} sx={sx} sy={sy} />
+        })}
+      </g>
       {graph.vertices.filter((v) => v.degree >= 3).map((v) => <circle key={v.id} cx={sx(v.x)} cy={sy(v.y)} r="3.5" fill="currentColor" />)}
     </svg>
   </div>
+}
+
+function CadOpening2D({ entity, kind, sx, sy }: { entity: CadOpeningEntity; kind: 'door' | 'window'; sx: (x: number) => number; sy: (y: number) => number }) {
+  const stroke = kind === 'door' ? '#f59e0b' : '#38bdf8'
+  const points = Array.isArray(entity.points)
+    ? entity.points.filter((point) => typeof point?.x === 'number' && typeof point?.y === 'number')
+    : []
+
+  if (points.length >= 2) {
+    return <polyline
+      points={points.map((point) => `${sx(point.x)},${sy(point.y)}`).join(' ')}
+      fill="none"
+      stroke={stroke}
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      vectorEffect="non-scaling-stroke"
+    ><title>{`${kind.toUpperCase()} · ${entity.id} · CAD geometry`}</title></polyline>
+  }
+
+  const rawBounds = entity.metadata?.insertBounds
+  const insertBounds = rawBounds && typeof rawBounds === 'object' ? rawBounds as InsertBounds2D : null
+  const minX = insertBounds?.min?.x
+  const minY = insertBounds?.min?.y
+  const maxX = insertBounds?.max?.x
+  const maxY = insertBounds?.max?.y
+  if ([minX, minY, maxX, maxY].every((value) => typeof value === 'number' && Number.isFinite(value))) {
+    const x1 = sx(minX as number), x2 = sx(maxX as number)
+    const y1 = sy(minY as number), y2 = sy(maxY as number)
+    return <rect
+      x={Math.min(x1, x2)}
+      y={Math.min(y1, y2)}
+      width={Math.max(Math.abs(x2 - x1), 3)}
+      height={Math.max(Math.abs(y2 - y1), 3)}
+      rx="2"
+      fill="none"
+      stroke={stroke}
+      strokeWidth="3"
+      vectorEffect="non-scaling-stroke"
+    ><title>{`${kind.toUpperCase()} · ${entity.id} · CAD INSERT bounds`}</title></rect>
+  }
+
+  const point = entity.insert ?? points[0]
+  if (!point || typeof point.x !== 'number' || typeof point.y !== 'number') return null
+  const x = sx(point.x), y = sy(point.y)
+  return <g transform={`translate(${x} ${y})`}>
+    <circle r="7" fill="rgba(15,23,42,.9)" stroke={stroke} strokeWidth="3" vectorEffect="non-scaling-stroke" />
+    <line x1="-5" y1="0" x2="5" y2="0" stroke={stroke} strokeWidth="2" vectorEffect="non-scaling-stroke" />
+    <line x1="0" y1="-5" x2="0" y2="5" stroke={stroke} strokeWidth="2" vectorEffect="non-scaling-stroke" />
+    <title>{`${kind.toUpperCase()} · ${entity.id} · CAD insertion point`}</title>
+  </g>
 }
 
 function stageLabel(stage: Stage) {
