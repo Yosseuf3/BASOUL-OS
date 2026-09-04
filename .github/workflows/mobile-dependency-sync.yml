@@ -1,0 +1,45 @@
+name: Mobile dependency sync
+
+on:
+  push:
+    branches:
+      - chore/architecture-launch-readiness-rc1
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: chore/architecture-launch-readiness-rc1
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Synchronize Expo SDK patch dependencies
+        working-directory: mobile
+        run: npx expo install expo@~57.0.20 expo-dev-client@~57.0.18
+      - name: Validate mobile dependency graph
+        working-directory: mobile
+        run: |
+          npm run audit:production
+          npm run typecheck
+          npm run doctor
+      - name: Commit synchronized manifests
+        run: |
+          if git diff --quiet -- mobile/package.json mobile/package-lock.json; then
+            echo "Mobile manifests already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mobile/package.json mobile/package-lock.json
+          git commit -m "fix(mobile): align Expo SDK patch dependencies"
+          git push origin HEAD:chore/architecture-launch-readiness-rc1
