@@ -24,7 +24,7 @@ export interface CadEntity {
 
 export interface NormalizedCadDocument {
   schema: 'basoul.cad.v1'
-  source: { format: 'dwg' | 'dxf'; filename: string; converter: string; codepage?: string | null }
+  source: { format: 'dwg' | 'dxf'; filename: string; converter: string; codepage?: string | null; sha256?: string | null }
   units?: string | null
   layers: CadLayer[]
   blocks: CadBlock[]
@@ -179,7 +179,7 @@ export function cadDocumentToArchitectureScene(document: NormalizedCadDocument):
     [rootId]: {
       id: rootId,
       type: 'level',
-      metadata: { sourceFormat: document.source.format, filename: document.source.filename, units: document.units ?? null, converter: document.source.converter, codepage: document.source.codepage ?? null, textDecoding: document.textDecoding ?? null },
+      metadata: { sourceFormat: document.source.format, filename: document.source.filename, sha256: document.source.sha256 ?? null, units: document.units ?? null, converter: document.source.converter, codepage: document.source.codepage ?? null, textDecoding: document.textDecoding ?? null },
     },
   }
   for (const entity of document.entities) {
@@ -187,7 +187,7 @@ export function cadDocumentToArchitectureScene(document: NormalizedCadDocument):
     if (!node) continue
     nodes[node.id] = { ...node, parentId: rootId }
   }
-  return { nodes, rootNodeIds: [rootId], metadata: { source: 'cad', cadSchema: document.schema, layerCount: document.layers.length, blockCount: document.blocks.length, textStyleCount: document.textStyles?.length ?? 0, entityCount: document.entities.length, decodedTextCount: document.textDecoding?.decodedEntities ?? 0 } }
+  return { nodes, rootNodeIds: [rootId], metadata: { source: 'cad', cadSchema: document.schema, sourceFingerprint: document.source.sha256 ?? null, layerCount: document.layers.length, blockCount: document.blocks.length, textStyleCount: document.textStyles?.length ?? 0, entityCount: document.entities.length, decodedTextCount: document.textDecoding?.decodedEntities ?? 0 } }
 }
 
 export function summarizeCadLayers(document: NormalizedCadDocument): CadLayerDiagnostic[] {
@@ -207,7 +207,9 @@ export function summarizeCadLayers(document: NormalizedCadDocument): CadLayerDia
     layers.set(rawLayerName, current)
   }
   return [...layers.values()].map((layer) => {
-    const dominantKind = (Object.entries(layer.classified) as [CadSemanticKind, number][]).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'item'
+    const dominantKind: CadSemanticKind = layer.entityCount === 0
+      ? 'item'
+      : ((Object.entries(layer.classified) as [CadSemanticKind, number][]).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'item')
     return { rawLayerName: layer.rawLayerName, normalizedLayerName: layer.normalizedLayerName, entityCount: layer.entityCount, entityTypes: layer.entityTypes, classified: layer.classified, dominantKind, averageConfidence: layer.entityCount ? layer.confidenceTotal / layer.entityCount : 0 }
   }).sort((a, b) => b.entityCount - a.entityCount || a.rawLayerName.localeCompare(b.rawLayerName))
 }
