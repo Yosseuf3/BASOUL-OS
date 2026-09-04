@@ -17,6 +17,7 @@ import {
   type CadPoint,
   type NormalizedCadDocument,
 } from '../../packages/cad-ingestion/src'
+import { analyzeCadWallThickness, materializableCadWallThickness } from './cad-wall-thickness'
 import { ensurePascalBuiltins } from './pascal-bootstrap'
 
 ensurePascalBuiltins()
@@ -125,6 +126,10 @@ export interface PascalSemanticCadDiagnostics {
   wallEntityCoverage: number
   graphEdgesMaterialized: number
   graphEdgeCoverage: number
+  inferredWallThicknessEdges: number
+  fallbackWallThicknessEdges: number
+  wallThicknessCoverage: number
+  medianInferredWallThickness: number | null
   degraded: boolean
 }
 
@@ -150,6 +155,10 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
         ...coverage,
         graphEdgesMaterialized: 0,
         graphEdgeCoverage: 0,
+        inferredWallThicknessEdges: 0,
+        fallbackWallThicknessEdges: graph.edges.length,
+        wallThicknessCoverage: 0,
+        medianInferredWallThickness: null,
         degraded: false,
       },
       reason: `CAD fidelity gate failed: ${coverage.missingCadWallEntities}/${coverage.cadWallEntities} classified wall entities are missing from the floor graph.`,
@@ -166,6 +175,8 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
     openingsByEdge.set(opening.hostEdgeId, list)
   }
 
+  const wallThicknessAnalysis = analyzeCadWallThickness(graph)
+  const wallThicknessMaterialization = materializableCadWallThickness(wallThicknessAnalysis)
   const semanticRooms = recoverSemanticRooms(document)
   const siteId = 'site_cad_pascal'
   const buildingId = 'building_cad_pascal'
@@ -187,6 +198,7 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
   let windows = 0
   let graphEdgesMaterialized = 0
   const cadDoorOrientations: Array<{ id: string; entityId: string; rotationRadians: number }> = []
+  const inferredWallThickness: Array<{ edgeId: string; wallId: string; thickness: number }> = []
   for (const edge of graph.edges) {
     const a = vertices.get(edge.a)
     const b = vertices.get(edge.b)
@@ -194,6 +206,9 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
     const wallId = wallIdFor(edge.id)
     const hosted = openingsByEdge.get(edge.id) ?? []
     const children = hosted.map((opening) => openingIdFor(opening.kind, opening.entityId))
+    const inferredThickness = wallThicknessMaterialization.byEdgeId.get(edge.id)
+    const thickness = inferredThickness ?? WALL_THICKNESS
+    if (inferredThickness != null) inferredWallThickness.push({ edgeId: edge.id, wallId, thickness: inferredThickness })
     parsed.push(WallNode.parse({
       id: wallId,
       parentId: levelId,
@@ -201,7 +216,7 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
       start: [a.x, a.y],
       end: [b.x, b.y],
       height: WALL_HEIGHT,
-      thickness: WALL_THICKNESS,
+      thickness,
     }))
     graphEdgesMaterialized += 1
 
@@ -251,6 +266,10 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
     ...coverage,
     graphEdgesMaterialized,
     graphEdgeCoverage,
+    inferredWallThicknessEdges: inferredWallThickness.length,
+    fallbackWallThicknessEdges: Math.max(0, graphEdgesMaterialized - inferredWallThickness.length),
+    wallThicknessCoverage: graphEdgesMaterialized ? inferredWallThickness.length / graphEdgesMaterialized : 0,
+    medianInferredWallThickness: wallThicknessMaterialization.medianThickness,
     degraded,
   }
 
@@ -267,19 +286,37 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
     nodes,
     rootNodeIds: [siteId],
     metadata: {
-      source: 'cad-pascal-semantic-v3.1',
+      source: 'cad-pascal-semantic-v3.2',
       runtime: 'pascal-beta.5',
       cadGeometryReady: true,
       cadFloorGraphVersion: '2.1',
       semanticRoomRecoveryVersion: '2.2',
-      pascalSemanticIntegrationVersion: '3.1',
-      cadFidelityVersion: '3.1',
+      pascalSemanticIntegrationVersion: '3.2',
+      cadFidelityVersion: '3.2',
       cadOpeningMaterializationVersion: '3.1',
+      cadWallThicknessMaterializationVersion: '3.2',
       pascalNodeIdCompatibilityVersion: '2.7',
       cadSourceFilename: document.source.filename,
       degraded,
       unresolvedOpenings: graph.openings.filter((opening) => !opening.hostEdgeId).map((opening) => ({ entityId: opening.entityId, kind: opening.kind })),
       cadDoorOrientations,
+      cadWallThickness: {
+        analysis: {
+          pairedEdges: wallThicknessAnalysis.pairedEdges,
+          totalEdges: wallThicknessAnalysis.totalEdges,
+          coverage: wallThicknessAnalysis.coverage,
+          medianThickness: wallThicknessAnalysis.medianThickness,
+          highConfidencePairs: wallThicknessAnalysis.highConfidencePairs,
+        },
+        materialization: {
+          acceptedPairs: wallThicknessMaterialization.acceptedPairs,
+          acceptedEdges: wallThicknessMaterialization.acceptedEdges,
+          totalEdges: wallThicknessMaterialization.totalEdges,
+          coverage: wallThicknessMaterialization.coverage,
+          medianThickness: wallThicknessMaterialization.medianThickness,
+        },
+        inferredWalls: inferredWallThickness,
+      },
       diagnostics,
       semanticRooms: semanticRooms.map((room) => ({ id: room.id, labelEntityId: room.labelEntityId, label: room.label, seed: room.seed, area: room.area, confidence: room.confidence })),
     },

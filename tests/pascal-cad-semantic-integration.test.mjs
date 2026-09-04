@@ -6,15 +6,15 @@ const adapter = await readFile(new URL('../features/architecture/pascal-cad-sema
 const gateway = await readFile(new URL('../features/architecture/pascal-cad-scene.ts', import.meta.url), 'utf8')
 const viewer = await readFile(new URL('../features/architecture/pascal-runtime-viewer.tsx', import.meta.url), 'utf8')
 
-test('Pascal CAD v3.1 materializes native walls, hosted doors/windows and room slabs', () => {
+test('Pascal CAD v3.2 materializes native walls, hosted doors/windows and room slabs', () => {
   assert.match(adapter, /WallNode\.parse/)
   assert.match(adapter, /DoorNode\.parse/)
   assert.match(adapter, /WindowNode\.parse/)
   assert.match(adapter, /SlabNode\.parse/)
   assert.match(adapter, /recoverSemanticRooms/)
   assert.match(adapter, /floatingOpenings/)
-  assert.match(adapter, /pascalSemanticIntegrationVersion: '3\.1'/)
-  assert.match(adapter, /cadFidelityVersion: '3\.1'/)
+  assert.match(adapter, /pascalSemanticIntegrationVersion: '3\.2'/)
+  assert.match(adapter, /cadFidelityVersion: '3\.2'/)
 })
 
 test('3D Fidelity v3 derives opening width along the host wall and uses trustworthy CAD Z extents', () => {
@@ -34,7 +34,18 @@ test('3D Fidelity v3.1 preserves CAD door block orientation through Pascal and t
   assert.match(viewer, /rotation\?: \[number, number, number\]/)
   assert.match(viewer, /cadRotationY/)
   assert.match(viewer, /rotationY: cadRotationY \?\? -Math\.atan2/)
-  assert.match(viewer, /CAD FIDELITY v3\.1/)
+})
+
+test('3D Fidelity v3.2 applies only gated CAD-derived wall thickness and preserves fallback elsewhere', () => {
+  assert.match(adapter, /analyzeCadWallThickness/)
+  assert.match(adapter, /materializableCadWallThickness/)
+  assert.match(adapter, /const inferredThickness = wallThicknessMaterialization\.byEdgeId\.get\(edge\.id\)/)
+  assert.match(adapter, /const thickness = inferredThickness \?\? WALL_THICKNESS/)
+  assert.match(adapter, /cadWallThicknessMaterializationVersion: '3\.2'/)
+  assert.match(adapter, /inferredWallThicknessEdges/)
+  assert.match(adapter, /fallbackWallThicknessEdges/)
+  assert.match(adapter, /wallThicknessCoverage/)
+  assert.match(adapter, /medianInferredWallThickness/)
 })
 
 test('Pascal keeps verified wall geometry available when some openings cannot be hosted', () => {
