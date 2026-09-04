@@ -18,7 +18,21 @@ export interface CadWallThicknessAnalysis {
   highConfidencePairs: number
 }
 
+export interface CadWallThicknessMaterialization {
+  byEdgeId: Map<string, number>
+  acceptedPairs: number
+  acceptedEdges: number
+  totalEdges: number
+  coverage: number
+  medianThickness: number | null
+}
+
 type Point = { x: number; y: number }
+
+const MATERIALIZE_CONFIDENCE = 0.85
+const MAX_MEDIAN_DEVIATION = 0.35
+const MIN_PLAUSIBLE_THICKNESS = 0.05
+const MAX_PLAUSIBLE_THICKNESS = 1
 
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value))
@@ -93,14 +107,35 @@ export function analyzeCadWallThickness(graph: CadFloorGraph): CadWallThicknessA
     }
   }
 
-  const highConfidencePairs = pairs.filter((pair) => pair.confidence >= 0.85).length
+  const highConfidencePairs = pairs.filter((pair) => pair.confidence >= MATERIALIZE_CONFIDENCE).length
   const pairedEdges = pairs.length * 2
   return {
     pairs,
     pairedEdges,
     totalEdges: graph.edges.length,
     coverage: graph.edges.length ? pairedEdges / graph.edges.length : 0,
-    medianThickness: median(pairs.filter((pair) => pair.confidence >= 0.85).map((pair) => pair.thickness)),
+    medianThickness: median(pairs.filter((pair) => pair.confidence >= MATERIALIZE_CONFIDENCE).map((pair) => pair.thickness)),
     highConfidencePairs,
+  }
+}
+
+export function materializableCadWallThickness(analysis: CadWallThicknessAnalysis): CadWallThicknessMaterialization {
+  const highConfidence = analysis.pairs.filter((pair) => pair.confidence >= MATERIALIZE_CONFIDENCE)
+  const plausible = highConfidence.filter((pair) => pair.thickness >= MIN_PLAUSIBLE_THICKNESS && pair.thickness <= MAX_PLAUSIBLE_THICKNESS)
+  const center = median(plausible.map((pair) => pair.thickness))
+  const accepted = center == null ? [] : plausible.filter((pair) => Math.abs(pair.thickness - center) / center <= MAX_MEDIAN_DEVIATION)
+  const byEdgeId = new Map<string, number>()
+  for (const pair of accepted) {
+    byEdgeId.set(pair.edgeId, pair.thickness)
+    byEdgeId.set(pair.pairedEdgeId, pair.thickness)
+  }
+  const acceptedEdges = byEdgeId.size
+  return {
+    byEdgeId,
+    acceptedPairs: accepted.length,
+    acceptedEdges,
+    totalEdges: analysis.totalEdges,
+    coverage: analysis.totalEdges ? acceptedEdges / analysis.totalEdges : 0,
+    medianThickness: center,
   }
 }
