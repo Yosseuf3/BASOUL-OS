@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import json
 import math
 import shutil
@@ -205,6 +206,7 @@ def normalize(path: Path):
     suffix = path.suffix.lower()
     if suffix not in {".dwg", ".dxf"}:
         raise RuntimeError("Only DWG and DXF are supported by BASOUL CAD Ingestion v1.")
+    source_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
     temp_dir = None
     converter = "ezdxf direct"
     dxf_path = path
@@ -242,6 +244,7 @@ def normalize(path: Path):
                 "filename": path.name,
                 "converter": f"{converter} + ezdxf",
                 "codepage": str(doc.header.get("$DWGCODEPAGE", "")) or None,
+                "sha256": source_sha256,
             },
             "units": str(doc.header.get("$INSUNITS", 0)),
             "layers": layers,
