@@ -17,6 +17,8 @@ import {
   type CadPoint,
   type NormalizedCadDocument,
 } from '../../packages/cad-ingestion/src'
+import { analyzeCadDoorSwings } from './cad-door-swing'
+import { analyzeCadOpeningTopology } from './cad-opening-topology'
 import { analyzeCadWallThickness, materializableCadWallThickness } from './cad-wall-thickness'
 import { ensurePascalBuiltins } from './pascal-bootstrap'
 
@@ -53,12 +55,7 @@ function projectedOpeningWidth(entity: NormalizedCadDocument['entities'][number]
   if (length <= 1e-9) return 1
   const ux = dx / length
   const uy = dy / length
-  const corners = [
-    [bounds.min.x, bounds.min.y],
-    [bounds.min.x, bounds.max.y],
-    [bounds.max.x, bounds.min.y],
-    [bounds.max.x, bounds.max.y],
-  ] as const
+  const corners = [[bounds.min.x, bounds.min.y],[bounds.min.x, bounds.max.y],[bounds.max.x, bounds.min.y],[bounds.max.x, bounds.max.y]] as const
   const projections = corners.map(([x, y]) => x * ux + y * uy)
   const width = Math.max(...projections) - Math.min(...projections)
   return Math.max(0.45, Math.min(3, width || 1))
@@ -96,18 +93,10 @@ function distanceAlongWall(point: CadPoint, a: CadPoint, b: CadPoint) {
 }
 
 function wallCoverage(document: NormalizedCadDocument, graph: CadFloorGraph) {
-  const expected = document.entities
-    .filter((entity) => classifyCadEntity(entity).kind === 'wall')
-    .filter((entity) => (entity.points?.length ?? 0) >= 2)
-    .map((entity) => entity.id)
+  const expected = document.entities.filter((entity) => classifyCadEntity(entity).kind === 'wall').filter((entity) => (entity.points?.length ?? 0) >= 2).map((entity) => entity.id)
   const represented = new Set(graph.edges.map((edge) => edge.sourceEntityId))
   const missing = expected.filter((entityId) => !represented.has(entityId))
-  return {
-    cadWallEntities: expected.length,
-    representedCadWallEntities: expected.length - missing.length,
-    missingCadWallEntities: missing.length,
-    wallEntityCoverage: expected.length ? (expected.length - missing.length) / expected.length : 0,
-  }
+  return { cadWallEntities: expected.length, representedCadWallEntities: expected.length - missing.length, missingCadWallEntities: missing.length, wallEntityCoverage: expected.length ? (expected.length - missing.length) / expected.length : 0 }
 }
 
 export interface PascalSemanticCadDiagnostics {
@@ -118,6 +107,10 @@ export interface PascalSemanticCadDiagnostics {
   expectedWindows: number
   hostedOpenings: number
   floatingOpenings: number
+  openingsWithRevealDepth: number
+  openingRevealDepthCoverage: number
+  doorsWithNativeSwing: number
+  doorSwingCoverage: number
   semanticRooms: number
   roomSlabs: number
   cadWallEntities: number
@@ -137,46 +130,22 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
   const graph = inputGraph ?? buildCadFloorGraph(document)
   if (!graph.gate.ready) return { scene: null, graph, diagnostics: null, reason: graph.gate.reasons.join('; ') || 'CAD geometry gate did not pass.' }
 
+  const expectedDoorsForGate = document.entities.filter((e)=>classifyCadEntity(e).kind==='door').length
+  const expectedWindowsForGate = document.entities.filter((e)=>classifyCadEntity(e).kind==='window').length
   const coverage = wallCoverage(document, graph)
   if (coverage.missingCadWallEntities > 0) {
-    return {
-      scene: null,
-      graph,
-      diagnostics: {
-        walls: 0,
-        doors: 0,
-        windows: 0,
-        expectedDoors: document.entities.filter((entity) => classifyCadEntity(entity).kind === 'door').length,
-        expectedWindows: document.entities.filter((entity) => classifyCadEntity(entity).kind === 'window').length,
-        hostedOpenings: 0,
-        floatingOpenings: graph.openings.filter((opening) => !opening.hostEdgeId).length,
-        semanticRooms: 0,
-        roomSlabs: 0,
-        ...coverage,
-        graphEdgesMaterialized: 0,
-        graphEdgeCoverage: 0,
-        inferredWallThicknessEdges: 0,
-        fallbackWallThicknessEdges: graph.edges.length,
-        wallThicknessCoverage: 0,
-        medianInferredWallThickness: null,
-        degraded: false,
-      },
-      reason: `CAD fidelity gate failed: ${coverage.missingCadWallEntities}/${coverage.cadWallEntities} classified wall entities are missing from the floor graph.`,
-    }
+    return { scene: null, graph, diagnostics: { walls:0, doors:0, windows:0, expectedDoors:expectedDoorsForGate, expectedWindows:expectedWindowsForGate, hostedOpenings:0, floatingOpenings:graph.openings.filter((o)=>!o.hostEdgeId).length, openingsWithRevealDepth:0, openingRevealDepthCoverage:0, doorsWithNativeSwing:0, doorSwingCoverage:0, semanticRooms:0, roomSlabs:0, ...coverage, graphEdgesMaterialized:0, graphEdgeCoverage:0, inferredWallThicknessEdges:0, fallbackWallThicknessEdges:graph.edges.length, wallThicknessCoverage:0, medianInferredWallThickness:null, degraded:false }, reason:`CAD fidelity gate failed: ${coverage.missingCadWallEntities}/${coverage.cadWallEntities} classified wall entities are missing from the floor graph.` }
   }
 
   const vertices = new Map(graph.vertices.map((vertex) => [vertex.id, vertex]))
   const entities = new Map(document.entities.map((entity) => [entity.id, entity]))
   const openingsByEdge = new Map<string, typeof graph.openings>()
-  for (const opening of graph.openings) {
-    if (!opening.hostEdgeId) continue
-    const list = openingsByEdge.get(opening.hostEdgeId) ?? []
-    list.push(opening)
-    openingsByEdge.set(opening.hostEdgeId, list)
-  }
+  for (const opening of graph.openings) { if (!opening.hostEdgeId) continue; const list = openingsByEdge.get(opening.hostEdgeId) ?? []; list.push(opening); openingsByEdge.set(opening.hostEdgeId, list) }
 
   const wallThicknessAnalysis = analyzeCadWallThickness(graph)
   const wallThicknessMaterialization = materializableCadWallThickness(wallThicknessAnalysis)
+  const openingTopology = analyzeCadOpeningTopology(graph, wallThicknessAnalysis)
+  const doorSwingAnalysis = analyzeCadDoorSwings(document)
   const semanticRooms = recoverSemanticRooms(document)
   const siteId = 'site_cad_pascal'
   const buildingId = 'building_cad_pascal'
@@ -187,139 +156,67 @@ export function buildNativePascalCadScene(document: NormalizedCadDocument, input
   const wallIds = graph.edges.map((edge) => wallIdFor(edge.id))
   const slabIds = semanticRooms.map((room) => slabIdFor(room.labelEntityId))
   const levelChildren = [...wallIds, ...slabIds]
-
-  const parsed: AnyNode[] = [
-    SiteNode.parse({ id: siteId, parentId: null, children: [buildingId] }),
-    BuildingNode.parse({ id: buildingId, parentId: siteId, children: [levelId], position: [0, 0, 0], rotation: [0, 0, 0] }),
-    LevelNode.parse({ id: levelId, parentId: buildingId, children: levelChildren, name: 'CAD Ground Floor', level: 0, baseElevation: 0, height: WALL_HEIGHT }),
-  ]
+  const parsed: AnyNode[] = [SiteNode.parse({ id:siteId, parentId:null, children:[buildingId] }), BuildingNode.parse({ id:buildingId, parentId:siteId, children:[levelId], position:[0,0,0], rotation:[0,0,0] }), LevelNode.parse({ id:levelId, parentId:buildingId, children:levelChildren, name:'CAD Ground Floor', level:0, baseElevation:0, height:WALL_HEIGHT })]
 
   let doors = 0
   let windows = 0
   let graphEdgesMaterialized = 0
-  const cadDoorOrientations: Array<{ id: string; entityId: string; rotationRadians: number }> = []
-  const inferredWallThickness: Array<{ edgeId: string; wallId: string; thickness: number }> = []
+  const cadDoorOrientations: Array<{ id:string; entityId:string; rotationRadians:number; source:'native-swing'|'insert-rotation' }> = []
+  const inferredWallThickness: Array<{ edgeId:string; wallId:string; thickness:number }> = []
   for (const edge of graph.edges) {
-    const a = vertices.get(edge.a)
-    const b = vertices.get(edge.b)
-    if (!a || !b) continue
+    const a = vertices.get(edge.a); const b = vertices.get(edge.b); if (!a || !b) continue
     const wallId = wallIdFor(edge.id)
     const hosted = openingsByEdge.get(edge.id) ?? []
     const children = hosted.map((opening) => openingIdFor(opening.kind, opening.entityId))
     const inferredThickness = wallThicknessMaterialization.byEdgeId.get(edge.id)
     const thickness = inferredThickness ?? WALL_THICKNESS
-    if (inferredThickness != null) inferredWallThickness.push({ edgeId: edge.id, wallId, thickness: inferredThickness })
-    parsed.push(WallNode.parse({
-      id: wallId,
-      parentId: levelId,
-      children,
-      start: [a.x, a.y],
-      end: [b.x, b.y],
-      height: WALL_HEIGHT,
-      thickness,
-    }))
+    if (inferredThickness != null) inferredWallThickness.push({ edgeId:edge.id, wallId, thickness:inferredThickness })
+    parsed.push(WallNode.parse({ id:wallId, parentId:levelId, children, start:[a.x,a.y], end:[b.x,b.y], height:WALL_HEIGHT, thickness }))
     graphEdgesMaterialized += 1
-
     for (const opening of hosted) {
-      const entity = entities.get(opening.entityId)
-      const point = entity?.insert ?? entity?.points?.[0]
-      if (!entity || !point) continue
-      const id = openingIdFor(opening.kind, opening.entityId)
-      const along = distanceAlongWall(point, a, b)
-      const width = projectedOpeningWidth(entity, a, b)
+      const entity = entities.get(opening.entityId); const point = entity?.insert ?? entity?.points?.[0]; if (!entity || !point) continue
+      const id = openingIdFor(opening.kind, opening.entityId); const along = distanceAlongWall(point,a,b); const width = projectedOpeningWidth(entity,a,b)
       if (opening.kind === 'door') {
-        const height = cadOpeningHeight(entity, DOOR_HEIGHT)
-        const cadRotation = cadDoorRotation(entity)
-        const rotationY = cadRotation == null ? 0 : -cadRotation
-        parsed.push(DoorNode.parse({ id, parentId: wallId, wallId, position: [along, height / 2, 0], rotation: [0, rotationY, 0], width, height }))
-        if (cadRotation != null) cadDoorOrientations.push({ id, entityId: opening.entityId, rotationRadians: cadRotation })
+        const height = cadOpeningHeight(entity,DOOR_HEIGHT)
+        const nativeSwing = doorSwingAnalysis.byEntityId.get(opening.entityId) ?? null
+        const insertRotation = cadDoorRotation(entity)
+        const rotationRadians = nativeSwing?.openAngleRadians ?? insertRotation
+        const rotationY = rotationRadians == null ? 0 : -rotationRadians
+        parsed.push(DoorNode.parse({ id, parentId:wallId, wallId, position:[along,height/2,0], rotation:[0,rotationY,0], width, height }))
+        if (rotationRadians != null) cadDoorOrientations.push({ id, entityId:opening.entityId, rotationRadians, source:nativeSwing ? 'native-swing' : 'insert-rotation' })
         doors += 1
       } else {
-        const height = cadOpeningHeight(entity, WINDOW_HEIGHT)
+        const height = cadOpeningHeight(entity,WINDOW_HEIGHT)
         const sill = cadWindowSill(entity)
-        parsed.push(WindowNode.parse({ id, parentId: wallId, wallId, position: [along, sill + height / 2, 0], rotation: [0, 0, 0], width, height }))
+        parsed.push(WindowNode.parse({ id, parentId:wallId, wallId, position:[along,sill+height/2,0], rotation:[0,0,0], width, height }))
         windows += 1
       }
     }
   }
 
-  for (const room of semanticRooms) {
-    parsed.push(SlabNode.parse({ id: slabIdFor(room.labelEntityId), parentId: levelId, polygon: room.boundary.map((point) => [point.x, point.y]), thickness: 0.12, elevation: 0 }))
-  }
+  for (const room of semanticRooms) parsed.push(SlabNode.parse({ id:slabIdFor(room.labelEntityId), parentId:levelId, polygon:room.boundary.map((point)=>[point.x,point.y]), thickness:0.12, elevation:0 }))
 
   const nodes = Object.fromEntries(parsed.map((node) => [node.id, asSceneNode(node)]))
-  const floatingOpenings = graph.openings.filter((opening) => !opening.hostEdgeId).length
+  const floatingOpenings = graph.openings.filter((opening)=>!opening.hostEdgeId).length
   const graphEdgeCoverage = graph.edges.length ? graphEdgesMaterialized / graph.edges.length : 0
-  const expectedDoors = document.entities.filter((entity) => classifyCadEntity(entity).kind === 'door').length
-  const expectedWindows = document.entities.filter((entity) => classifyCadEntity(entity).kind === 'window').length
+  const expectedDoors = expectedDoorsForGate
+  const expectedWindows = expectedWindowsForGate
+  const doorsWithNativeSwing = graph.openings.filter((opening)=>opening.kind==='door' && doorSwingAnalysis.byEntityId.has(opening.entityId)).length
+  const doorSwingCoverage = expectedDoors ? doorsWithNativeSwing / expectedDoors : 0
   const degraded = floatingOpenings > 0 || doors !== expectedDoors || windows !== expectedWindows
-  const diagnostics: PascalSemanticCadDiagnostics = {
-    walls: graphEdgesMaterialized,
-    doors,
-    windows,
-    expectedDoors,
-    expectedWindows,
-    hostedOpenings: doors + windows,
-    floatingOpenings,
-    semanticRooms: semanticRooms.length,
-    roomSlabs: semanticRooms.length,
-    ...coverage,
-    graphEdgesMaterialized,
-    graphEdgeCoverage,
-    inferredWallThicknessEdges: inferredWallThickness.length,
-    fallbackWallThicknessEdges: Math.max(0, graphEdgesMaterialized - inferredWallThickness.length),
-    wallThicknessCoverage: graphEdgesMaterialized ? inferredWallThickness.length / graphEdgesMaterialized : 0,
-    medianInferredWallThickness: wallThicknessMaterialization.medianThickness,
-    degraded,
-  }
+  const diagnostics: PascalSemanticCadDiagnostics = { walls:graphEdgesMaterialized, doors, windows, expectedDoors, expectedWindows, hostedOpenings:doors+windows, floatingOpenings, openingsWithRevealDepth:openingTopology.hostedWithDepth, openingRevealDepthCoverage:openingTopology.depthCoverage, doorsWithNativeSwing, doorSwingCoverage, semanticRooms:semanticRooms.length, roomSlabs:semanticRooms.length, ...coverage, graphEdgesMaterialized, graphEdgeCoverage, inferredWallThicknessEdges:inferredWallThickness.length, fallbackWallThicknessEdges:Math.max(0,graphEdgesMaterialized-inferredWallThickness.length), wallThicknessCoverage:graphEdgesMaterialized ? inferredWallThickness.length/graphEdgesMaterialized : 0, medianInferredWallThickness:wallThicknessMaterialization.medianThickness, degraded }
 
-  if (graphEdgeCoverage !== 1) {
-    return {
-      scene: null,
-      graph,
-      diagnostics,
-      reason: `Pascal fidelity gate failed: wallCoverage=${coverage.representedCadWallEntities}/${coverage.cadWallEntities}, graphEdges=${graphEdgesMaterialized}/${graph.edges.length}`,
-    }
-  }
+  if (graphEdgeCoverage !== 1) return { scene:null, graph, diagnostics, reason:`Pascal fidelity gate failed: wallCoverage=${coverage.representedCadWallEntities}/${coverage.cadWallEntities}, graphEdges=${graphEdgesMaterialized}/${graph.edges.length}` }
 
-  const scene: ArchitectureScene = {
-    nodes,
-    rootNodeIds: [siteId],
-    metadata: {
-      source: 'cad-pascal-semantic-v3.2',
-      runtime: 'pascal-beta.5',
-      cadGeometryReady: true,
-      cadFloorGraphVersion: '2.1',
-      semanticRoomRecoveryVersion: '2.2',
-      pascalSemanticIntegrationVersion: '3.2',
-      cadFidelityVersion: '3.2',
-      cadOpeningMaterializationVersion: '3.1',
-      cadWallThicknessMaterializationVersion: '3.2',
-      pascalNodeIdCompatibilityVersion: '2.7',
-      cadSourceFilename: document.source.filename,
-      degraded,
-      unresolvedOpenings: graph.openings.filter((opening) => !opening.hostEdgeId).map((opening) => ({ entityId: opening.entityId, kind: opening.kind })),
-      cadDoorOrientations,
-      cadWallThickness: {
-        analysis: {
-          pairedEdges: wallThicknessAnalysis.pairedEdges,
-          totalEdges: wallThicknessAnalysis.totalEdges,
-          coverage: wallThicknessAnalysis.coverage,
-          medianThickness: wallThicknessAnalysis.medianThickness,
-          highConfidencePairs: wallThicknessAnalysis.highConfidencePairs,
-        },
-        materialization: {
-          acceptedPairs: wallThicknessMaterialization.acceptedPairs,
-          acceptedEdges: wallThicknessMaterialization.acceptedEdges,
-          totalEdges: wallThicknessMaterialization.totalEdges,
-          coverage: wallThicknessMaterialization.coverage,
-          medianThickness: wallThicknessMaterialization.medianThickness,
-        },
-        inferredWalls: inferredWallThickness,
-      },
-      diagnostics,
-      semanticRooms: semanticRooms.map((room) => ({ id: room.id, labelEntityId: room.labelEntityId, label: room.label, seed: room.seed, area: room.area, confidence: room.confidence })),
-    },
-  }
-  return { scene, graph, diagnostics, reason: degraded ? `Verified CAD scene created with ${floatingOpenings} unresolved opening(s); unresolved openings were not fabricated in 3D.` : null }
+  const scene: ArchitectureScene = { nodes, rootNodeIds:[siteId], metadata: {
+    source:'cad-pascal-semantic-v3.3', runtime:'pascal-beta.5', cadGeometryReady:true, cadFloorGraphVersion:'2.1', semanticRoomRecoveryVersion:'2.2', pascalSemanticIntegrationVersion:'3.3', cadFidelityVersion:'3.3', cadOpeningMaterializationVersion:'3.3', cadWallThicknessMaterializationVersion:'3.2', cadOpeningTopologyVersion:'3.3', cadDoorSwingVersion:'3.3', pascalNodeIdCompatibilityVersion:'2.7', cadSourceFilename:document.source.filename, degraded,
+    unresolvedOpenings: openingTopology.records.filter((record)=>record.status==='unresolved').map((record)=>({ entityId:record.entityId, kind:record.kind })),
+    cadOpeningTopology: { total:openingTopology.total, hosted:openingTopology.hosted, hostedWithDepth:openingTopology.hostedWithDepth, unresolved:openingTopology.unresolved, depthCoverage:openingTopology.depthCoverage, records:openingTopology.records.map((record)=>({ ...record, wallId:record.hostEdgeId ? wallIdFor(record.hostEdgeId) : null, openingId:openingIdFor(record.kind,record.entityId) })) },
+    cadDoorSwings: { detected:doorSwingAnalysis.detected, expectedDoors, coverage:doorSwingCoverage, records:doorSwingAnalysis.records.map((record)=>({ ...record, doorId:openingIdFor('door',record.entityId) })) },
+    cadDoorOrientations,
+    cadWallThickness: { analysis:{ pairedEdges:wallThicknessAnalysis.pairedEdges, totalEdges:wallThicknessAnalysis.totalEdges, coverage:wallThicknessAnalysis.coverage, medianThickness:wallThicknessAnalysis.medianThickness, highConfidencePairs:wallThicknessAnalysis.highConfidencePairs }, materialization:{ acceptedPairs:wallThicknessMaterialization.acceptedPairs, acceptedEdges:wallThicknessMaterialization.acceptedEdges, totalEdges:wallThicknessMaterialization.totalEdges, coverage:wallThicknessMaterialization.coverage, medianThickness:wallThicknessMaterialization.medianThickness }, inferredWalls:inferredWallThickness },
+    diagnostics,
+    semanticRooms:semanticRooms.map((room)=>({ id:room.id, labelEntityId:room.labelEntityId, label:room.label, seed:room.seed, area:room.area, confidence:room.confidence }))
+  }}
+  return { scene, graph, diagnostics, reason:degraded ? `Verified CAD scene created with ${floatingOpenings} unresolved opening(s); unresolved openings were not fabricated in 3D.` : null }
 }
