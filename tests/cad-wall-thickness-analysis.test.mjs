@@ -13,7 +13,16 @@ test('wall thickness reconstruction starts from paired parallel CAD edges', () =
   assert.match(source, /medianThickness/)
 })
 
-test('wall thickness analysis is diagnostic and does not fabricate a thickness fallback', () => {
+test('wall thickness materialization requires high confidence, plausible size and median consistency', () => {
+  assert.match(source, /MATERIALIZE_CONFIDENCE = 0\.85/)
+  assert.match(source, /MIN_PLAUSIBLE_THICKNESS = 0\.05/)
+  assert.match(source, /MAX_PLAUSIBLE_THICKNESS = 1/)
+  assert.match(source, /MAX_MEDIAN_DEVIATION = 0\.35/)
+  assert.match(source, /materializableCadWallThickness/)
+  assert.match(source, /Math\.abs\(pair\.thickness - center\) \/ center <= MAX_MEDIAN_DEVIATION/)
+})
+
+test('wall thickness analysis never invents a fallback inside the inference engine', () => {
   assert.doesNotMatch(source, /\|\| 0\.2/)
   assert.doesNotMatch(source, /WALL_THICKNESS/)
 })
