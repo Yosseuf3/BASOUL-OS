@@ -33,8 +33,26 @@ test("BASOUL mobile auth uses the approved master identity and visual truth", as
   assert.match(native, /primary:\s*foundationColorValues\.primary/);
   assert.match(login, /BASOUL_Primary_Logo_Master\.png/);
   assert.match(login, /<Image\s+source=\{BASOUL_PRIMARY_LOGO\}/);
-  assert.match(login, /tokens\.colors\.primary/);
+  assert.match(login, /showBrand=\{false\}/);
   assert.doesNotMatch(login, /<Text[^>]*>BASOUL<\/Text>|AI-NATIVE ECOSYSTEM|BASOUL · MOBILE|مركز القيادة معك دائمًا/);
+});
+
+test("mobile product surfaces use the approved BASOUL OS lockup instead of textual brand approximations", async () => {
+  const [screen, dashboard, administration, visualTruth] = await Promise.all([
+    read("mobile/src/components/Screen.tsx"),
+    read("mobile/src/features/dashboard/DashboardScreen.tsx"),
+    read("mobile/src/features/administration/AdministrationScreen.tsx"),
+    read("docs/design-system/BASOUL_VISUAL_SOURCE_OF_TRUTH.md"),
+  ]);
+  assert.match(visualTruth, /APPROVED \/ LOCKED FOR PRODUCT MIGRATION/);
+  assert.match(visualTruth, /BASOUL OS:\s*Light blue \/ cyan direction/);
+  assert.match(visualTruth, /uses \*\*Inter\*\* as the primary product typography direction/);
+  assert.match(screen, /BASOUL_OS_Lockup\.png/);
+  assert.match(screen, /accessibilityLabel="BASOUL OS"/);
+  assert.doesNotMatch(dashboard, /BASOUL · EXECUTIVE WORKSPACE/);
+  assert.doesNotMatch(administration, /BASOUL · YVL ADMINISTRATION/);
+  assert.match(dashboard, /borderColor:\s*tokens\.colors\.border/);
+  assert.match(dashboard, /backgroundColor:\s*tokens\.colors\.info/);
 });
 
 test("adapter exposes the complete semantic contract and compatibility bridge", async () => {
