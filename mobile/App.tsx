@@ -3,6 +3,7 @@ import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } 
 import type { Session } from "@supabase/supabase-js";
 import { StatusBar } from "expo-status-bar";
 import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
+import appConfig from "./app.json";
 import { LoginScreen } from "./src/features/auth/LoginScreen";
 import { completeMobileAuthUrl, getInitialAuthUrl } from "./src/features/auth/mobileAuth";
 import { DashboardScreen } from "./src/features/dashboard/DashboardScreen";
@@ -34,6 +35,7 @@ import {
 import type { ArchitecturalFinding, ArchitecturalReviewComment, MobileWorkspaceData, Task } from "./src/types/domain";
 
 const emptyData: MobileWorkspaceData = { projects: [], tasks: [], notifications: [], drawings: [], reviews: [], planElements: [], reviewComments: [] };
+const appVersion = appConfig.expo.version;
 type ScreenName = "dashboard" | "projects" | "tasks" | "notifications" | "intelligence" | "architecture" | "createTask" | "timeline" | "search" | "administration";
 
 export default function App() {
@@ -160,7 +162,7 @@ export default function App() {
     {screen === "timeline" ? <TimelineScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "search" ? <GlobalSearchScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "administration" ? <AdministrationScreen role={organizationRole} onBack={() => setScreen("dashboard")} /> : null}
-    <View style={styles.footer}><Text style={styles.version}>v3.0.2 · Foundation v1 Migration</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
+    <View style={styles.footer}><Text style={styles.version}>BASOUL v{appVersion}</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
   </View>;
 }
 
