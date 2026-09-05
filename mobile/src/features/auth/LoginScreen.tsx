@@ -28,10 +28,7 @@ export function LoginScreen() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
     setLoading(false);
 
     if (error) {
@@ -45,64 +42,26 @@ export function LoginScreen() {
   }
 
   return (
-    <Screen>
+    <Screen showBrand={false}>
       <View style={styles.shell}>
         <View style={styles.card}>
-          <View style={styles.accentRail}>
-            <View style={styles.accentPrimary} />
-            <View style={styles.accentCyan} />
-          </View>
-
+          <View style={styles.accentRail}><View style={styles.accentPrimary} /><View style={styles.accentCyan} /></View>
           <View style={styles.brand} accessible accessibilityLabel="BASOUL approved primary logo">
             <Image source={BASOUL_PRIMARY_LOGO} style={styles.primaryLogo} resizeMode="contain" />
           </View>
-
           <View style={styles.copy}>
             <Text style={styles.cardTitle}>تسجيل الدخول</Text>
             <Text style={styles.subtitle}>استخدم بريدك وكلمة المرور للوصول إلى مساحة العمل.</Text>
           </View>
-
           <Text style={styles.label}>البريد الإلكتروني</Text>
-          <YvlTextInput
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            placeholder="name@example.com"
-            placeholderTextColor={tokens.colors.muted}
-            style={styles.input}
-            textAlign="right"
-            editable={!loading}
-            returnKeyType="next"
-          />
-
+          <YvlTextInput value={email} onChangeText={setEmail} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" placeholder="name@example.com" placeholderTextColor={tokens.colors.muted} style={styles.input} textAlign="right" editable={!loading} returnKeyType="next" />
           <Text style={styles.label}>كلمة المرور</Text>
-          <YvlTextInput
-            value={password}
-            onChangeText={setPassword}
-            autoCapitalize="none"
-            autoCorrect={false}
-            secureTextEntry
-            placeholder="••••••••"
-            placeholderTextColor={tokens.colors.muted}
-            style={styles.input}
-            textAlign="right"
-            editable={!loading}
-            onSubmitEditing={() => void signIn()}
-            returnKeyType="done"
-          />
-
+          <YvlTextInput value={password} onChangeText={setPassword} autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder="••••••••" placeholderTextColor={tokens.colors.muted} style={styles.input} textAlign="right" editable={!loading} onSubmitEditing={() => void signIn()} returnKeyType="done" />
           {message ? <Text style={styles.error}>{message}</Text> : null}
-
           <YvlButton style={[styles.button, loading && styles.disabled]} onPress={() => void signIn()} disabled={loading || !email.trim() || !password}>
             {loading ? <ActivityIndicator color={tokens.colors.text} /> : <Text style={styles.buttonText}>تسجيل الدخول</Text>}
           </YvlButton>
-
-          <View style={styles.statusRow}>
-            <View style={[styles.statusDot, !isMobileConfigured && styles.statusDotError]} />
-            <Text style={styles.config}>{isMobileConfigured ? "الاتصال بالمنصة جاهز" : "إعداد الاتصال مطلوب"}</Text>
-          </View>
+          <View style={styles.statusRow}><View style={[styles.statusDot, !isMobileConfigured && styles.statusDotError]} /><Text style={styles.config}>{isMobileConfigured ? "الاتصال بالمنصة جاهز" : "إعداد الاتصال مطلوب"}</Text></View>
         </View>
       </View>
     </Screen>
