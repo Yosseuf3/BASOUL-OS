@@ -10,8 +10,10 @@ test('architecture launch readiness keeps CAD provenance and current-file finger
   const ingestion = await source('packages/cad-ingestion/src/index.ts')
   const review = await source('features/architecture/cad-review-panel.tsx')
   const semantic = await source('features/architecture/pascal-cad-semantic-scene.ts')
-  assert.match(ingestion, /fingerprint/)
-  assert.match(review, /fingerprint|SHA-256|sha-256/i)
+  assert.match(ingestion, /sourceFingerprint: document\.source\.sha256 \?\? null/)
+  assert.match(review, /SHA-256/)
+  assert.match(review, /document\.source\.sha256 \?\?/)
+  assert.match(review, /document\.source\.filename/)
   assert.match(semantic, /cadSourceFilename/)
 })
 

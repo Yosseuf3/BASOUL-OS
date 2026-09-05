@@ -5,9 +5,9 @@ import { readFile } from 'node:fs/promises'
 const source = await readFile(new URL('../app/architecture/page.tsx', import.meta.url), 'utf8')
 
 test('architecture workspace exposes the adopted engine boundaries', () => {
-  assert.match(source, /ENGINE BOUNDARY · READY/)
-  assert.match(source, /IFC GATEWAY · READY/)
-  assert.match(source, /AI TOOLS · GUARDED/)
+  assert.match(source, /CAD SOURCE · SINGLE/)
+  assert.match(source, /FLOOR GRAPH · LIVE/)
+  assert.match(source, /2D → 3D · UNIFIED/)
 })
 
 test('architecture workspace does not mutate Supabase or expose raw MCP', () => {

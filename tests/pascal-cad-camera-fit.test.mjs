@@ -15,5 +15,5 @@ test('Pascal runtime derives camera framing from live scene bounds', () => {
 test('live CAD framing is not anchored to the starter-scene target', () => {
   const cameraBlock = viewer.slice(viewer.indexOf('function BasoulCamera'), viewer.indexOf('function BasoulDirectSelection'))
   assert.match(cameraBlock, /if \(!bounds\)/)
-  assert.match(cameraBlock, /setLookAt\(\n      centerX \+ offset,/)
+  assert.match(cameraBlock, /setLookAt\(\s*centerX \+ offset,/)
 })
