@@ -17,6 +17,20 @@ test("BASOUL adapter consumes canonical YVL without redefining it", async () => 
   assert.doesNotMatch(web + native, /#[\da-f]{3,8}\b/i);
 });
 
+test("BASOUL brand primary matches the approved electric-blue visual truth", async () => {
+  const [foundation, native, login] = await Promise.all([
+    read("packages/ui-tokens/src/index.ts"),
+    read("packages/basoul-yvl-adapter/src/native.ts"),
+    read("mobile/src/features/auth/LoginScreen.tsx"),
+  ]);
+  assert.match(foundation, /primary:\s*"#2563eb"/i);
+  assert.doesNotMatch(foundation, /primary:\s*"#d7ad43"/i);
+  assert.match(native, /primary:\s*foundationColorValues\.primary/);
+  assert.match(login, /AI-NATIVE ECOSYSTEM/);
+  assert.match(login, /tokens\.colors\.primary/);
+  assert.doesNotMatch(login, /BASOUL · MOBILE|مركز القيادة معك دائمًا/);
+});
+
 test("adapter exposes the complete semantic contract and compatibility bridge", async () => {
   const [source, css] = await Promise.all([
     read("packages/basoul-yvl-adapter/src/index.ts"),
