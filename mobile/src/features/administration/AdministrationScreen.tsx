@@ -10,7 +10,7 @@ export function AdministrationScreen({ role, onBack }: { role: MobileOrganizatio
   return <Screen>
     <View style={styles.header}>
       <View style={styles.heading}>
-        <Text selectable style={styles.kicker}>BASOUL · YVL ADMINISTRATION</Text>
+        <Text selectable style={styles.context}>الإدارة والصلاحيات</Text>
         <Text selectable style={styles.title}>إدارة المؤسسة</Text>
       </View>
       <YvlButton tone="neutral" onPress={onBack}><Text selectable style={styles.backText}>العودة</Text></YvlButton>
@@ -33,9 +33,9 @@ export function AdministrationScreen({ role, onBack }: { role: MobileOrganizatio
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: tokens.space.md, marginBlockStart: tokens.space.md, marginBlockEnd: tokens.space.lg },
+  header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: tokens.space.md, marginBlockStart: tokens.space.sm, marginBlockEnd: tokens.space.lg },
   heading: { flex: 1, gap: tokens.space.xs },
-  kicker: { color: tokens.colors.accent, fontSize: tokens.typography.size.xs, fontWeight: "700", textAlign: "right" },
+  context: { color: tokens.colors.info, fontSize: tokens.typography.size.xs, fontWeight: "700", textAlign: "right" },
   title: { color: tokens.colors.textPrimary, fontSize: tokens.typography.size["2xl"], fontWeight: "700", textAlign: "right" },
   backText: { color: tokens.colors.textPrimary, fontWeight: "700" },
   label: { color: tokens.colors.textSecondary, fontSize: tokens.typography.size.sm, textAlign: "right" },
