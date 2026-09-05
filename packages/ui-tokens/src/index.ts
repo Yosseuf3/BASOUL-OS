@@ -3,7 +3,7 @@ export const foundationVersion = "1.0.0" as const;
 
 /** Raw values are exposed only for native controls that cannot resolve CSS custom properties. */
 export const foundationColorValues = {
-  primary: "#d7ad43",
+  primary: "#2563eb",
 } as const;
 
 export const tokens = {
