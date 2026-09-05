@@ -17,18 +17,24 @@ test("BASOUL adapter consumes canonical YVL without redefining it", async () => 
   assert.doesNotMatch(web + native, /#[\da-f]{3,8}\b/i);
 });
 
-test("BASOUL brand primary matches the approved electric-blue visual truth", async () => {
-  const [foundation, native, login] = await Promise.all([
+test("BASOUL mobile auth uses the approved master identity and visual truth", async () => {
+  const [foundation, native, login, status, manifest] = await Promise.all([
     read("packages/ui-tokens/src/index.ts"),
     read("packages/basoul-yvl-adapter/src/native.ts"),
     read("mobile/src/features/auth/LoginScreen.tsx"),
+    read("brand/basoul/BRAND_STATUS.md"),
+    read("brand/basoul/specs/SHA256_MANIFEST.csv"),
   ]);
+  assert.match(status, /Brand Foundation:\s*APPROVED/);
+  assert.match(status, /Primary Logo:\s*APPROVED/);
+  assert.match(manifest, /brand\/basoul\/assets\/primary-logo\/BASOUL_Primary_Logo_Master\.png/);
   assert.match(foundation, /primary:\s*"#2563eb"/i);
   assert.doesNotMatch(foundation, /primary:\s*"#d7ad43"/i);
   assert.match(native, /primary:\s*foundationColorValues\.primary/);
-  assert.match(login, /AI-NATIVE ECOSYSTEM/);
+  assert.match(login, /BASOUL_Primary_Logo_Master\.png/);
+  assert.match(login, /<Image\s+source=\{BASOUL_PRIMARY_LOGO\}/);
   assert.match(login, /tokens\.colors\.primary/);
-  assert.doesNotMatch(login, /BASOUL · MOBILE|مركز القيادة معك دائمًا/);
+  assert.doesNotMatch(login, /<Text[^>]*>BASOUL<\/Text>|AI-NATIVE ECOSYSTEM|BASOUL · MOBILE|مركز القيادة معك دائمًا/);
 });
 
 test("adapter exposes the complete semantic contract and compatibility bridge", async () => {
