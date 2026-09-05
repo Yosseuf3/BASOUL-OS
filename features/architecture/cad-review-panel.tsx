@@ -150,6 +150,10 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
         {message && <p aria-live="polite">{message}</p>}
 
         {summary && graph && document && <>
+          <div aria-label={text('مصدر مخطط CAD', 'CAD source provenance')}>
+            <p>{text('الملف المصدر', 'Source file')}: {document.source.filename}</p>
+            <p style={{ overflowWrap: 'anywhere' }}>SHA-256: <code>{document.source.sha256 ?? text('بصمة المصدر غير متاحة', 'Source fingerprint unavailable')}</code></p>
+          </div>
           <div className="bx-grid-2">
             <Metric icon={<Box size={18} />} label={text('العناصر', 'Entities')} value={summary.entities} />
             <Metric icon={<Network size={18} />} label={text('الطبقات', 'Layers')} value={summary.layers} />

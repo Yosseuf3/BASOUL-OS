@@ -8,7 +8,8 @@ const pascalCad = await readFile(new URL('../features/architecture/pascal-cad-sc
 
 test('semantic room recovery uses decoded room labels as seeds and wall runs as boundaries', () => {
   assert.match(semanticRooms, /recoverSemanticRooms/)
-  assert.match(semanticRooms, /classifyCadEntity\(entity\)\.kind === 'room'/)
+  assert.match(semanticRooms, /\['TEXT', 'MTEXT'\]\.includes\(entity\.type\)/)
+  assert.match(semanticRooms, /architecturalSpaceLabel\.test\(text\)/)
   assert.match(semanticRooms, /buildAxisRuns/)
   assert.match(semanticRooms, /mergeIntervals/)
   assert.match(semanticRooms, /nearestDistances/)

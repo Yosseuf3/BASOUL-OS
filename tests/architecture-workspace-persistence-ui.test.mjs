@@ -26,12 +26,13 @@ test('Pascal runtime is controlled by the BASOUL-owned architecture scene', () =
   assert.match(viewer, /scene\?: ArchitectureScene \| null/)
   assert.match(viewer, /setScene\(activeScene\.nodes/)
   assert.match(viewer, /sceneReadyKey=\{sceneKey\}/)
-  assert.match(viewer, /export function createBasoulStarterScene/)
+  assert.doesNotMatch(viewer, /createBasoulStarterScene/)
+  assert.match(viewer, /if \(!activeScene \|\| !cadProvenanceReady\) return null/)
 })
 
 test('workspace does not expose privileged database access', () => {
   assert.doesNotMatch(page, /service_role|SERVICE_ROLE|supabase\.rpc/i)
   assert.doesNotMatch(client, /service_role|SERVICE_ROLE|supabase\.from\(/i)
   assert.match(page, /PERSISTENCE · LIVE/)
-  assert.match(page, /Forced RLS/)
+  assert.match(page, /saving is restricted to the CAD\/Pascal scene derived from the uploaded file/)
 })

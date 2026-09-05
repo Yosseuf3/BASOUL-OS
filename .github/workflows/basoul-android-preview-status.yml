@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      EAS_BUILD_ID: 1eb15013-a059-436d-84c3-b5c335017b35
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,6 +30,40 @@ jobs:
           set -euo pipefail
           test -n "${EXPO_TOKEN:-}"
           npx eas-cli@latest whoami --non-interactive
+      - name: Resolve Android preview build for current commit
+        working-directory: mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_ID=""
+          for attempt in $(seq 1 40); do
+            npx eas-cli@latest build:list \
+              --platform android \
+              --build-profile preview \
+              --limit 20 \
+              --json \
+              --non-interactive > /tmp/builds.json
+            BUILD_ID=$(TARGET_SHA="$TARGET_SHA" node - <<'NODE'
+          const fs = require('fs');
+          const builds = JSON.parse(fs.readFileSync('/tmp/builds.json', 'utf8'));
+          const target = process.env.TARGET_SHA || '';
+          const build = builds.find((item) => item.gitCommitHash === target);
+          process.stdout.write(build?.id || '');
+          NODE
+            )
+            if [ -n "$BUILD_ID" ]; then
+              echo "Resolved current-commit EAS build: $BUILD_ID"
+              echo "EAS_BUILD_ID=$BUILD_ID" >> "$GITHUB_ENV"
+              break
+            fi
+            echo "Attempt $attempt: no Android preview build found yet for $TARGET_SHA"
+            sleep 15
+          done
+          if [ -z "$BUILD_ID" ]; then
+            echo "No Android preview build was found for current commit $TARGET_SHA."
+            cat /tmp/builds.json
+            exit 1
+          fi
       - name: Wait for Android preview build terminal status
         working-directory: mobile
         shell: bash
@@ -38,10 +72,16 @@ jobs:
           for attempt in $(seq 1 40); do
             npx eas-cli@latest build:view "$EAS_BUILD_ID" --json > /tmp/build.json
             STATUS=$(node -e "const b=require('/tmp/build.json'); console.log(b.status || '')")
+            COMMIT=$(node -e "const b=require('/tmp/build.json'); console.log(b.gitCommitHash || '')")
             echo "Attempt $attempt: EAS build status = $STATUS"
+            if [ "$COMMIT" != "$TARGET_SHA" ]; then
+              echo "Resolved build commit $COMMIT does not match target $TARGET_SHA."
+              cat /tmp/build.json
+              exit 1
+            fi
             case "$STATUS" in
               FINISHED)
-                node -e "const b=require('/tmp/build.json'); console.log('Build ID: '+b.id); console.log('Platform: '+b.platform); console.log('Status: '+b.status); console.log('Distribution: '+b.distribution); if (b.artifacts && b.artifacts.buildUrl) console.log('Artifact URL: '+b.artifacts.buildUrl); if (b.buildDetailsPageUrl) console.log('Build page: '+b.buildDetailsPageUrl);"
+                node -e "const b=require('/tmp/build.json'); console.log('Build ID: '+b.id); console.log('Commit: '+b.gitCommitHash); console.log('Platform: '+b.platform); console.log('Status: '+b.status); console.log('Distribution: '+b.distribution); if (b.artifacts && b.artifacts.buildUrl) console.log('Artifact URL: '+b.artifacts.buildUrl); if (b.buildDetailsPageUrl) console.log('Build page: '+b.buildDetailsPageUrl);"
                 exit 0
                 ;;
               ERRORED|CANCELED)

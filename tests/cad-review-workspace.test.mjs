@@ -9,17 +9,17 @@ const route = await readFile(new URL('../app/api/architecture/cad/ingest/route.t
 test('architecture workspace exposes CAD review before Pascal', () => {
   assert.match(page, /CadReviewPanel/)
   assert.match(page, /onSceneReady=\{applyCadScene\}/)
-  assert.match(page, /CAD INGESTION · READY/)
-  assert.match(page, /3D SAFETY GATE · ACTIVE/)
+  assert.match(page, /CAD SOURCE · SINGLE/)
+  assert.match(page, /2D → 3D · UNIFIED/)
 })
 
 test('CAD review renders floor graph and blocks 3D until geometry and Pascal semantic gates pass', () => {
   assert.match(panel, /buildCadFloorGraph/)
   assert.match(panel, /CadFloorGraphOverlay/)
   assert.match(panel, /buildPascalSceneFromCad/)
-  assert.match(panel, /disabled=\{!graph\.gate\.ready\}/)
+  assert.match(panel, /disabled=\{!graph\.gate\.ready \|\| stage === 'materializing'\}/)
   assert.match(panel, /if \(!result\.ready \|\| !result\.scene \|\| !result\.graph\.gate\.ready\)/)
-  assert.match(panel, /PASCAL v2\.3 · PASS/)
+  assert.match(panel, /PASCAL 3D · UNIFIED CAD RUNTIME/)
   assert.match(panel, /\.dwg,\.dxf,\.json/)
 })
 

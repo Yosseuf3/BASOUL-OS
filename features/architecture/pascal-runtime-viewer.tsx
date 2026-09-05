@@ -365,7 +365,7 @@ function BasoulDirectManipulator({
   }
 
   return (
-    <TransformControls mode="translate" showY={false} onMouseDown={beginDrag} onMouseUp={finishDrag}>
+    <TransformControls mode="translate" translationSnap={0.1} showY={false} onMouseDown={beginDrag} onMouseUp={finishDrag}>
       <group ref={gizmo}>
         <mesh>
           <sphereGeometry args={[0.11, 16, 16]} />

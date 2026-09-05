@@ -17,6 +17,44 @@ test("BASOUL adapter consumes canonical YVL without redefining it", async () => 
   assert.doesNotMatch(web + native, /#[\da-f]{3,8}\b/i);
 });
 
+test("BASOUL mobile auth uses the approved master identity and visual truth", async () => {
+  const [foundation, native, login, status, manifest] = await Promise.all([
+    read("packages/ui-tokens/src/index.ts"),
+    read("packages/basoul-yvl-adapter/src/native.ts"),
+    read("mobile/src/features/auth/LoginScreen.tsx"),
+    read("brand/basoul/BRAND_STATUS.md"),
+    read("brand/basoul/specs/SHA256_MANIFEST.csv"),
+  ]);
+  assert.match(status, /Brand Foundation:\s*APPROVED/);
+  assert.match(status, /Primary Logo:\s*APPROVED/);
+  assert.match(manifest, /brand\/basoul\/assets\/primary-logo\/BASOUL_Primary_Logo_Master\.png/);
+  assert.match(foundation, /primary:\s*"#2563eb"/i);
+  assert.doesNotMatch(foundation, /primary:\s*"#d7ad43"/i);
+  assert.match(native, /primary:\s*foundationColorValues\.primary/);
+  assert.match(login, /BASOUL_Primary_Logo_Master\.png/);
+  assert.match(login, /<Image\s+source=\{BASOUL_PRIMARY_LOGO\}/);
+  assert.match(login, /showBrand=\{false\}/);
+  assert.doesNotMatch(login, /<Text[^>]*>BASOUL<\/Text>|AI-NATIVE ECOSYSTEM|BASOUL · MOBILE|مركز القيادة معك دائمًا/);
+});
+
+test("mobile product surfaces use the approved BASOUL OS lockup instead of textual brand approximations", async () => {
+  const [screen, dashboard, administration, visualTruth] = await Promise.all([
+    read("mobile/src/components/Screen.tsx"),
+    read("mobile/src/features/dashboard/DashboardScreen.tsx"),
+    read("mobile/src/features/administration/AdministrationScreen.tsx"),
+    read("docs/design-system/BASOUL_VISUAL_SOURCE_OF_TRUTH.md"),
+  ]);
+  assert.match(visualTruth, /APPROVED \/ LOCKED FOR PRODUCT MIGRATION/);
+  assert.match(visualTruth, /BASOUL OS:\s*Light blue \/ cyan direction/);
+  assert.match(visualTruth, /uses \*\*Inter\*\* as the primary product typography direction/);
+  assert.match(screen, /BASOUL_OS_Lockup\.png/);
+  assert.match(screen, /accessibilityLabel="BASOUL OS"/);
+  assert.doesNotMatch(dashboard, /BASOUL · EXECUTIVE WORKSPACE/);
+  assert.doesNotMatch(administration, /BASOUL · YVL ADMINISTRATION/);
+  assert.match(dashboard, /borderColor:\s*tokens\.colors\.border/);
+  assert.match(dashboard, /backgroundColor:\s*tokens\.colors\.info/);
+});
+
 test("adapter exposes the complete semantic contract and compatibility bridge", async () => {
   const [source, css] = await Promise.all([
     read("packages/basoul-yvl-adapter/src/index.ts"),
