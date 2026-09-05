@@ -20,13 +20,24 @@ jobs:
         working-directory: mobile
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22.13.1'
           cache: npm
           cache-dependency-path: mobile/package-lock.json
+      - name: Verify checked-out release candidate identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL_SHA=$(git rev-parse HEAD)
+          echo "Expected source commit: $TARGET_SHA"
+          echo "Checked-out source commit: $ACTUAL_SHA"
+          test "$ACTUAL_SHA" = "$TARGET_SHA"
       - name: Install dependencies
         run: npm ci
       - name: Verify Expo authentication
@@ -67,12 +78,14 @@ jobs:
             --non-interactive \
             --no-wait \
             --json | tee /tmp/eas-build.json
-          node - <<'NODE'
+          TARGET_SHA="$TARGET_SHA" node - <<'NODE'
           const fs = require('fs');
           const raw = fs.readFileSync('/tmp/eas-build.json', 'utf8').trim();
           const data = JSON.parse(raw);
           const build = Array.isArray(data) ? data[0] : data;
           console.log(`EAS build id: ${build.id ?? 'unknown'}`);
           console.log(`EAS build status: ${build.status ?? 'queued'}`);
+          console.log(`Expected source commit: ${process.env.TARGET_SHA}`);
           if (build.buildDetailsPageUrl) console.log(`Build URL: ${build.buildDetailsPageUrl}`);
+          if (!build.id) throw new Error('EAS did not return a build id.');
           NODE
