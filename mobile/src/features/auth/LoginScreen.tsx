@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
 import { Screen } from "../../components/Screen";
 import { YvlButton, YvlTextInput } from "../../components/yvl-primitives";
 import { isMobileConfigured, supabase } from "../../config/supabase";
 import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
+
+const BASOUL_PRIMARY_LOGO = require("../../../../brand/basoul/assets/primary-logo/BASOUL_Primary_Logo_Master.png");
 
 export function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -51,9 +53,8 @@ export function LoginScreen() {
             <View style={styles.accentCyan} />
           </View>
 
-          <View style={styles.brand}>
-            <Text style={styles.ecosystem}>AI-NATIVE ECOSYSTEM</Text>
-            <Text style={styles.wordmark}>BASOUL</Text>
+          <View style={styles.brand} accessible accessibilityLabel="BASOUL approved primary logo">
+            <Image source={BASOUL_PRIMARY_LOGO} style={styles.primaryLogo} resizeMode="contain" />
           </View>
 
           <View style={styles.copy}>
@@ -114,18 +115,17 @@ const styles = StyleSheet.create({
   accentRail: { position: "absolute", top: 0, left: 0, right: 0, height: 3, flexDirection: "row" },
   accentPrimary: { flex: 1, backgroundColor: tokens.colors.primary },
   accentCyan: { flex: 1, backgroundColor: tokens.colors.info },
-  brand: { alignItems: "center", marginTop: tokens.space.md, marginBottom: tokens.space.lg },
-  ecosystem: { color: tokens.colors.info, fontSize: 10, fontWeight: "800", letterSpacing: 2 },
-  wordmark: { color: tokens.colors.text, fontSize: 38, lineHeight: 46, fontWeight: "900", letterSpacing: 3, marginTop: tokens.space.xs },
+  brand: { alignItems: "center", justifyContent: "center", marginTop: tokens.space.md, marginBottom: tokens.space.lg, minHeight: 96 },
+  primaryLogo: { width: "82%", height: 96, maxWidth: 320 },
   copy: { alignItems: "center", marginBottom: tokens.space.lg },
-  cardTitle: { color: tokens.colors.text, fontSize: 28, lineHeight: 36, fontWeight: "900", textAlign: "center" },
+  cardTitle: { color: tokens.colors.text, fontSize: 28, lineHeight: 36, fontWeight: "800", textAlign: "center" },
   subtitle: { color: tokens.colors.muted, fontSize: 14, lineHeight: 24, textAlign: "center", marginTop: tokens.space.sm },
   label: { color: tokens.colors.textSecondary, textAlign: "right", marginBottom: tokens.space.xs, fontWeight: "700", fontSize: 13 },
   input: { color: tokens.colors.text, backgroundColor: tokens.colors.background, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.md, paddingHorizontal: tokens.space.md, paddingVertical: 14, marginBottom: tokens.space.md },
   error: { color: tokens.colors.danger, textAlign: "right", lineHeight: 21, marginBottom: tokens.space.md },
   button: { backgroundColor: tokens.colors.primary, borderRadius: tokens.radius.md, padding: tokens.space.md, alignItems: "center" },
   disabled: { opacity: 0.55 },
-  buttonText: { color: tokens.colors.text, fontWeight: "900", fontSize: 16 },
+  buttonText: { color: tokens.colors.text, fontWeight: "800", fontSize: 16 },
   statusRow: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", marginTop: tokens.space.md },
   statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: tokens.colors.success, marginLeft: tokens.space.xs },
   statusDotError: { backgroundColor: tokens.colors.danger },
