@@ -23,11 +23,12 @@
     "@supabase/supabase-js": "^2.110.8",
     "expo": "~57.0.25",
     "expo-dev-client": "~57.0.19",
-    "expo-document-picker": "^57.0.1",
+    "expo-document-picker": "~57.0.2",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-native": "0.86.3",
-    "react-native-url-polyfill": "^2.0.0"
+    "react-native-url-polyfill": "^2.0.0",
+    "@expo/cli": "^57.0.27"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
