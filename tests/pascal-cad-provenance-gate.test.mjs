@@ -7,14 +7,14 @@ const viewer = await readFile(new URL('../features/architecture/pascal-runtime-v
 test('Pascal runtime never substitutes starter geometry for CAD', () => {
   assert.match(viewer, /const activeScene = scene \?\? null/)
   assert.doesNotMatch(viewer, /const activeScene = scene \?\? createBasoulStarterScene\(\)/)
-  assert.match(viewer, /CAD PROVENANCE · REQUIRED/)
   assert.match(viewer, /source\.startsWith\('cad-pascal-'\)/)
   assert.match(viewer, /cadGeometryReady === true/)
-  assert.match(viewer, /if \(!activeScene \|\| !cadProvenanceReady\) return/)
-  assert.match(viewer, /SCENE · BLOCKED/)
+  assert.match(viewer, /if \(!activeScene \|\| !cadProvenanceReady\) return null/)
+  assert.match(viewer, /CAD PROVENANCE · VERIFIED/)
 })
 
-test('starter scene is explicitly marked non-CAD', () => {
-  assert.match(viewer, /source: 'starter-scene'/)
+test('starter geometry is not available as a CAD fallback', () => {
+  assert.doesNotMatch(viewer, /starter-scene/)
+  assert.doesNotMatch(viewer, /createBasoulStarterScene/)
   assert.match(viewer, /CAD PROVENANCE · VERIFIED/)
 })

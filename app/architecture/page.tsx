@@ -166,7 +166,7 @@ function statusLabel(status: PersistenceStatus) {
   if (status === "loading") return "SCENE · LOADING";
   if (status === "saving") return "SCENE · SAVING";
   if (status === "saved") return "SCENE · SAVED";
-  if (status === "unsaved") return "SCENE · CAD READY";
+  if (status === "unsaved") return "SCENE · UNSAVED";
   if (status === "error") return "SCENE · ERROR";
   return "SCENE · EMPTY";
 }
