@@ -16,5 +16,5 @@ test('2D opening overlay prefers CAD geometry, then INSERT bounds, then insertio
   assert.match(source, /entity\.metadata\?\.insertBounds/)
   assert.match(source, /entity\.insert \?\? points\[0\]/)
   assert.match(source, /kind === 'door'/)
-  assert.match(source, /kind === 'window'/)
+  assert.match(source, /kind: 'door' \| 'window'/)
 })
