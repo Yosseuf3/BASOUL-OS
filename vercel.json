@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "ignoreCommand": "node scripts/vercel-ignore-build.mjs",
   "git": {
     "deploymentEnabled": {
       "main": false
@@ -10,6 +9,7 @@
     "web": {
       "root": ".",
       "framework": "nextjs",
+      "ignoreCommand": "node scripts/vercel-ignore-build.mjs",
       "bindings": [
         {
           "type": "service",
@@ -22,7 +22,8 @@
     "cad_gateway": {
       "root": "tools/cad-ingestion",
       "runtime": "container",
-      "entrypoint": "Dockerfile.vercel"
+      "entrypoint": "Dockerfile.vercel",
+      "ignoreCommand": "node ../../scripts/vercel-ignore-build.mjs"
     }
   },
   "rewrites": [
