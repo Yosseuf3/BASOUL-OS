@@ -21,9 +21,9 @@
     "@yosseuf/yvl-tokens": "file:../packages/yvl-tokens",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@supabase/supabase-js": "^2.110.8",
-    "expo": "~57.0.25",
+    "expo": "~57.0.26",
     "expo-dev-client": "~57.0.19",
-    "expo-document-picker": "~57.0.2",
+    "expo-document-picker": "~57.0.3",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-native": "0.86.3",
@@ -35,6 +35,6 @@
     "typescript": "~6.0.3"
   },
   "overrides": {
-    "brace-expansion": "5.0.9"
+    "brace-expansion": "5.0.12"
   }
 }
