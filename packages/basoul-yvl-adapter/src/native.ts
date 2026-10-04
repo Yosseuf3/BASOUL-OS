@@ -1,4 +1,4 @@
-import { foundationColorValues } from "@yosseuf/ui-tokens";
+import identity from "./identity.json";
 import { yvlNativeTokens } from "@yosseuf/yvl-tokens/react-native";
 
 const yvl = yvlNativeTokens;
@@ -6,27 +6,31 @@ const yvl = yvlNativeTokens;
 /** React Native semantic adapter. Platform font families remain native-safe. */
 export const basoulYvlNative = {
   colors: {
-    background: yvl.color.background,
-    surface: yvl.color.surface,
-    surfaceSubtle: yvl.color.surface,
+    background: identity.background,
+    surface: identity.neutralSurface,
+    surfaceSubtle: identity.neutralSurface,
+    // Distinct raised shade is unresolved; retain the existing mechanical fallback.
     raised: yvl.color.surfaceElevated,
     surfaceRaised: yvl.color.surfaceElevated,
     border: yvl.color.border,
     borderStrong: yvl.color.silver,
-    primary: foundationColorValues.primary,
-    accent: foundationColorValues.primary,
-    primaryHover: foundationColorValues.primary,
-    text: yvl.color.white,
-    textPrimary: yvl.color.white,
-    textSecondary: yvl.color.silver,
+    primary: identity.primary,
+    accent: identity.primary,
+    primaryHover: identity.primary,
+    secondary: identity.secondary,
+    accentText: identity.secondary,
+    violet: identity.violet,
+    text: identity.textPrimary,
+    textPrimary: identity.textPrimary,
+    textSecondary: identity.textSecondary,
     muted: yvl.color.textMuted,
     success: yvl.color.success,
     warning: yvl.color.warning,
     danger: yvl.color.danger,
     dangerBorder: yvl.color.danger,
     dangerSubtle: yvl.color.surfaceElevated,
-    info: yvl.color.cyan,
-    focus: yvl.color.focus,
+    info: identity.secondary,
+    focus: identity.secondary,
     disabled: yvl.color.textMuted,
     primarySubtle: yvl.color.surfaceElevated,
   },

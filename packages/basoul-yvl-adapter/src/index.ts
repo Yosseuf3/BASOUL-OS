@@ -1,4 +1,4 @@
-import { foundationColorValues } from "@yosseuf/ui-tokens";
+import identity from "./identity.json";
 import { yvlGeneratedTokens } from "@yosseuf/yvl-tokens/generated";
 
 /** BASOUL product semantics. YVL governs behavior; Brand Foundation supplies identity accent only. */
@@ -23,7 +23,7 @@ export const basoulYvl = {
   elevation: yvlGeneratedTokens.shadows,
   typography: yvlGeneratedTokens.typography,
   motion: yvlGeneratedTokens.motion,
-  identity: { accent: foundationColorValues.primary },
+  identity: { ...identity, accent: identity.primary },
 } as const;
 
 export type BasoulYvl = typeof basoulYvl;

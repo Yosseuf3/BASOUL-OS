@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
 import { Screen } from "../../components/Screen";
 import { YvlButton, YvlTextInput } from "../../components/yvl-primitives";
 import { isMobileConfigured, supabase } from "../../config/supabase";
@@ -44,7 +44,7 @@ export function LoginScreen() {
   return (
     <Screen>
       <View style={styles.hero}>
-        <Text style={styles.kicker}>BASOUL · MOBILE</Text>
+        <Image source={require("../../../../brand/basoul/assets/primary-logo/BASOUL_Primary_Logo_Master.png")} style={styles.logo} resizeMode="contain" accessible accessibilityLabel="BASOUL" />
         <Text style={styles.title}>مركز القيادة معك دائمًا</Text>
         <Text style={styles.subtitle}>استخدم البريد الإلكتروني وكلمة المرور للوصول إلى مساحة BASOUL.</Text>
       </View>
@@ -82,7 +82,7 @@ export function LoginScreen() {
         />
         {message ? <Text style={styles.error}>{message}</Text> : null}
         <YvlButton style={[styles.button, loading && styles.disabled]} onPress={() => void signIn()} disabled={loading}>
-          {loading ? <ActivityIndicator color={tokens.colors.background} /> : <Text style={styles.buttonText}>تسجيل الدخول</Text>}
+          {loading ? <ActivityIndicator color={tokens.colors.textPrimary} /> : <Text style={styles.buttonText}>تسجيل الدخول</Text>}
         </YvlButton>
         <Text style={styles.help}>مسار التطوير المعتمد: Email + Password. لا يعتمد تسجيل الدخول الأساسي على Magic Link.</Text>
         <Text style={styles.config}>{isMobileConfigured ? "الاتصال بالمنصة جاهز" : "إعداد Supabase مطلوب"}</Text>
@@ -93,7 +93,7 @@ export function LoginScreen() {
 
 const styles = StyleSheet.create({
   hero: { marginTop: tokens.space.xl, marginBottom: tokens.space.xl },
-  kicker: { color: tokens.colors.primary, fontWeight: "900", letterSpacing: 1, textAlign: "right" },
+  logo: { width: "100%", maxWidth: 320, height: 100, alignSelf: "flex-end" },
   title: { color: tokens.colors.text, fontSize: 34, fontWeight: "900", textAlign: "right", marginTop: tokens.space.sm, lineHeight: 46 },
   subtitle: { color: tokens.colors.muted, fontSize: 16, lineHeight: 26, textAlign: "right", marginTop: tokens.space.sm },
   card: { backgroundColor: tokens.colors.surface, borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.lg, padding: tokens.space.lg },
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   error: { color: tokens.colors.danger, textAlign: "right", lineHeight: 21, marginBottom: tokens.space.md },
   button: { backgroundColor: tokens.colors.primary, borderRadius: tokens.radius.md, padding: tokens.space.md, alignItems: "center" },
   disabled: { opacity: 0.7 },
-  buttonText: { color: tokens.colors.background, fontWeight: "900", fontSize: 17 },
+  buttonText: { color: tokens.colors.textPrimary, fontWeight: "900", fontSize: 17 },
   help: { color: tokens.colors.muted, textAlign: "center", marginTop: tokens.space.md, fontSize: 12, lineHeight: 19 },
   config: { color: tokens.colors.muted, textAlign: "center", marginTop: tokens.space.sm },
 });
