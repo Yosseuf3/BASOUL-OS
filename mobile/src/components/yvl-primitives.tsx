@@ -13,7 +13,7 @@ export function YvlButton({ children, tone = "accent", loading = false, disabled
 }) {
   return <Pressable accessibilityRole="button" accessibilityState={{ disabled: disabled || loading, busy: loading }} disabled={disabled || loading}
     style={(state) => [styles.button, styles[`button_${tone}`], state.pressed && styles.pressed, (disabled || loading) && styles.disabled, typeof style === "function" ? style(state) : style]} {...props}>
-    {loading ? <ActivityIndicator color={tone === "neutral" ? tokens.colors.text : tokens.colors.background} /> : children}
+    {loading ? <ActivityIndicator color={tone === "neutral" ? tokens.colors.text : tokens.colors.textPrimary} /> : children}
   </Pressable>;
 }
 
@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
   badge_neutral: { borderColor: tokens.colors.border }, badge_accent: { borderColor: tokens.colors.accent },
   badge_success: { borderColor: tokens.colors.success }, badge_warning: { borderColor: tokens.colors.warning }, badge_danger: { borderColor: tokens.colors.danger },
   badgeText: { fontSize: tokens.typography.size.xs, fontWeight: "700" },
-  text_neutral: { color: tokens.colors.textSecondary }, text_accent: { color: tokens.colors.accent },
+  text_neutral: { color: tokens.colors.textSecondary }, text_accent: { color: tokens.colors.accentText },
   text_success: { color: tokens.colors.success }, text_warning: { color: tokens.colors.warning }, text_danger: { color: tokens.colors.danger },
   feedbackTitle: { color: tokens.colors.textPrimary, fontSize: tokens.typography.size.lg, fontWeight: "700", textAlign: "right" },
   feedbackDetail: { color: tokens.colors.textSecondary, fontSize: tokens.typography.size.sm, lineHeight: 22, textAlign: "right" },

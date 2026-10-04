@@ -13,7 +13,8 @@ test("BASOUL adapter consumes canonical YVL without redefining it", async () => 
   assert.match(pkg, /"@basoul\/yvl-adapter"/);
   assert.match(web, /@yosseuf\/yvl-tokens\/generated/);
   assert.match(native, /@yosseuf\/yvl-tokens\/react-native/);
-  assert.match(web, /foundationColorValues/);
+  assert.match(web, /import identity from "\.\/identity\.json"/);
+  assert.match(native, /import identity from "\.\/identity\.json"/);
   assert.doesNotMatch(web + native, /#[\da-f]{3,8}\b/i);
 });
 

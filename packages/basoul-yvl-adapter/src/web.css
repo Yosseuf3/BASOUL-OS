@@ -1,35 +1,36 @@
 @import "../../yvl-tokens/generated/yvl.css";
+@import "./identity.css";
 
 :root {
   /* BASOUL approved identity board is the visual authority. */
-  --basoul-background: #0B1020;
+  --basoul-background: var(--basoul-identity-background);
   --basoul-surface: #11182A;
-  --basoul-surface-raised: #1B2230;
-  --basoul-text-primary: #FFFFFF;
-  --basoul-text-secondary: #E5E7EB;
+  --basoul-surface-raised: var(--basoul-identity-neutral-surface);
+  --basoul-text-primary: var(--basoul-identity-text-primary);
+  --basoul-text-secondary: var(--basoul-identity-text-secondary);
   --basoul-text-muted: #94A3B8;
-  --basoul-border: color-mix(in srgb, #38B2F6 18%, #1B2230);
-  --basoul-electric: #2563EB;
-  --basoul-sky: #38B2F6;
-  --basoul-violet: #8B5CF6;
+  --basoul-border: color-mix(in srgb, var(--basoul-identity-secondary) 18%, var(--basoul-identity-neutral-surface));
+  --basoul-electric: var(--basoul-identity-primary);
+  --basoul-sky: var(--basoul-identity-secondary);
+  --basoul-violet: var(--basoul-identity-violet);
   --basoul-cyan: #00E0D1;
   --basoul-amber: #F59E0B;
   --basoul-success: var(--yvl-color-success);
   --basoul-warning: var(--yvl-color-warning);
   --basoul-danger: var(--yvl-color-danger);
-  --basoul-focus: #38B2F6;
+  --basoul-focus: var(--basoul-identity-secondary);
   --basoul-disabled: #64748B;
-  --basoul-gradient-electric: linear-gradient(135deg, #2563EB 0%, #38B2F6 100%);
-  --basoul-gradient-violet: linear-gradient(135deg, #8B5CF6 0%, #2563EB 100%);
-  --basoul-gradient-cyan: linear-gradient(135deg, #38B2F6 0%, #00E0D1 100%);
+  --basoul-gradient-electric: linear-gradient(135deg, var(--basoul-electric) 0%, var(--basoul-sky) 100%);
+  --basoul-gradient-violet: linear-gradient(135deg, var(--basoul-violet) 0%, var(--basoul-electric) 100%);
+  --basoul-gradient-cyan: linear-gradient(135deg, var(--basoul-sky) 0%, var(--basoul-cyan) 100%);
   --basoul-glow-blue: 0 0 28px rgb(37 99 235 / 0.24);
   --basoul-glow-soft: 0 18px 60px rgb(37 99 235 / 0.12);
 
   /* Product-family semantics from the approved board. */
-  --basoul-product-ai: #2563EB;
-  --basoul-product-os: #38B2F6;
+  --basoul-product-ai: var(--basoul-electric);
+  --basoul-product-os: var(--basoul-sky);
   --basoul-product-one: #F59E0B;
-  --basoul-product-labs: #8B5CF6;
+  --basoul-product-labs: var(--basoul-violet);
 
   /* Compatibility bridge. YVL keeps mechanics; BASOUL owns identity. */
   --ys-surface-canvas: var(--basoul-background);

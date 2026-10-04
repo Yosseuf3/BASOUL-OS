@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: tokens.space.md },
   title: { color: tokens.colors.text, fontSize: 32, fontWeight: "900", textAlign: "right" },
   back: { borderWidth: 1, borderColor: tokens.colors.border, borderRadius: tokens.radius.md, paddingHorizontal: 14, paddingVertical: 9 },
-  backText: { color: tokens.colors.primary, fontWeight: "800" },
+  backText: { color: tokens.colors.accentText, fontWeight: "800" },
   summary: { color: tokens.colors.muted, textAlign: "right", marginTop: tokens.space.sm, marginBottom: tokens.space.lg },
   empty: { color: tokens.colors.muted, textAlign: "center", marginTop: tokens.space.xl },
   card: { backgroundColor: tokens.colors.surface, borderColor: tokens.colors.border, borderWidth: 1, borderRadius: tokens.radius.lg, padding: tokens.space.lg, marginBottom: tokens.space.md },

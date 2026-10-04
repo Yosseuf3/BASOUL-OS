@@ -35,7 +35,7 @@ export function AdministrationScreen({ role, onBack }: { role: MobileOrganizatio
 const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: tokens.space.md, marginBlockStart: tokens.space.md, marginBlockEnd: tokens.space.lg },
   heading: { flex: 1, gap: tokens.space.xs },
-  kicker: { color: tokens.colors.accent, fontSize: tokens.typography.size.xs, fontWeight: "700", textAlign: "right" },
+  kicker: { color: tokens.colors.accentText, fontSize: tokens.typography.size.xs, fontWeight: "700", textAlign: "right" },
   title: { color: tokens.colors.textPrimary, fontSize: tokens.typography.size["2xl"], fontWeight: "700", textAlign: "right" },
   backText: { color: tokens.colors.textPrimary, fontWeight: "700" },
   label: { color: tokens.colors.textSecondary, fontSize: tokens.typography.size.sm, textAlign: "right" },
