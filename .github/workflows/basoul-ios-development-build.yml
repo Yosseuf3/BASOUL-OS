@@ -7,12 +7,6 @@ on:
     paths:
       - .github/workflows/basoul-ios-development-build.yml
       - mobile/**
-  pull_request:
-    branches:
-      - main
-    paths:
-      - .github/workflows/basoul-ios-development-build.yml
-      - mobile/**
   workflow_dispatch:
 
 permissions:
