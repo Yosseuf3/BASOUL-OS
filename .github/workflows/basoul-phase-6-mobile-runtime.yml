@@ -1,6 +1,7 @@
 name: BASOUL Phase 6 Mobile Runtime Validation
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
