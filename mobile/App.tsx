@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Linking, Platform, SafeAreaView, StatusBar as NativeStatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { StatusBar } from "expo-status-bar";
 import appConfig from "./app.json";
@@ -16,6 +16,7 @@ import { TimelineScreen } from "./src/features/timeline/TimelineScreen";
 import { GlobalSearchScreen } from "./src/features/search/GlobalSearchScreen";
 import { ArchitectureReviewScreen } from "./src/features/architecture/architecture-review-screen";
 import { AdministrationScreen } from "./src/features/administration/AdministrationScreen";
+import { AccountScreen } from "./src/features/account/AccountScreen";
 import type { MobileOrganizationRole } from "./src/permissions/organization";
 import { isMobileConfigured, supabase } from "./src/config/supabase";
 import {
@@ -35,7 +36,7 @@ import {
 import type { ArchitecturalFinding, ArchitecturalReviewComment, MobileWorkspaceData, Task } from "./src/types/domain";
 
 const emptyData: MobileWorkspaceData = { projects: [], tasks: [], notifications: [], drawings: [], reviews: [], planElements: [], reviewComments: [] };
-type ScreenName = "dashboard" | "projects" | "tasks" | "notifications" | "intelligence" | "architecture" | "createTask" | "timeline" | "search" | "administration";
+type ScreenName = "dashboard" | "projects" | "tasks" | "notifications" | "intelligence" | "architecture" | "createTask" | "timeline" | "search" | "administration" | "account";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -51,13 +52,17 @@ export default function App() {
   const [uploadingDrawing, setUploadingDrawing] = useState(false);
   const [retryingDrawingId, setRetryingDrawingId] = useState("");
   const [updatingReviewCommentId, setUpdatingReviewCommentId] = useState("");
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+  const sessionRevision = useRef(0);
 
   const refresh = useCallback(async () => {
     if (!session?.user.id) return;
+    const revision = sessionRevision.current;
     setLoading(true); setError(null);
-    try { const [workspaceData, role] = await Promise.all([loadMobileWorkspace(session.user.id), loadMobileOrganizationRole(session.user.id)]); setData(workspaceData); setOrganizationRole(role); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحميل بيانات مساحة العمل."); }
-    finally { setLoading(false); }
+    try { const [workspaceData, role] = await Promise.all([loadMobileWorkspace(session.user.id), loadMobileOrganizationRole(session.user.id)]); if (revision !== sessionRevision.current) return; setData(workspaceData); setOrganizationRole(role); }
+    catch (cause) { if (revision === sessionRevision.current) setError(cause instanceof Error ? cause.message : "تعذر تحميل بيانات مساحة العمل."); }
+    finally { if (revision === sessionRevision.current) setLoading(false); }
   }, [session?.user.id]);
 
   useEffect(() => {
@@ -66,11 +71,27 @@ export default function App() {
     async function handleAuthUrl(url: string | null) { if (!url) return; const result = await completeMobileAuthUrl(client, url); if (active && result.handled && result.error) setError(result.error); }
     void (async () => { await handleAuthUrl(await getInitialAuthUrl()); const { data: result } = await client.auth.getSession(); if (active) { setSession(result.session); setBooting(false); } })();
     const urlListener = Linking.addEventListener("url", ({ url }) => { void handleAuthUrl(url); });
-    const { data: authListener } = client.auth.onAuthStateChange((_event, nextSession) => { setSession(nextSession); setScreen("dashboard"); if (!nextSession) setData(emptyData); });
+    const { data: authListener } = client.auth.onAuthStateChange((_event, nextSession) => {
+      sessionRevision.current += 1;
+      setSession(nextSession); setScreen("dashboard"); setSignOutError(null);
+      if (!nextSession) { setData(emptyData); setOrganizationRole("viewer"); setError(null); setLoading(false); }
+    });
     return () => { active = false; urlListener.remove(); authListener.subscription.unsubscribe(); };
   }, []);
 
   useEffect(() => { if (session) void refresh(); }, [session, refresh]);
+
+  async function signOut() {
+    if (!supabase || signingOut) return;
+    setSigningOut(true); setSignOutError(null);
+    try {
+      const { error: signOutFailure } = await supabase.auth.signOut();
+      if (signOutFailure) throw signOutFailure;
+      // The existing auth listener clears session/navigation/workspace state.
+    } catch {
+      setSignOutError("تعذر تسجيل الخروج. يرجى المحاولة مرة أخرى.");
+    } finally { setSigningOut(false); }
+  }
 
   async function readNotification(id: string) { try { await markMobileNotificationRead(id); setData((current) => ({ ...current, notifications: current.notifications.map((item) => item.id === id ? { ...item, is_read: true } : item) })); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحديث الإشعار."); } }
   async function createTask(input: NewTaskInput) { if (!session) return; await createMobileTask(session.user.id, input); await refresh(); setScreen("tasks"); }
@@ -148,8 +169,9 @@ export default function App() {
   if (booting) return <View style={styles.center}><StatusBar style="light" /><ActivityIndicator color={tokens.colors.primary} size="large" /></View>;
   if (!isMobileConfigured || !session) return <><StatusBar style="light" /><LoginScreen /></>;
 
-  return <View style={styles.app}>
+  return <SafeAreaView style={styles.app}>
     <StatusBar style="light" />
+    <View style={styles.accountBar}><TouchableOpacity accessibilityRole="button" accessibilityLabel="الحساب" onPress={() => setScreen("account")} style={styles.accountButton}><Text style={styles.accountText}>الحساب</Text></TouchableOpacity></View>
     {error ? <View style={styles.errorBar}><Text style={styles.errorText}>{error}</Text><TouchableOpacity onPress={() => setError(null)}><Text style={styles.dismiss}>?</Text></TouchableOpacity></View> : null}
     {screen === "dashboard" ? <DashboardScreen data={data} onNavigate={setScreen} onRefresh={refresh} refreshing={loading} /> : null}
     {screen === "projects" ? <ProjectsScreen projects={data.projects} onBack={() => setScreen("dashboard")} /> : null}
@@ -161,8 +183,9 @@ export default function App() {
     {screen === "timeline" ? <TimelineScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "search" ? <GlobalSearchScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "administration" ? <AdministrationScreen role={organizationRole} onBack={() => setScreen("dashboard")} /> : null}
-    <View style={styles.footer}><Text style={styles.version}>v{appConfig.expo.version}</Text><TouchableOpacity onPress={() => void supabase?.auth.signOut()}><Text style={styles.logout}>تسجيل الخروج</Text></TouchableOpacity></View>
-  </View>;
+    {screen === "account" ? <AccountScreen email={session.user.email} onBack={() => setScreen("dashboard")} onSignOut={signOut} signingOut={signingOut} error={signOutError} /> : null}
+    <View style={styles.footer}><Text style={styles.version}>v{appConfig.expo.version}</Text></View>
+  </SafeAreaView>;
 }
 
-const styles = StyleSheet.create({ app: { flex: 1, backgroundColor: tokens.colors.background }, center: { flex: 1, backgroundColor: tokens.colors.background, alignItems: "center", justifyContent: "center" }, errorBar: { backgroundColor: tokens.colors.dangerSubtle, paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center" }, errorText: { color: tokens.colors.danger, flex: 1, textAlign: "right" }, dismiss: { color: tokens.colors.danger, fontSize: 24, marginLeft: 12 }, footer: { borderTopWidth: 1, borderTopColor: tokens.colors.border, paddingHorizontal: 18, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", backgroundColor: tokens.colors.surface }, version: { color: tokens.colors.muted, fontSize: 11 }, logout: { color: tokens.colors.danger, fontWeight: "800" } });
+const styles = StyleSheet.create({ app: { flex: 1, backgroundColor: tokens.colors.background }, accountBar: { alignItems: "flex-end", paddingHorizontal: tokens.space.lg, paddingTop: Platform.OS === "android" ? NativeStatusBar.currentHeight ?? 0 : 0 }, accountButton: { minHeight: 44, minWidth: 44, justifyContent: "center", paddingHorizontal: tokens.space.md }, accountText: { color: tokens.colors.textPrimary, fontWeight: "700" }, center: { flex: 1, backgroundColor: tokens.colors.background, alignItems: "center", justifyContent: "center" }, errorBar: { backgroundColor: tokens.colors.dangerSubtle, paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center" }, errorText: { color: tokens.colors.danger, flex: 1, textAlign: "right" }, dismiss: { color: tokens.colors.danger, fontSize: 24, marginLeft: 12 }, footer: { borderTopWidth: 1, borderTopColor: tokens.colors.border, paddingHorizontal: 18, paddingVertical: 10, flexDirection: "row-reverse", justifyContent: "space-between", backgroundColor: tokens.colors.surface }, version: { color: tokens.colors.muted, fontSize: 11 } });
