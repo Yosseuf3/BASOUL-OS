@@ -26,9 +26,9 @@ function load(relative, { states = [], config = appConfig } = {}) {
   const require = (name) => {
     if (aliases[name]) return load(aliases[name]);
     if (name === "./tokens" && filename.includes("yvl-tokens")) return load("packages/yvl-tokens/generated/tokens.ts");
-    if (name === "react") return { useState: (initial) => [states.length ? states.shift() : initial, () => {}], useCallback: (fn) => fn, useEffect: () => {} };
+    if (name === "react") return { useState: (initial) => [states.length ? states.shift() : initial, () => {}], useCallback: (fn) => fn, useEffect: () => {}, useRef: (value) => ({ current: value }) };
     if (name === "react/jsx-runtime") return { jsx: element, jsxs: element, Fragment: "Fragment" };
-    if (name === "react-native") return { Image: "Image", View: "View", Text: "Text", TouchableOpacity: "TouchableOpacity", ActivityIndicator: "ActivityIndicator", StyleSheet: { create: (styles) => styles } };
+    if (name === "react-native") return { Image: "Image", View: "View", SafeAreaView: "SafeAreaView", Text: "Text", TouchableOpacity: "TouchableOpacity", ActivityIndicator: "ActivityIndicator", Platform: { OS: "android" }, StatusBar: { currentHeight: 24 }, StyleSheet: { create: (styles) => styles } };
     if (name.endsWith("app.json")) return config;
     if (name.endsWith(".json")) return JSON.parse(readFileSync(resolve(dirname(filename), name)));
     if (name.endsWith(".png")) { const path = resolve(dirname(filename), name); readFileSync(path); return { path }; }
