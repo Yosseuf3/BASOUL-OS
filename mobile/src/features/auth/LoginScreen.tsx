@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
-import { Screen } from "../../components/Screen";
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { YvlButton, YvlTextInput } from "../../components/yvl-primitives";
 import { isMobileConfigured, supabase } from "../../config/supabase";
 import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
@@ -42,7 +41,8 @@ export function LoginScreen() {
   }
 
   return (
-    <Screen>
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled">
       <View style={styles.hero}>
         <Image source={require("../../../../brand/basoul/assets/primary-logo/BASOUL_Primary_Logo_Master.png")} style={styles.logo} resizeMode="contain" accessible accessibilityLabel="BASOUL" />
         <Text style={styles.title}>مركز القيادة معك دائمًا</Text>
@@ -87,11 +87,14 @@ export function LoginScreen() {
         <Text style={styles.help}>مسار التطوير المعتمد: Email + Password. لا يعتمد تسجيل الدخول الأساسي على Magic Link.</Text>
         <Text style={styles.config}>{isMobileConfigured ? "الاتصال بالمنصة جاهز" : "إعداد Supabase مطلوب"}</Text>
       </View>
-    </Screen>
+    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: tokens.colors.background },
+  content: { flexGrow: 1, padding: tokens.space.lg, direction: "rtl" },
   hero: { marginTop: tokens.space.xl, marginBottom: tokens.space.xl },
   logo: { width: "100%", maxWidth: 320, height: 100, alignSelf: "flex-end" },
   title: { color: tokens.colors.text, fontSize: 34, fontWeight: "900", textAlign: "right", marginTop: tokens.space.sm, lineHeight: 46 },
