@@ -20,7 +20,7 @@ const element = (type, props) => ({ type, props });
 
 // Execute actual transpiled components/tokens with host primitives and external I/O mocked.
 // Assets resolve to real repository files, not a guessed matching source-string pattern.
-function load(relative, { states = [], config = appConfig } = {}) {
+function load(relative, { states = [], config = appConfig, platform = "android" } = {}) {
   const filename = resolve(root, relative);
   const compiled = { exports: {} };
   const require = (name) => {
@@ -28,7 +28,7 @@ function load(relative, { states = [], config = appConfig } = {}) {
     if (name === "./tokens" && filename.includes("yvl-tokens")) return load("packages/yvl-tokens/generated/tokens.ts");
     if (name === "react") return { useState: (initial) => [states.length ? states.shift() : initial, () => {}], useCallback: (fn) => fn, useEffect: () => {}, useRef: (value) => ({ current: value }) };
     if (name === "react/jsx-runtime") return { jsx: element, jsxs: element, Fragment: "Fragment" };
-    if (name === "react-native") return { Image: "Image", View: "View", SafeAreaView: "SafeAreaView", Text: "Text", TouchableOpacity: "TouchableOpacity", ActivityIndicator: "ActivityIndicator", Platform: { OS: "android" }, StatusBar: { currentHeight: 24 }, StyleSheet: { create: (styles) => styles } };
+    if (name === "react-native") return { Image: "Image", View: "View", SafeAreaView: "SafeAreaView", ScrollView: "ScrollView", KeyboardAvoidingView: "KeyboardAvoidingView", Text: "Text", TouchableOpacity: "TouchableOpacity", ActivityIndicator: "ActivityIndicator", Platform: { OS: platform }, StatusBar: { currentHeight: 24 }, StyleSheet: { create: (styles) => styles } };
     if (name.endsWith("app.json")) return config;
     if (name.endsWith(".json")) return JSON.parse(readFileSync(resolve(dirname(filename), name)));
     if (name.endsWith(".png")) { const path = resolve(dirname(filename), name); readFileSync(path); return { path }; }
@@ -90,6 +90,32 @@ test("login renders accessible original BASOUL logo without replacing artwork", 
   assert.equal(images[0].props.resizeMode, "contain");
   assert.equal(images[0].props.accessible, true);
 });
+
+for (const [platform, behavior] of [["android", "height"], ["ios", "padding"]]) {
+  test(`Login uses a keyboard-bounded, naturally growing RTL scroll form on ${platform}`, () => {
+    const tree = load("mobile/src/features/auth/LoginScreen.tsx", { platform, states: ["", "", false, "validation error"] }).LoginScreen();
+    assert.equal(tree.type, "KeyboardAvoidingView");
+    assert.equal(tree.props.behavior, behavior);
+    assert.equal(tree.props.style.flex, 1);
+    assert.equal(tree.props.keyboardVerticalOffset, undefined, "No device-specific offset");
+    const scroll = tree.props.children;
+    assert.equal(scroll.type, "ScrollView");
+    assert.equal(scroll.props.style.flex, 1);
+    assert.equal(scroll.props.keyboardShouldPersistTaps, "handled", "Login tap must reach the button while IME stays open");
+    assert.equal(scroll.props.contentInsetAdjustmentBehavior, "automatic");
+    assert.equal(scroll.props.contentContainerStyle.flexGrow, 1);
+    for (const key of ["height", "maxHeight", "flex", "flexShrink"]) assert.equal(scroll.props.contentContainerStyle[key], undefined, `Do not constrain content with ${key}`);
+    assert.equal(scroll.props.contentContainerStyle.direction, "rtl");
+    const form = nodes(scroll);
+    const inputs = form.filter((node) => node.props?.onChangeText);
+    assert.equal(inputs.length, 2);
+    assert.equal(inputs[0].props.keyboardType, "email-address");
+    assert.equal(inputs[1].props.secureTextEntry, true);
+    assert.equal(typeof inputs[1].props.onSubmitEditing, "function");
+    assert.ok(form.some((node) => node.props?.children === "validation error"));
+    assert.ok(form.some((node) => typeof node.props?.onPress === "function" && nodes(node).some((child) => child.props?.children === "تسجيل الدخول")));
+  });
+}
 
 test("authenticated dashboard renders compact accessible original BASOUL OS lockup", () => {
   const tree = load("mobile/src/features/dashboard/DashboardScreen.tsx").DashboardScreen({ data: { projects: [], drawings: [], reviews: [] }, onNavigate() {}, onRefresh() {}, refreshing: false });

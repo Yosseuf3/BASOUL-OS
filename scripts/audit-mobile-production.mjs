@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 // Temporary BUILD/TOOLING-ONLY exception for GHSA-86w9-cpqp-85rv.
-// Exact topology: expo@57.0.26 -> @expo/cli@57.0.27 -> node-forge@1.4.0,
+// Revalidated 2026-10-08: expo@57.0.27 -> @expo/cli@57.0.28 -> node-forge@1.4.0,
 // including @expo/code-signing-certificates@0.0.6 -> node-forge@1.4.0.
 // node-forge is not reachable from the BASOUL Android runtime graph. Upstream
 // has no patched release as of approval. This exception expires 2026-10-16.
@@ -12,8 +12,8 @@ const nodeForgeException = {
   advisory: "GHSA-86w9-cpqp-85rv",
   expiresAt: "2026-10-16T00:00:00Z",
   versions: {
-    expo: "57.0.26",
-    cli: "57.0.27",
+    expo: "57.0.27",
+    cli: "57.0.28",
     certificates: "0.0.6",
     forge: "1.4.0",
   },
@@ -21,8 +21,9 @@ const nodeForgeException = {
 
 // Separate temporary BUILD/TOOLING-ONLY exception for GHSA-vfj7-8cjw-p6xm.
 // Exact topology: one braces@3.0.3 installation, introduced only by
-// micromatch@4.0.8, whose parents are @expo/metro-file-map@57.0.2 and
-// metro-file-map@0.84.5. Metro file watching runs on the build host and is not
+// micromatch@4.0.8, whose only parent is metro-file-map@0.84.5.
+// Revalidated 2026-10-08: @expo/metro-file-map@57.0.4 no longer uses micromatch.
+// Metro file watching runs on the build host and is not
 // reachable from the BASOUL Android runtime. This exception expires 2026-10-16.
 const bracesException = {
   advisory: "GHSA-vfj7-8cjw-p6xm",
@@ -30,7 +31,7 @@ const bracesException = {
   versions: {
     braces: "3.0.3",
     micromatch: "4.0.8",
-    expoMetroFileMap: "57.0.2",
+    expoMetroFileMap: "57.0.4",
     metroFileMap: "0.84.5",
   },
 };
@@ -71,12 +72,12 @@ const certificates = packageAt(
 const forge = packageAt("node_modules/node-forge", nodeForgeException.versions.forge);
 
 if (
-  manifest.dependencies?.expo !== "~57.0.26" ||
+  manifest.dependencies?.expo !== "57.0.27" ||
   !expo ||
   !cli ||
   !certificates ||
   !forge ||
-  expo.dependencies?.["@expo/cli"] !== "^57.0.27" ||
+  expo.dependencies?.["@expo/cli"] !== "^57.0.28" ||
   cli.dependencies?.["node-forge"] !== "^1.3.3" ||
   cli.dependencies?.["@expo/code-signing-certificates"] !== "^0.0.6" ||
   certificates.dependencies?.["node-forge"] !== "^1.3.3"
@@ -129,7 +130,6 @@ const bracesInstallations = Object.entries(packages)
   .filter(([path]) => path.endsWith("node_modules/braces"))
   .map(([path]) => path);
 const expectedMicromatchParents = [
-  "node_modules/@expo/metro-file-map",
   "node_modules/metro-file-map",
 ].sort();
 
@@ -139,7 +139,7 @@ if (
   !expoMetroFileMap ||
   !metroFileMap ||
   micromatch.dependencies?.braces !== "^3.0.3" ||
-  expoMetroFileMap.dependencies?.micromatch !== "^4.0.4" ||
+  expoMetroFileMap.dependencies?.micromatch !== undefined ||
   metroFileMap.dependencies?.micromatch !== "^4.0.4" ||
   JSON.stringify(bracesParents) !== JSON.stringify(["node_modules/micromatch"]) ||
   JSON.stringify(micromatchParents) !== JSON.stringify(expectedMicromatchParents) ||
@@ -232,7 +232,6 @@ const expectedAffectedPackages = [
   "@expo/code-signing-certificates",
   "@expo/metro",
   "@expo/metro-config",
-  "@expo/metro-file-map",
   "@react-native/community-cli-plugin",
   "@react-native/virtualized-lists",
   "braces",
