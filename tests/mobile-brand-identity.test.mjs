@@ -33,6 +33,7 @@ function load(relative, { states = [], config = appConfig, platform = "android" 
     if (name.endsWith(".json")) return JSON.parse(readFileSync(resolve(dirname(filename), name)));
     if (name.endsWith(".png")) { const path = resolve(dirname(filename), name); readFileSync(path); return { path }; }
     if (name.endsWith("/supabase")) return { isMobileConfigured: true, supabase: {} };
+    if (name.endsWith("/organizations/context")) return load("mobile/src/organizations/context.ts");
     if (name.endsWith("/executive")) return { buildExecutiveSnapshot: () => ({ overdueTasks: 0, focusTasks: [], recommendations: [] }) };
     if (name === "expo-status-bar") return { StatusBar: "StatusBar" };
     return new Proxy({}, { get: (_, key) => String(key) });

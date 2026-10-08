@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Linking, Platform, SafeAreaView, StatusBar as NativeStatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, AppState, Linking, Platform, SafeAreaView, StatusBar as NativeStatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { StatusBar } from "expo-status-bar";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import appConfig from "./app.json";
 import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import { LoginScreen } from "./src/features/auth/LoginScreen";
@@ -17,14 +18,15 @@ import { GlobalSearchScreen } from "./src/features/search/GlobalSearchScreen";
 import { ArchitectureReviewScreen } from "./src/features/architecture/architecture-review-screen";
 import { AdministrationScreen } from "./src/features/administration/AdministrationScreen";
 import { AccountScreen } from "./src/features/account/AccountScreen";
-import type { MobileOrganizationRole } from "./src/permissions/organization";
+import { OrganizationContextStore, type OrganizationContext, type OrganizationSnapshot } from "./src/organizations/context";
+import { OrganizationBar } from "./src/organizations/OrganizationBar";
+import { loadMobileOrganizations } from "./src/services/organizations";
 import { isMobileConfigured, supabase } from "./src/config/supabase";
 import {
   advanceMobileTask,
   convertMobileFindingToTask,
   createMobileTask,
   loadMobileWorkspace,
-  loadMobileOrganizationRole,
   markMobileNotificationRead,
   retryMobileDrawingAnalysis,
   updateMobileFindingDecision,
@@ -45,7 +47,9 @@ export default function App() {
   const [screen, setScreen] = useState<ScreenName>("dashboard");
   const [data, setData] = useState<MobileWorkspaceData>(emptyData);
   const [error, setError] = useState<string | null>(null);
-  const [organizationRole, setOrganizationRole] = useState<MobileOrganizationRole>("viewer");
+  const [organization, setOrganization] = useState<OrganizationSnapshot | null>(null);
+  const organizationStore = useRef(new OrganizationContextStore(AsyncStorage, loadMobileOrganizations));
+  const authenticatedUser = useRef<string | null>(null);
   const [convertingFindingId, setConvertingFindingId] = useState("");
   const [decidingFindingId, setDecidingFindingId] = useState("");
   const [updatingPlanElementId, setUpdatingPlanElementId] = useState("");
@@ -56,30 +60,55 @@ export default function App() {
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const sessionRevision = useRef(0);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (requestedOrganizationId?: string) => {
     if (!session?.user.id) return;
-    const revision = sessionRevision.current;
+    if (authenticatedUser.current !== session.user.id) return;
+    const sessionVersion = sessionRevision.current;
+    setOrganization(null); setData(emptyData);
+    setConvertingFindingId(""); setDecidingFindingId(""); setUpdatingPlanElementId(""); setUpdatingReviewCommentId(""); setUploadingDrawing(false); setRetryingDrawingId("");
     setLoading(true); setError(null);
-    try { const [workspaceData, role] = await Promise.all([loadMobileWorkspace(session.user.id), loadMobileOrganizationRole(session.user.id)]); if (revision !== sessionRevision.current) return; setData(workspaceData); setOrganizationRole(role); }
-    catch (cause) { if (revision === sessionRevision.current) setError(cause instanceof Error ? cause.message : "تعذر تحميل بيانات مساحة العمل."); }
-    finally { if (revision === sessionRevision.current) setLoading(false); }
+    const pending = organizationStore.current.refresh(session.user.id, requestedOrganizationId);
+    const requestRevision = organizationStore.current.currentRevision;
+    try {
+      const next = await pending;
+      if (!next || sessionVersion !== sessionRevision.current) return;
+      setOrganization(next);
+      if (next.selected) {
+        const workspaceData = await loadMobileWorkspace(next.selected);
+        if (!organizationStore.current.isCurrent(next.revision) || sessionVersion !== sessionRevision.current) return;
+        setData(workspaceData);
+      }
+    } catch (cause) {
+      if (sessionVersion === sessionRevision.current && organizationStore.current.isCurrent(requestRevision)) {
+        setOrganization(null); setData(emptyData);
+        setError(cause instanceof Error ? cause.message : "تعذر تحميل بيانات مساحة العمل.");
+      }
+    } finally {
+      if (sessionVersion === sessionRevision.current && organizationStore.current.isCurrent(requestRevision)) setLoading(false);
+    }
   }, [session?.user.id]);
 
   useEffect(() => {
     if (!supabase) { setBooting(false); return; }
     const client = supabase; let active = true;
     async function handleAuthUrl(url: string | null) { if (!url) return; const result = await completeMobileAuthUrl(client, url); if (active && result.handled && result.error) setError(result.error); }
-    void (async () => { await handleAuthUrl(await getInitialAuthUrl()); const { data: result } = await client.auth.getSession(); if (active) { setSession(result.session); setBooting(false); } })();
+    void (async () => { await handleAuthUrl(await getInitialAuthUrl()); const revision = sessionRevision.current; const { data: result } = await client.auth.getSession(); if (active && revision === sessionRevision.current) { authenticatedUser.current = result.session?.user.id ?? null; setSession(result.session); } if (active) setBooting(false); })();
     const urlListener = Linking.addEventListener("url", ({ url }) => { void handleAuthUrl(url); });
     const { data: authListener } = client.auth.onAuthStateChange((_event, nextSession) => {
       sessionRevision.current += 1;
+      if (authenticatedUser.current !== (nextSession?.user.id ?? null)) organizationStore.current.clear();
+      authenticatedUser.current = nextSession?.user.id ?? null;
       setSession(nextSession); setScreen("dashboard"); setSignOutError(null);
-      if (!nextSession) { setData(emptyData); setOrganizationRole("viewer"); setError(null); setLoading(false); }
+      setOrganization(null); setData(emptyData); setError(null); setLoading(false);
     });
     return () => { active = false; urlListener.remove(); authListener.subscription.unsubscribe(); };
   }, []);
 
   useEffect(() => { if (session) void refresh(); }, [session, refresh]);
+  useEffect(() => {
+    const listener = AppState.addEventListener("change", (state) => { if (state === "active" && session) void refresh(); });
+    return () => listener.remove();
+  }, [session, refresh]);
 
   async function signOut() {
     if (!supabase || signingOut) return;
@@ -93,87 +122,110 @@ export default function App() {
     } finally { setSigningOut(false); }
   }
 
-  async function readNotification(id: string) { try { await markMobileNotificationRead(id); setData((current) => ({ ...current, notifications: current.notifications.map((item) => item.id === id ? { ...item, is_read: true } : item) })); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحديث الإشعار."); } }
-  async function createTask(input: NewTaskInput) { if (!session) return; await createMobileTask(session.user.id, input); await refresh(); setScreen("tasks"); }
-  async function advanceTask(task: Task) { try { await advanceMobileTask(task); await refresh(); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تحديث المهمة."); } }
+  function activeOrganization() {
+    if (!organization?.selected || organization.userId !== authenticatedUser.current || !organizationStore.current.isCurrent(organization.revision)) throw new Error("Active organization required");
+    return organization;
+  }
+  async function operate<T>(operation: (context: OrganizationContext) => Promise<T>, after?: () => void): Promise<T> {
+    const snapshot = activeOrganization();
+    const revision = sessionRevision.current;
+    const current = () => revision === sessionRevision.current && organizationStore.current.isCurrent(snapshot.revision);
+    try {
+      const result = await operation(snapshot.selected!);
+      if (current()) { after?.(); await refresh(); }
+      return result;
+    } catch (cause) {
+      if (current()) {
+        organizationStore.current.invalidate(); setOrganization(null); setData(emptyData);
+        setError(cause instanceof Error ? cause.message : "تعذر إكمال العملية.");
+      }
+      throw cause;
+    }
+  }
+  async function readNotification(id: string) { try { await operate((context) => markMobileNotificationRead(context, id)); } catch { /* Error displayed only for the current context. */ } }
+  async function createTask(input: NewTaskInput) { await operate((context) => createMobileTask(context, input), () => setScreen("tasks")); }
+  async function advanceTask(task: Task) { try { await operate((context) => advanceMobileTask(context, task)); } catch { /* Error displayed by operate. */ } }
   async function convertFinding(finding: ArchitecturalFinding, projectId: string) {
     if (!session) return;
+    const actionRevision = activeOrganization().revision;
     setConvertingFindingId(finding.id);
     try {
-      await convertMobileFindingToTask(session.user.id, projectId, finding);
-      await refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "تعذر تحويل الملاحظة إلى مهمة.");
+      await operate((context) => convertMobileFindingToTask(context, projectId, finding));
+    } catch {
+      // Stale operations must not update another organization's error state.
     } finally {
-      setConvertingFindingId("");
+      if (organizationStore.current.isCurrent(actionRevision)) setConvertingFindingId("");
     }
   }
   async function decideFinding(finding: ArchitecturalFinding, status: MobileFindingDecision) {
     if (!session) return;
+    const actionRevision = activeOrganization().revision;
     setDecidingFindingId(finding.id);
     try {
-      await updateMobileFindingDecision(session.user.id, finding, status);
-      await refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "تعذر حفظ قرار المراجعة.");
+      await operate((context) => updateMobileFindingDecision(context, finding, status));
+    } catch {
+      // Error is scoped by operate.
     } finally {
-      setDecidingFindingId("");
+      if (organizationStore.current.isCurrent(actionRevision)) setDecidingFindingId("");
     }
   }
   async function decidePlanElement(elementId: string, status: "confirmed" | "rejected") {
     if (!session) return;
+    const actionRevision = activeOrganization().revision;
     setUpdatingPlanElementId(elementId);
     try {
-      await updateMobilePlanElementStatus(session.user.id, elementId, status);
-      await refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "تعذر حفظ قرار عنصر المخطط.");
+      await operate((context) => updateMobilePlanElementStatus(context, elementId, status));
+    } catch {
+      // Error is scoped by operate.
     } finally {
-      setUpdatingPlanElementId("");
+      if (organizationStore.current.isCurrent(actionRevision)) setUpdatingPlanElementId("");
     }
   }
   async function decideReviewComment(comment: ArchitecturalReviewComment, status: ArchitecturalReviewComment["status"]) {
     if (!session) return;
+    const actionRevision = activeOrganization().revision;
     setUpdatingReviewCommentId(comment.id);
     try {
-      await updateMobileReviewCommentStatus(session.user.id, comment.id, status);
-      await refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "تعذر تحديث ملاحظة المراجعة.");
+      await operate((context) => updateMobileReviewCommentStatus(context, comment.id, status));
+    } catch {
+      // Error is scoped by operate.
     } finally {
-      setUpdatingReviewCommentId("");
+      if (organizationStore.current.isCurrent(actionRevision)) setUpdatingReviewCommentId("");
     }
   }
   async function uploadDrawing(input: { projectId: string; revision: string; uri: string; name: string; mimeType: string; size: number }) {
     if (!session) return { drawingId: "", analysisStatus: "needs_better_source" as const, detectedElements: 0, failureCode: null, retryable: false };
+    const actionRevision = activeOrganization().revision;
     setUploadingDrawing(true);
     try {
-      const result = await uploadMobileDrawing(session.user.id, input.projectId, input.revision, input);
-      await refresh();
-      return result;
+      return await operate((context) => uploadMobileDrawing(context, input.projectId, input.revision, input));
     } finally {
-      setUploadingDrawing(false);
+      if (organizationStore.current.isCurrent(actionRevision)) setUploadingDrawing(false);
     }
   }
   async function retryDrawing(drawingId: string) {
+    const actionRevision = activeOrganization().revision;
     setRetryingDrawingId(drawingId);
     try {
-      const result = await retryMobileDrawingAnalysis(drawingId);
-      await refresh();
-      return result;
+      return await operate((context) => retryMobileDrawingAnalysis(context, drawingId));
     } finally {
-      setRetryingDrawingId("");
+      if (organizationStore.current.isCurrent(actionRevision)) setRetryingDrawingId("");
     }
   }
 
   if (booting) return <View style={styles.center}><StatusBar style="light" /><ActivityIndicator color={tokens.colors.primary} size="large" /></View>;
   if (!isMobileConfigured || !session) return <><StatusBar style="light" /><LoginScreen /></>;
 
+  // Render no cached tenant data while validating membership or after user change.
+  const organizationReady = organization?.userId === session.user.id && Boolean(organization.selected) && organizationStore.current.isCurrent(organization.revision);
+
   return <SafeAreaView style={styles.app}>
     <StatusBar style="light" />
     <View style={styles.accountBar}><TouchableOpacity accessibilityRole="button" accessibilityLabel="الحساب" onPress={() => setScreen("account")} style={styles.accountButton}><Text style={styles.accountText}>الحساب</Text></TouchableOpacity></View>
+    <OrganizationBar snapshot={organization?.userId === session.user.id ? organization : null} busy={loading} onRefresh={() => void refresh()} onSelect={(id) => { setScreen("dashboard"); void refresh(id); }} />
     {error ? <View style={styles.errorBar}><Text style={styles.errorText}>{error}</Text><TouchableOpacity onPress={() => setError(null)}><Text style={styles.dismiss}>?</Text></TouchableOpacity></View> : null}
-    {screen === "dashboard" ? <DashboardScreen data={data} onNavigate={setScreen} onRefresh={refresh} refreshing={loading} /> : null}
+    {organizationReady ? <>
+    {screen === "dashboard" ? <DashboardScreen data={data} onNavigate={setScreen} onRefresh={() => void refresh()} refreshing={loading} /> : null}
     {screen === "projects" ? <ProjectsScreen projects={data.projects} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "tasks" ? <TasksScreen tasks={data.tasks} projects={data.projects} onBack={() => setScreen("dashboard")} onCreate={() => setScreen("createTask")} onAdvance={(task) => void advanceTask(task)} /> : null}
     {screen === "notifications" ? <NotificationsScreen notifications={data.notifications} onBack={() => setScreen("dashboard")} onRead={readNotification} /> : null}
@@ -182,7 +234,8 @@ export default function App() {
     {screen === "createTask" ? <CreateTaskScreen projects={data.projects} onCancel={() => setScreen("dashboard")} onSubmit={createTask} /> : null}
     {screen === "timeline" ? <TimelineScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "search" ? <GlobalSearchScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
-    {screen === "administration" ? <AdministrationScreen role={organizationRole} onBack={() => setScreen("dashboard")} /> : null}
+    {screen === "administration" ? <AdministrationScreen role={organization!.selected!.role} onBack={() => setScreen("dashboard")} /> : null}
+    </> : null}
     {screen === "account" ? <AccountScreen email={session.user.email} onBack={() => setScreen("dashboard")} onSignOut={signOut} signingOut={signingOut} error={signOutError} /> : null}
     <View style={styles.footer}><Text style={styles.version}>v{appConfig.expo.version}</Text></View>
   </SafeAreaView>;
