@@ -25,8 +25,9 @@ function descendants(tree) {
 // Execute actual App/Account components with persistent hook state and effects.
 // Only native host primitives and external I/O are mocked; no production auth
 // or navigation logic is duplicated in this harness.
-function harness(client, workspace = async () => fixture) {
+function harness(client, workspace = async () => fixture, memberships = async (userId) => [{ userId, organizationId: "org-1", name: "Test organization", role: "owner" }]) {
   const slots = [], pendingEffects = [], modules = new Map();
+  const selectionValues = new Map();
   let cursor = 0;
   const changed = (a, b) => !a || !b || a.length !== b.length || a.some((value, i) => value !== b[i]);
   const react = {
@@ -53,14 +54,18 @@ function harness(client, workspace = async () => fixture) {
     const require = (name) => {
       if (name === "react") return react;
       if (name === "react/jsx-runtime") return { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" };
-      if (name === "react-native") return { View: "View", SafeAreaView: "SafeAreaView", Text: "Text", TouchableOpacity: "TouchableOpacity", ActivityIndicator: "ActivityIndicator", Pressable: "Pressable", StyleSheet: { create: (styles) => styles }, Platform: { OS: "android" }, StatusBar: { currentHeight: 24 }, Linking: { addEventListener: () => ({ remove() {} }) } };
+      if (name === "react-native") return { View: "View", SafeAreaView: "SafeAreaView", Text: "Text", TouchableOpacity: "TouchableOpacity", ActivityIndicator: "ActivityIndicator", Pressable: "Pressable", StyleSheet: { create: (styles) => styles }, Platform: { OS: "android" }, StatusBar: { currentHeight: 24 }, Linking: { addEventListener: () => ({ remove() {} }) }, AppState: { addEventListener: () => ({ remove() {} }) } };
+      if (name === "@react-native-async-storage/async-storage") return { getItem: async (key) => selectionValues.get(key) ?? null, setItem: async (key, value) => { selectionValues.set(key, value); }, removeItem: async (key) => { selectionValues.delete(key); } };
       if (name === "@basoul/yvl-adapter/native") return load("packages/basoul-yvl-adapter/src/native.ts");
       if (name === "@yosseuf/yvl-tokens/react-native") return load("packages/yvl-tokens/generated/react-native.ts");
       if (name === "./tokens" && filename.includes("yvl-tokens")) return load("packages/yvl-tokens/generated/tokens.ts");
       if (name.endsWith(".json")) return JSON.parse(readFileSync(resolve(dirname(filename), name), "utf8"));
       if (name.endsWith("/supabase")) return { isMobileConfigured: true, supabase: client };
       if (name.endsWith("/mobileAuth")) return { getInitialAuthUrl: async () => null, completeMobileAuthUrl: async () => ({ handled: false }) };
-      if (name.endsWith("/workspace")) return { loadMobileWorkspace: workspace, loadMobileOrganizationRole: async () => "owner" };
+      if (name.endsWith("/workspace")) return { loadMobileWorkspace: workspace };
+      if (name.endsWith("/organizations/context")) return load("mobile/src/organizations/context.ts");
+      if (name.endsWith("/services/organizations")) return { loadMobileOrganizations: memberships };
+      if (name.endsWith("/OrganizationBar")) return load("mobile/src/organizations/OrganizationBar.tsx");
       if (name.endsWith("/AccountScreen")) return load("mobile/src/features/account/AccountScreen.tsx");
       if (name.endsWith("/yvl-primitives")) return load("mobile/src/components/yvl-primitives.tsx");
       return new Proxy({}, { get: (_, key) => String(key) });
@@ -86,7 +91,7 @@ function fakeClient(signOutResult = { error: null }) {
   let listener, current = session, calls = 0;
   return {
     get calls() { return calls; },
-    signIn() { current = session; listener("SIGNED_IN", current); },
+    signIn(next = session) { current = next; listener("SIGNED_IN", current); },
     auth: {
       getSession: async () => ({ data: { session: current } }),
       onAuthStateChange: (fn) => { listener = fn; return { data: { subscription: { unsubscribe() {} } } }; },
@@ -134,12 +139,14 @@ test("logout rejects a late workspace refresh and clears navigation, role and ca
     // Re-enter with a fresh load still pending: the old private workspace and
     // privileged role must not survive logout or the late response.
     client.signIn();
+    assert.ok(!descendants(h.render()).some((node) => node.type === "DashboardScreen"), "Tenant UI stays hidden until fresh membership validation");
+    await h.settle();
     const dashboard = descendants(h.render()).find((node) => node.type === "DashboardScreen");
     assert.ok(dashboard);
     assert.equal(dashboard.props.data.projects.length, 0);
     dashboard.props.onNavigate("administration");
     const administration = descendants(h.render()).find((node) => node.type === "AdministrationScreen");
-    assert.equal(administration.props.role, "viewer");
+    assert.equal(administration.props.role, "owner", "Role must come from freshly revalidated membership, not a cached role");
   } finally { h.dispose(); }
 });
 
@@ -209,4 +216,59 @@ test("account access keeps current BASOUL branding and no duplicated auth/storag
   assert.doesNotMatch(account, /YOSSEUF|@yosseuf\/ui-tokens|signOut\(|createClient|AsyncStorage|removeItem/);
   assert.equal((app.match(/supabase\.auth\.signOut\(/g) ?? []).length, 1);
   assert.ok(app.includes('if (!isMobileConfigured || !session)'));
+});
+
+test("no membership hides tenant screens but leaves Account and explicit onboarding state reachable", async () => {
+  const h = harness(fakeClient(), async () => { throw new Error("Must not load tenant data"); }, async () => []);
+  try {
+    const tree = await h.settle();
+    assert.ok(!descendants(tree).some((node) => node.type === "DashboardScreen"));
+    const bar = descendants(tree).find((node) => node.type?.name === "OrganizationBar");
+    assert.equal(bar.props.snapshot.memberships.length, 0);
+    assert.ok(descendants(bar.type(bar.props)).some((node) => String(node.props?.children).includes("لا توجد مؤسسة نشطة")));
+    assert.ok(h.account(h.openAccount(tree)));
+  } finally { h.dispose(); }
+});
+
+test("App clears cache on selection and rejects an older organization's late workspace response", async () => {
+  const finishes = new Map();
+  const h = harness(fakeClient(), (context) => new Promise((done) => finishes.set(context.organizationId, done)), async (userId) => [
+    { userId, organizationId: "a", name: "A", role: "owner" }, { userId, organizationId: "b", name: "B", role: "member" },
+  ]);
+  const bar = (tree) => descendants(tree).find((node) => node.type?.name === "OrganizationBar");
+  try {
+    let tree = await h.settle();
+    assert.ok(!descendants(tree).some((node) => node.type === "DashboardScreen"));
+    bar(tree).props.onSelect("a"); tree = await h.settle();
+    assert.equal(descendants(tree).find((node) => node.type === "DashboardScreen").props.data.projects.length, 0);
+    bar(tree).props.onSelect("b");
+    assert.ok(!descendants(h.render()).some((node) => node.type === "DashboardScreen"));
+    tree = await h.settle(); finishes.get("b")({ ...empty, projects: [{ id: "b-only" }] }); await tick();
+    finishes.get("a")({ ...empty, projects: [{ id: "a-private" }] }); await tick();
+    tree = h.render();
+    assert.equal(bar(tree).props.snapshot.selected.organizationId, "b");
+    assert.equal(descendants(tree).find((node) => node.type === "DashboardScreen").props.data.projects[0].id, "b-only");
+  } finally { h.dispose(); }
+});
+
+test("App account change immediately hides previous user's tenant data before effects run", async () => {
+  const client = fakeClient(); const h = harness(client, async (context) => ({ ...empty, projects: [{ id: context.userId }] }));
+  try {
+    let tree = await h.settle(); assert.equal(descendants(tree).find((node) => node.type === "DashboardScreen").props.data.projects[0].id, "user-1");
+    client.signIn({ user: { id: "user-2", email: "second@example.test" } });
+    assert.ok(!descendants(h.render()).some((node) => node.type === "DashboardScreen"));
+    tree = await h.settle(); assert.equal(descendants(tree).find((node) => node.type === "DashboardScreen").props.data.projects[0].id, "user-2");
+  } finally { h.dispose(); }
+});
+
+test("App membership refresh clears a revoked organization's cached data and privileged role", async () => {
+  let active = true;
+  const h = harness(fakeClient(), async () => fixture, async (userId) => active ? [{ userId, organizationId: "a", name: "A", role: "owner" }] : []);
+  try {
+    const tree = await h.settle(); const dashboard = descendants(tree).find((node) => node.type === "DashboardScreen");
+    assert.equal(dashboard.props.data.projects.length, 1); active = false;
+    await dashboard.props.onRefresh(); const updated = await h.settle();
+    assert.ok(!descendants(updated).some((node) => ["DashboardScreen", "AdministrationScreen"].includes(node.type)));
+    const bar = descendants(updated).find((node) => node.type?.name === "OrganizationBar"); assert.equal(bar.props.snapshot.selected, null);
+  } finally { h.dispose(); }
 });
