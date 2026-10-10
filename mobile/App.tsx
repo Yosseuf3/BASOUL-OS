@@ -20,6 +20,7 @@ import { AdministrationScreen } from "./src/features/administration/Administrati
 import { AccountScreen } from "./src/features/account/AccountScreen";
 import { OrganizationContextStore, type OrganizationContext, type OrganizationSnapshot } from "./src/organizations/context";
 import { OrganizationBar } from "./src/organizations/OrganizationBar";
+import { accountChanged, losesOrganizationAccess, runOrganizationOperation, safeOperationError } from "./src/organizations/operation";
 import { loadMobileOrganizations } from "./src/services/organizations";
 import { isMobileConfigured, supabase } from "./src/config/supabase";
 import {
@@ -64,7 +65,9 @@ export default function App() {
     if (!session?.user.id) return;
     if (authenticatedUser.current !== session.user.id) return;
     const sessionVersion = sessionRevision.current;
-    setOrganization(null); setData(emptyData);
+    // Retain the last identity for presentation, but revision guards block writes
+    // and tenant data while membership is being revalidated.
+    setData(emptyData);
     setConvertingFindingId(""); setDecidingFindingId(""); setUpdatingPlanElementId(""); setUpdatingReviewCommentId(""); setUploadingDrawing(false); setRetryingDrawingId("");
     setLoading(true); setError(null);
     const pending = organizationStore.current.refresh(session.user.id, requestedOrganizationId);
@@ -80,8 +83,9 @@ export default function App() {
       }
     } catch (cause) {
       if (sessionVersion === sessionRevision.current && organizationStore.current.isCurrent(requestRevision)) {
-        setOrganization(null); setData(emptyData);
-        setError(cause instanceof Error ? cause.message : "تعذر تحميل بيانات مساحة العمل.");
+        if (losesOrganizationAccess(cause)) { organizationStore.current.clear(); setOrganization(null); setLoading(false); }
+        setData(emptyData);
+        setError(safeOperationError(cause).message);
       }
     } finally {
       if (sessionVersion === sessionRevision.current && organizationStore.current.isCurrent(requestRevision)) setLoading(false);
@@ -96,10 +100,11 @@ export default function App() {
     const urlListener = Linking.addEventListener("url", ({ url }) => { void handleAuthUrl(url); });
     const { data: authListener } = client.auth.onAuthStateChange((_event, nextSession) => {
       sessionRevision.current += 1;
-      if (authenticatedUser.current !== (nextSession?.user.id ?? null)) organizationStore.current.clear();
+      const changed = accountChanged(authenticatedUser.current, nextSession?.user.id ?? null);
+      if (changed) organizationStore.current.clear();
       authenticatedUser.current = nextSession?.user.id ?? null;
-      setSession(nextSession); setScreen("dashboard"); setSignOutError(null);
-      setOrganization(null); setData(emptyData); setError(null); setLoading(false);
+      setSession(nextSession); setSignOutError(null);
+      if (changed) { setScreen("dashboard"); setOrganization(null); setData(emptyData); setError(null); setLoading(false); }
     });
     return () => { active = false; urlListener.remove(); authListener.subscription.unsubscribe(); };
   }, []);
@@ -130,17 +135,12 @@ export default function App() {
     const snapshot = activeOrganization();
     const revision = sessionRevision.current;
     const current = () => revision === sessionRevision.current && organizationStore.current.isCurrent(snapshot.revision);
-    try {
-      const result = await operation(snapshot.selected!);
-      if (current()) { after?.(); await refresh(); }
-      return result;
-    } catch (cause) {
-      if (current()) {
-        organizationStore.current.invalidate(); setOrganization(null); setData(emptyData);
-        setError(cause instanceof Error ? cause.message : "تعذر إكمال العملية.");
-      }
-      throw cause;
-    }
+    return runOrganizationOperation(() => operation(snapshot.selected!), current,
+      async () => { after?.(); await refresh(); },
+      (cause, invalidate) => {
+        if (invalidate) { organizationStore.current.clear(); setOrganization(null); setData(emptyData); }
+        setError(safeOperationError(cause).message);
+      });
   }
   async function readNotification(id: string) { try { await operate((context) => markMobileNotificationRead(context, id)); } catch { /* Error displayed only for the current context. */ } }
   async function createTask(input: NewTaskInput) { await operate((context) => createMobileTask(context, input), () => setScreen("tasks")); }

@@ -22,6 +22,7 @@ function load(relative, client, cache = new Map()) {
   cache.set(filename, compiled.exports); return compiled.exports;
 }
 const { OrganizationContextStore } = load("mobile/src/organizations/context.ts");
+const { OrganizationAccessError, accountChanged, losesOrganizationAccess, runOrganizationOperation, safeOperationError } = load("mobile/src/organizations/operation.ts");
 const tick = () => new Promise((done) => setImmediate(done));
 function storeFixture(initial = []) {
   const values = new Map(), storage = { getItem: async (key) => values.get(key) ?? null, setItem: async (key, value) => { values.set(key, value); }, removeItem: async (key) => { values.delete(key); } };
@@ -170,4 +171,69 @@ test("notification writes preserve recipient privacy even within an accessible o
   const f = clientFixture(); await assert.rejects(f.services.markMobileNotificationRead(org("a"), "other-recipient"), /Scoped record/);
   assert.equal(f.tables.notifications.find((row) => row.id === "other-recipient").is_read, undefined);
   await f.services.markMobileNotificationRead(org("a"), "na"); assert.equal(f.tables.notifications.find((row) => row.id === "na").is_read, true);
+});
+
+test("ordinary structured task failure preserves organization and never retries the write", async () => {
+  const f = storeFixture([org("a")]); const snapshot = await f.store.refresh("u1");
+  let attempts = 0; let reported;
+  await assert.rejects(runOrganizationOperation(async () => { attempts++; throw { code: "22P02", message: "invalid enum", details: "private payload" }; },
+    () => f.store.isCurrent(snapshot.revision), async () => assert.fail("unexpected success"),
+    (cause, invalidate) => { if (invalidate) f.store.clear(); reported = safeOperationError(cause); }));
+  assert.equal(attempts, 1); assert.equal(f.store.isCurrent(snapshot.revision), true);
+  assert.equal(reported.code, "22P02"); assert.ok(!reported.message.includes("private payload"));
+});
+
+test("confirmed revocation removes context while permission rejection alone does not", async () => {
+  const f = storeFixture([org("a")]); const snapshot = await f.store.refresh("u1");
+  assert.equal(losesOrganizationAccess(new OrganizationAccessError("permission", "denied")), false);
+  await assert.rejects(runOrganizationOperation(async () => { throw new OrganizationAccessError("revoked", "denied"); },
+    () => f.store.isCurrent(snapshot.revision), async () => {}, (_cause, invalidate) => { if (invalidate) f.store.clear(); }));
+  assert.equal(f.store.isCurrent(snapshot.revision), false);
+});
+
+test("temporary identity verification failure blocks task submission without claiming revocation", async () => {
+  const f = clientFixture(); f.client.auth.getUser = async () => ({ data: { user: null }, error: { message: "Network request failed" } });
+  let failure;
+  try { await f.services.advanceMobileTask(org("a"), { id: "ta", status: "To Do", progress: 0 }); } catch (cause) { failure = cause; }
+  assert.equal(failure.reason, "unverified"); assert.equal(losesOrganizationAccess(failure), false);
+  assert.ok(!f.calls.some((call) => call.kind === "update")); assert.equal(f.tables.tasks[0].status, "To Do");
+});
+
+test("same-user session refresh differs from logout and account switching", () => {
+  assert.equal(accountChanged("u1", "u1"), false);
+  assert.equal(accountChanged("u1", null), true);
+  assert.equal(accountChanged("u1", "u2"), true);
+});
+
+test("late failed operation cannot invalidate a newer tenant", async () => {
+  const f = storeFixture([org("a"), org("b")]); const old = await f.store.refresh("u1", "a");
+  let reject; let failures = 0;
+  const pending = runOrganizationOperation(() => new Promise((_done, fail) => { reject = fail; }),
+    () => f.store.isCurrent(old.revision), async () => {}, () => { failures++; f.store.clear(); });
+  const rejected = assert.rejects(pending); const newer = await f.store.refresh("u1", "b");
+  reject(new OrganizationAccessError("revoked", "denied")); await rejected;
+  assert.equal(failures, 0); assert.equal(f.store.isCurrent(newer.revision), true);
+});
+
+test("safe error normalization never includes arbitrary messages or secrets", () => {
+  for (const cause of [new Error("password secret@example.com"), { message: "Bearer secret-token", code: "token-secret", details: "secret" }, null]) {
+    const result = safeOperationError(cause); assert.ok(!result.message.includes("secret")); assert.equal(result.code, undefined);
+  }
+  assert.equal(safeOperationError({ code: "42501", message: "private record" }).code, "42501");
+  assert.equal(safeOperationError({ code: "PGRST116", message: "private row" }).code, "PGRST116");
+  assert.match(safeOperationError(new Error("Network request failed")).message, /قد تكون العملية/);
+});
+
+test("ambiguous network write failure is attempted once and cannot trigger success callbacks", async () => {
+  let attempts = 0; let successes = 0;
+  await assert.rejects(runOrganizationOperation(async () => { attempts++; throw new Error("Network request failed"); }, () => true,
+    async () => { successes++; }, (_cause, invalidate) => assert.equal(invalidate, false)));
+  assert.equal(attempts, 1); assert.equal(successes, 0);
+});
+
+test("App delegates guarded operations and only clears auth state on account change", () => {
+  const app = readFileSync(resolve(root, "mobile/App.tsx"), "utf8");
+  assert.match(app, /return runOrganizationOperation/); assert.match(app, /if \(changed\).*setOrganization\(null\)/);
+  assert.match(app, /if \(losesOrganizationAccess\(cause\)\)/);
+  assert.ok(!app.includes("organizationStore.current.invalidate(); setOrganization(null)"));
 });
