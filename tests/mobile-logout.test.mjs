@@ -25,7 +25,7 @@ function descendants(tree) {
 // Execute actual App/Account components with persistent hook state and effects.
 // Only native host primitives and external I/O are mocked; no production auth
 // or navigation logic is duplicated in this harness.
-function harness(client, workspace = async () => fixture, memberships = async (userId) => [{ userId, organizationId: "org-1", name: "Test organization", role: "owner" }]) {
+function harness(client, workspace = async () => fixture, memberships = async (userId) => [{ userId, organizationId: "org-1", name: "Test organization", role: "owner" }], operations = {}) {
   const slots = [], pendingEffects = [], modules = new Map();
   const selectionValues = new Map();
   let cursor = 0;
@@ -62,8 +62,9 @@ function harness(client, workspace = async () => fixture, memberships = async (u
       if (name.endsWith(".json")) return JSON.parse(readFileSync(resolve(dirname(filename), name), "utf8"));
       if (name.endsWith("/supabase")) return { isMobileConfigured: true, supabase: client };
       if (name.endsWith("/mobileAuth")) return { getInitialAuthUrl: async () => null, completeMobileAuthUrl: async () => ({ handled: false }) };
-      if (name.endsWith("/workspace")) return { loadMobileWorkspace: workspace };
+      if (name.endsWith("/workspace")) return { loadMobileWorkspace: workspace, ...operations };
       if (name.endsWith("/organizations/context")) return load("mobile/src/organizations/context.ts");
+      if (name.endsWith("/organizations/operation")) return load("mobile/src/organizations/operation.ts");
       if (name.endsWith("/services/organizations")) return { loadMobileOrganizations: memberships };
       if (name.endsWith("/OrganizationBar")) return load("mobile/src/organizations/OrganizationBar.tsx");
       if (name.endsWith("/AccountScreen")) return load("mobile/src/features/account/AccountScreen.tsx");
@@ -270,5 +271,46 @@ test("App membership refresh clears a revoked organization's cached data and pri
     await dashboard.props.onRefresh(); const updated = await h.settle();
     assert.ok(!descendants(updated).some((node) => ["DashboardScreen", "AdministrationScreen"].includes(node.type)));
     const bar = descendants(updated).find((node) => node.type?.name === "OrganizationBar"); assert.equal(bar.props.snapshot.selected, null);
+  } finally { h.dispose(); }
+});
+
+test("App failed task mutation retains valid organization, cached data and no retry", async () => {
+  let writes = 0;
+  const h = harness(fakeClient(), async () => fixture, undefined, { advanceMobileTask: async () => { writes++; throw { code: "22P02", message: "private detail" }; } });
+  try {
+    let tree = await h.settle(); descendants(tree).find((node) => node.type === "DashboardScreen").props.onNavigate("tasks");
+    tree = h.render(); descendants(tree).find((node) => node.type === "TasksScreen").props.onAdvance({ id: "task", status: "In Progress", progress: 15 });
+    tree = await h.settle();
+    assert.equal(writes, 1); assert.ok(descendants(tree).some((node) => node.type === "TasksScreen"));
+    assert.equal(descendants(tree).find((node) => node.type?.name === "OrganizationBar").props.snapshot.selected.organizationId, "org-1");
+    assert.ok(!JSON.stringify(tree).includes("private detail")); assert.ok(JSON.stringify(tree).includes("22P02"));
+  } finally { h.dispose(); }
+});
+
+test("App same-user session event preserves selected organization and navigation before revalidation", async () => {
+  const client = fakeClient(), h = harness(client);
+  try {
+    let tree = await h.settle(); descendants(tree).find((node) => node.type === "DashboardScreen").props.onNavigate("tasks");
+    client.signIn({ user: { ...session.user } }); tree = h.render();
+    assert.ok(descendants(tree).some((node) => node.type === "TasksScreen"));
+    assert.equal(descendants(tree).find((node) => node.type?.name === "OrganizationBar").props.snapshot.selected.organizationId, "org-1");
+    tree = await h.settle(); assert.ok(descendants(tree).some((node) => node.type === "TasksScreen"));
+  } finally { h.dispose(); }
+});
+
+test("App temporary membership-fetch failure retains identity but hides data and write UI", async () => {
+  let unavailable = false;
+  const h = harness(fakeClient(), async () => fixture, async (userId) => {
+    if (unavailable) throw new Error("Network request failed");
+    return [{ userId, organizationId: "org-1", name: "Test organization", role: "owner" }];
+  });
+  try {
+    let tree = await h.settle(); unavailable = true;
+    await descendants(tree).find((node) => node.type === "DashboardScreen").props.onRefresh(); tree = await h.settle();
+    assert.ok(!descendants(tree).some((node) => ["DashboardScreen", "TasksScreen", "CreateTaskScreen"].includes(node.type)));
+    const bar = descendants(tree).find((node) => node.type?.name === "OrganizationBar");
+    assert.equal(bar.props.snapshot.selected.organizationId, "org-1");
+    unavailable = false; await bar.props.onRefresh(); tree = await h.settle();
+    assert.ok(descendants(tree).some((node) => node.type === "DashboardScreen"));
   } finally { h.dispose(); }
 });
