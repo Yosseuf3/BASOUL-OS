@@ -60,13 +60,19 @@ before update on public.projects
 for each row execute function public.set_updated_at();
 
 -- Tasks module — v0.3.0
+-- Fresh installs use the same enum as the upgraded task contract.
+-- This does not convert an existing text column; existing installations must
+-- follow the reviewed upgrade/preflight procedure before enforcement.
+do $$ begin
+  create type public.task_status as enum ('To Do','In Progress','Waiting','Review','Done');
+exception when duplicate_object then null; end $$;
 create table if not exists public.tasks (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   project_id uuid not null references public.projects(id) on delete cascade,
   title text not null check (char_length(title) between 1 and 160),
   description text,
-  status text not null default 'To Do' check (status in ('To Do','In Progress','Waiting','Review','Done')),
+  status public.task_status not null default 'To Do',
   priority priority_level not null default 'Medium',
   progress integer not null default 0 check (progress between 0 and 100),
   due_date date,
