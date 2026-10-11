@@ -66,7 +66,7 @@ create table if not exists public.tasks (
   project_id uuid not null references public.projects(id) on delete cascade,
   title text not null check (char_length(title) between 1 and 160),
   description text,
-  status text not null default 'To Do' check (status in ('To Do','In Progress','Review','Done')),
+  status text not null default 'To Do' check (status in ('To Do','In Progress','Waiting','Review','Done')),
   priority priority_level not null default 'Medium',
   progress integer not null default 0 check (progress between 0 and 100),
   due_date date,

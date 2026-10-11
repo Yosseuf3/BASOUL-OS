@@ -3,6 +3,7 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-nativ
 import { Screen } from "../../components/Screen";
 import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import type { MobileWorkspaceData } from "../../types/domain";
+import { taskStatusLabel } from "../../../../packages/shared-types/src/task-status-contract";
 
 type Result = { id: string; type: "مشروع" | "مهمة" | "تنبيه"; title: string; subtitle: string };
 
@@ -12,7 +13,7 @@ export function GlobalSearchScreen({ data, onBack }: { data: MobileWorkspaceData
     const needle = query.trim().toLocaleLowerCase();
     if (!needle) return [];
     const projects = data.projects.filter((item) => [item.name, item.client_name, item.project_number, item.location].some((value) => value?.toLocaleLowerCase().includes(needle))).map((item) => ({ id: `p-${item.id}`, type: "مشروع" as const, title: item.name, subtitle: `${item.status} · ${item.progress}%` }));
-    const tasks = data.tasks.filter((item) => item.title.toLocaleLowerCase().includes(needle)).map((item) => ({ id: `t-${item.id}`, type: "مهمة" as const, title: item.title, subtitle: `${item.priority} · ${item.status}` }));
+    const tasks = data.tasks.filter((item) => item.title.toLocaleLowerCase().includes(needle)).map((item) => ({ id: `t-${item.id}`, type: "مهمة" as const, title: item.title, subtitle: `${item.priority} · ${taskStatusLabel(item.status)}` }));
     const notifications = data.notifications.filter((item) => `${item.title} ${item.message || ""}`.toLocaleLowerCase().includes(needle)).map((item) => ({ id: `n-${item.id}`, type: "تنبيه" as const, title: item.title, subtitle: item.message || "بدون تفاصيل" }));
     return [...projects, ...tasks, ...notifications].slice(0, 30);
   }, [data, query]);

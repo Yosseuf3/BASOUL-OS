@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Screen } from "../../components/Screen";
 import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import type { MobileWorkspaceData } from "../../types/domain";
+import { taskStatusLabel } from "../../../../packages/shared-types/src/task-status-contract";
 
 type TimelineItem = { id: string; date: string; time: string; title: string; meta: string; kind: "task" | "project" | "notification"; urgent: boolean };
 
@@ -14,7 +15,7 @@ function displayDate(value: string) {
 export function TimelineScreen({ data, onBack }: { data: MobileWorkspaceData; onBack: () => void }) {
   const items = useMemo<TimelineItem[]>(() => {
     const today = new Date().toISOString().slice(0, 10);
-    const taskItems = data.tasks.filter((task) => task.status !== "Done" && task.due_date).map((task) => ({ id: `task-${task.id}`, date: task.due_date!, time: "موعد", title: task.title, meta: `${task.priority} · ${task.status}`, kind: "task" as const, urgent: task.due_date! <= today }));
+    const taskItems = data.tasks.filter((task) => task.status !== "Done" && task.due_date).map((task) => ({ id: `task-${task.id}`, date: task.due_date!, time: "موعد", title: task.title, meta: `${task.priority} · ${taskStatusLabel(task.status)}`, kind: "task" as const, urgent: task.due_date! <= today }));
     const projectItems = data.projects.filter((project) => project.due_date && project.status !== "Completed").map((project) => ({ id: `project-${project.id}`, date: project.due_date!, time: "تسليم", title: project.name, meta: `${project.status} · ${project.progress}%`, kind: "project" as const, urgent: project.due_date! <= today }));
     const notificationItems = data.notifications.slice(0, 8).map((item) => ({ id: `notification-${item.id}`, date: item.created_at.slice(0, 10), time: new Date(item.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }), title: item.title, meta: item.message || "تنبيه تنفيذي", kind: "notification" as const, urgent: item.priority === "high" && !item.is_read }));
     return [...taskItems, ...projectItems, ...notificationItems].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 30);
