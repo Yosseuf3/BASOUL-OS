@@ -19,6 +19,8 @@ BEGIN
      OR private.has_permission(OLD.organization_id, 'update') IS NOT TRUE THEN
     RAISE EXCEPTION 'TASK_TRANSITION_FORBIDDEN' USING ERRCODE = '42501';
   END IF;
+  -- All edits advance the opaque CAS timestamp, regardless of supplied value.
+  NEW.updated_at := greatest(clock_timestamp(), OLD.updated_at + interval '1 microsecond');
   IF NEW.status IS NOT DISTINCT FROM OLD.status THEN RETURN NEW; END IF;
   IF NOT ((OLD.status::text = 'To Do' AND NEW.status::text = 'In Progress')
     OR (OLD.status::text = 'In Progress' AND NEW.status::text IN ('Waiting','Review'))
@@ -31,7 +33,7 @@ BEGIN
   IF NULLIF(current_setting('basoul.task_id', true),'') IS DISTINCT FROM OLD.id::text
      OR NULLIF(current_setting('basoul.task_status', true),'') IS DISTINCT FROM OLD.status::text
      OR NULLIF(current_setting('basoul.task_updated_at', true),'')::timestamptz IS DISTINCT FROM OLD.updated_at THEN
-    RAISE EXCEPTION 'TASK_TRANSITION_CONFLICT' USING ERRCODE = '40001';
+    RAISE EXCEPTION 'TASK_TRANSITION_CONFLICT' USING ERRCODE = 'PT409';
   END IF;
   IF NEW.progress IS DISTINCT FROM OLD.progress THEN
     RAISE EXCEPTION 'TASK_PROGRESS_SEPARATE_EDIT_REQUIRED' USING ERRCODE = '22023';
@@ -39,7 +41,6 @@ BEGIN
   -- The existing generic timestamp trigger uses transaction-stable now().
   -- Ensure every status transition advances its CAS version, including several
   -- transitions in one transaction. This trigger sorts after tasks_set_updated_at.
-  NEW.updated_at := greatest(clock_timestamp(), OLD.updated_at + interval '1 microsecond');
   RETURN NEW;
 END;
 $$;
@@ -62,7 +63,7 @@ BEGIN
   IF p_expected_status IS NULL OR p_expected_updated_at IS NULL OR p_target_status IS NULL
     OR current_task.status IS DISTINCT FROM p_expected_status
     OR current_task.updated_at IS DISTINCT FROM p_expected_updated_at THEN
-    RAISE EXCEPTION 'TASK_TRANSITION_CONFLICT' USING ERRCODE='40001';
+    RAISE EXCEPTION 'TASK_TRANSITION_CONFLICT' USING ERRCODE='PT409';
   END IF;
   IF p_target_status = p_expected_status THEN
     RAISE EXCEPTION 'TASK_TRANSITION_REJECTED' USING ERRCODE='22023';

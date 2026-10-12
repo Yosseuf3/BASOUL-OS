@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticatedDatabase, isAuthorizedResource, trustedIdentityPayload } from "@/lib/auth/authorized-workspace";
 import { requestedOrganization } from "@/lib/organizations/context";
-import { assertCompatibilityTaskWrite } from "@/packages/shared-types/src/task-status-contract";
+import { assertCompatibilityTaskWrite, TASK_WORKFLOW_WRITES_ENABLED } from "@/packages/shared-types/src/task-status-contract";
 
 function bearer(request: NextRequest) {
   const value = request.headers.get("authorization") ?? "";
@@ -48,6 +48,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const previous = await resolved.auth.database.from("tasks").select("status")
       .eq("id", body.id).eq("organization_id", resolved.auth.organizationId).eq("user_id", resolved.auth.user.id).single();
     if (previous.error) return NextResponse.json({ error: "Task unavailable" }, { status: 403 });
+    if (TASK_WORKFLOW_WRITES_ENABLED && body.status!==previous.data.status) {
+      return NextResponse.json({code:'TASK_UPDATE_REQUIRED',error:'Use the expected-state task transition protocol'},{status:409});
+    }
     try { assertCompatibilityTaskWrite(body.status, previous.data.status); }
     catch { return NextResponse.json({ error: "Task status writes are not activated for this value" }, { status: 400 }); }
   }

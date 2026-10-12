@@ -24,6 +24,7 @@ export type Task = {
   priority: PriorityLevel;
   progress: number;
   due_date: string | null;
+  updated_at: string;
 };
 
 export type Notification = {

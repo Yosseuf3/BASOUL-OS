@@ -1,5 +1,6 @@
 "use client";
-import { TASK_STATUSES, taskStatusLabel, taskStatusClass, isTaskStatus, assertCompatibilityTaskWrite } from "../packages/shared-types/src/task-status-contract";
+import { TASK_STATUSES, taskStatusLabel, taskStatusClass, isTaskStatus, assertCompatibilityTaskWrite, TASK_WORKFLOW_WRITES_ENABLED, canTransitionTask } from "../packages/shared-types/src/task-status-contract";
+import { transitionWebTask } from '@/lib/data/task-transition-client';
 
 import type { Session } from "@supabase/supabase-js";
 import {
@@ -218,6 +219,21 @@ export default function Home() {
 
   async function saveTask(input: TaskInput, current?: Task) {
     if (!session) return false;
+    if (TASK_WORKFLOW_WRITES_ENABLED && current && input.status!==current.status) {
+      // Separate transition from explicit field/progress edits; never silently
+      // drop other form changes or perform a partially committed two-write save.
+      if (Object.entries(input).some(([key,value])=>key!=='status' && value!==current[key as keyof Task])) {
+        showToast('احفظ تعديل البيانات منفصلاً عن انتقال الحالة.','error'); return false;
+      }
+      const result=await transitionWebTask(session,{taskId:current.id,organizationId:current.organization_id,
+        expectedStatus:current.status,expectedUpdatedAt:current.updated_at,targetStatus:input.status});
+      if (!result.ok) {
+        if (result.code==='TASK_TRANSITION_CONFLICT') await loadData();
+        showToast(result.message,'error'); return false;
+      }
+      // Audit is transactional in PostgreSQL; do not duplicate recordActivity.
+      showToast('تم تحديث حالة المهمة.','success'); await loadData(); return true;
+    }
     try { assertCompatibilityTaskWrite(input.status, current?.status); } catch { showToast("هذه الحالة غير متاحة للكتابة قبل تفعيل عقد المهام.", "error"); return false; }
     const error = await authorizedWorkspaceWrite("tasks", session, input, current?.id);
     if (error) { showToast(`لم يتم حفظ المهمة: ${error}`, "error"); return false; }
@@ -744,7 +760,7 @@ function ProjectFilesPanel({projectId}:{projectId:string}) {
       </article>)}</div>}
   </section>;
 }
-function TaskModal({ state, projects, onClose, onSave }: { state:Exclude<TaskModalState,null>; projects:Project[]; onClose:()=>void; onSave:(i:TaskInput,t?:Task)=>Promise<boolean> }) { const t=state.task; const [saving,setSaving]=useState(false); async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setSaving(true);const f=new FormData(e.currentTarget);const status=String(f.get("status")) as TaskStatus;const input:TaskInput={project_id:String(f.get("project_id")),title:String(f.get("title")||"").trim(),description:nullableText(f.get("description")),status,priority:String(f.get("priority")) as PriorityLevel,progress:clamp(Number(f.get("progress")||0)),due_date:dateValue(f.get("due_date"))};if(!await onSave(input,t??undefined))setSaving(false);} return <Modal title={state.mode==="create"?"إنشاء مهمة جديدة":"تعديل المهمة"} kicker="TASK ENGINE" onClose={onClose}><form className="project-form" onSubmit={submit}><label className="full"><span>المشروع *</span><select name="project_id" defaultValue={t?.project_id||projects[0]?.id} required>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><Field name="title" label="عنوان المهمة *" defaultValue={t?.title} required full maxLength={160}/><label><span>الحالة</span><select name="status" defaultValue={t?.status||"To Do"}>{TASK_STATUSES.map(status=><option key={status} value={status} disabled={status==="Review" || (status==="Waiting" && t?.status!=="Waiting")}>{taskStatusLabel(status)}</option>)}</select></label><Select name="priority" label="الأولوية" defaultValue={t?.priority||"Medium"} options={priorityLabels}/><Field name="progress" label="نسبة التقدم" type="number" defaultValue={t?.progress??0} min={0} max={100}/><Field name="due_date" label="موعد الاستحقاق" type="date" defaultValue={t?.due_date}/><label className="full"><span>الوصف</span><textarea name="description" rows={5} defaultValue={t?.description??""}/></label><Actions saving={saving} onClose={onClose}/></form></Modal>; }
+function TaskModal({ state, projects, onClose, onSave }: { state:Exclude<TaskModalState,null>; projects:Project[]; onClose:()=>void; onSave:(i:TaskInput,t?:Task)=>Promise<boolean> }) { const t=state.task; const [saving,setSaving]=useState(false); async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setSaving(true);const f=new FormData(e.currentTarget);const status=String(f.get("status")) as TaskStatus;const input:TaskInput={project_id:String(f.get("project_id")),title:String(f.get("title")||"").trim(),description:nullableText(f.get("description")),status,priority:String(f.get("priority")) as PriorityLevel,progress:clamp(Number(f.get("progress")||0)),due_date:dateValue(f.get("due_date"))};if(!await onSave(input,t??undefined))setSaving(false);} return <Modal title={state.mode==="create"?"إنشاء مهمة جديدة":"تعديل المهمة"} kicker="TASK ENGINE" onClose={onClose}><form className="project-form" onSubmit={submit}><label className="full"><span>المشروع *</span><select name="project_id" defaultValue={t?.project_id||projects[0]?.id} required>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><Field name="title" label="عنوان المهمة *" defaultValue={t?.title} required full maxLength={160}/><label><span>الحالة</span><select name="status" defaultValue={t?.status||"To Do"}>{TASK_STATUSES.map(status=><option key={status} value={status} disabled={TASK_WORKFLOW_WRITES_ENABLED ? t ? status!==t.status && !canTransitionTask(t.status,status) : status!=="To Do" : status==="Review" || (status==="Waiting" && t?.status!=="Waiting")}>{taskStatusLabel(status)}</option>)}</select></label><Select name="priority" label="الأولوية" defaultValue={t?.priority||"Medium"} options={priorityLabels}/><Field name="progress" label="نسبة التقدم" type="number" defaultValue={t?.progress??0} min={0} max={100}/><Field name="due_date" label="موعد الاستحقاق" type="date" defaultValue={t?.due_date}/><label className="full"><span>الوصف</span><textarea name="description" rows={5} defaultValue={t?.description??""}/></label><Actions saving={saving} onClose={onClose}/></form></Modal>; }
 
 function Modal({ title, kicker, onClose, children }: { title:string; kicker:string; onClose:()=>void; children:ReactNode }) { return <div className="modal-backdrop" onMouseDown={onClose}><div className="modal" onMouseDown={(e)=>e.stopPropagation()}><div className="modal-head"><div><span className="section-kicker">{kicker}</span><h2>{title}</h2></div><button className="icon-button" onClick={onClose}><X size={20}/></button></div>{children}</div></div>; }
 function Field({ name,label,defaultValue,type="text",required,full,min,max,maxLength }: { name:string;label:string;defaultValue?:string|number|null;type?:string;required?:boolean;full?:boolean;min?:number;max?:number;maxLength?:number }) { return <label className={full?"full":""}><span>{label}</span><input name={name} type={type} defaultValue={defaultValue??""} required={required} min={min} max={max} maxLength={maxLength}/></label>; }
