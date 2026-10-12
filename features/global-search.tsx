@@ -1,4 +1,5 @@
 "use client";
+import { taskStatusLabel } from "../packages/shared-types/src/task-status-contract";
 
 import { BookOpen, BriefcaseBusiness, ChevronLeft, CircleDollarSign, Film, Search, Users, X, ClipboardList } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -21,7 +22,7 @@ export function GlobalSearch(props: Props) {
 
   const allResults = useMemo<SearchResult[]>(() => [
     ...props.projects.map((item) => ({ id: item.id, target: "projects" as const, title: item.name, subtitle: `${item.status} · ${item.client_name ?? text("دون عميل", "No client")}`, searchable: `${item.name} ${item.client_name ?? ""} ${item.area ?? ""} ${item.notes ?? ""}` })),
-    ...props.tasks.map((item) => ({ id: item.id, target: "tasks" as const, title: item.title, subtitle: `${item.status} · ${projectName(props.projects, item.project_id, text("مشروع غير محدد", "Unspecified project"))}`, searchable: `${item.title} ${item.description ?? ""} ${projectName(props.projects, item.project_id, "")}` })),
+    ...props.tasks.map((item) => ({ id: item.id, target: "tasks" as const, title: item.title, subtitle: `${taskStatusLabel(item.status, text("ar", "en") as "ar" | "en")} · ${projectName(props.projects, item.project_id, text("مشروع غير محدد", "Unspecified project"))}`, searchable: `${item.title} ${item.description ?? ""} ${projectName(props.projects, item.project_id, "")}` })),
     ...props.clients.map((item) => ({ id: item.id, target: "clients" as const, title: item.name, subtitle: `${item.company ?? text("عميل فردي", "Individual client")} · ${item.status}`, searchable: `${item.name} ${item.company ?? ""} ${item.email ?? ""} ${item.phone ?? ""} ${item.notes ?? ""}` })),
     ...props.contentItems.map((item) => ({ id: item.id, target: "content" as const, title: item.title, subtitle: `${item.platform} · ${item.status}`, searchable: `${item.title} ${item.hook ?? ""} ${item.script ?? ""} ${item.hashtags ?? ""}` })),
     ...props.knowledgeItems.map((item) => ({ id: item.id, target: "knowledge" as const, title: item.title, subtitle: `${item.type}${item.is_favorite ? ` · ${text("مفضلة", "Favorite")}` : ""}`, searchable: `${item.title} ${item.content ?? ""} ${item.tags ?? ""}` })),
