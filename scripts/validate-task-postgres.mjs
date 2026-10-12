@@ -36,6 +36,16 @@ for (const path of ['fresh', 'upgrade']) {
   // Exact repository organization/table policies. Storage tests are out of scope.
   query(db, read('supabase/migrations/20260802204818_iam_rls.sql').split('-- Storage remains')[0] + '\nCOMMIT;');
   query(db, read('tests/fixtures/task-postgres-fixtures.sql'));
+  // Production differs from bootstrap: nullable progress/version, broad grants,
+  // forced RLS and no application schema CREATE privileges.
+  query(db, `ALTER TABLE tasks ALTER COLUMN progress DROP NOT NULL;
+    ALTER TABLE tasks ALTER COLUMN project_id DROP NOT NULL;
+    ALTER TABLE tasks ALTER COLUMN updated_at DROP NOT NULL;
+    ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_progress_check;
+    ALTER TABLE tasks FORCE ROW LEVEL SECURITY;
+    ALTER TABLE activity_events FORCE ROW LEVEL SECURITY;
+    GRANT ALL ON tasks,activity_events TO authenticated;
+    REVOKE CREATE ON SCHEMA public,private FROM PUBLIC,anon,authenticated;`);
   const rows = () => query(db, "SELECT md5(string_agg(row_to_json(t)::text,'|' ORDER BY id)) FROM public.tasks t;");
   const before = rows();
   const policies = () => query(db, "SELECT md5(string_agg(row_to_json(p)::text,'|' ORDER BY polname)) FROM pg_policy p WHERE polrelid IN ('tasks'::regclass,'activity_events'::regclass);");
@@ -43,9 +53,20 @@ for (const path of ['fresh', 'upgrade']) {
   // Separate committed invocation: newly added enum values cannot be used before commit.
   query(db, read('docs/database/proposed-task-review-enum.sql'));
   assert.equal(rows(), before, 'migration changed historical rows/progress');
+  // Null historical versions require separate remediation, never guessed tokens.
+  assert.throws(() => query(db, `BEGIN;
+    INSERT INTO tasks(id,user_id,organization_id,title,status,updated_at)
+    VALUES('70000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000001',
+      '10000000-0000-0000-0000-000000000001','Synthetic null version','Waiting',NULL);
+    ${read('docs/database/proposed-task-security-hardening.sql')}
+    COMMIT;`), /TASK_VERSION_PREFLIGHT_REQUIRED/);
+  assert.equal(rows(), before, 'failed null preflight must roll back');
+  query(db, 'BEGIN;\n' + read('docs/database/proposed-task-security-hardening.sql') + '\nCOMMIT;');
+  assert.equal(rows(), before, 'security hardening changed stored rows');
   query(db, 'BEGIN;\n' + read('docs/database/proposed-task-transition-enforcement.sql') + '\nCOMMIT;');
   assert.equal(policies(), policiesBefore, 'enforcement changed RLS');
   query(db, read('tests/fixtures/task-postgres-regression.sql'));
+  query(db, read('tests/fixtures/task-security-regression.sql'));
   console.log(`${path}: migration, preservation, 25 transitions, RLS, audit and legacy-request tests PASS`);
 }
 const schema = (db) => query(db, `SELECT data_type||':'||udt_name||':'||column_default FROM information_schema.columns WHERE table_schema='public' AND table_name='tasks' AND column_name='status';

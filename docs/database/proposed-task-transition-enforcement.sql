@@ -105,6 +105,7 @@ BEGIN
   VALUES(auth.uid(),NEW.organization_id,'tasks',
     CASE WHEN NEW.status::text='Done' THEN 'completed' ELSE 'updated' END,
     NEW.id,'Task status transition',jsonb_build_object(
+      '_basoul_task_transition',true,
       'task_id',NEW.id,'organization_id',NEW.organization_id,'actor_id',auth.uid(),
       'old_status',OLD.status::text,'new_status',NEW.status::text,
       'occurred_at',clock_timestamp(),'reason',transition_reason));

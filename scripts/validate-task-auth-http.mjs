@@ -55,6 +55,12 @@ assert.equal((await request(55431,'/user',undefined,'invalid')).status,403);
 assert.equal(sql("SELECT to_regclass('public.tasks') IS NOT NULL;"),'t','Provision the documented synthetic stack first');
 // Update only the reviewed function candidates in this isolated database.
 sql(read('docs/database/proposed-task-transition-enforcement.sql').split('REVOKE ALL ON FUNCTION public.transition_task_status')[0]);
+// Install the reviewed protection once in this verified synthetic database.
+if (sql("SELECT count(*) FROM pg_trigger WHERE tgname='protect_task_transition_audit' AND tgrelid='public.activity_events'::regclass;")==='0') {
+ sql(read('docs/database/proposed-task-security-hardening.sql'));
+}
+const enforcement=read('docs/database/proposed-task-transition-enforcement.sql');
+sql(enforcement.slice(enforcement.indexOf('CREATE OR REPLACE FUNCTION private.audit_task_transition()'),enforcement.indexOf('REVOKE ALL ON FUNCTION private.audit_task_transition()')));
 ready=false;for(let i=0;i<30;i++){try{if((await request(55432,'/')).status===200){ready=true;break;}}catch{}await pause(1000);}assert.ok(ready,'PostgREST health not ready');
 const task=randomUUID(),org='10000000-0000-0000-0000-000000000001';
 const membership=await request(55432,`/organization_memberships?organization_id=eq.${org}&user_id=eq.${users[0].id}`,undefined,users[0].token);
@@ -79,6 +85,14 @@ const [a,b]=await Promise.all([rpc(args),rpc(args)]);
 assert.deepEqual([a.status,b.status].sort(),[200,409]);
 assert.equal(sql(`SELECT count(*) FROM activity_events WHERE entity_id='${task}';`),'1');
 assert.equal(sql(`SELECT progress FROM tasks WHERE id='${task}';`),'15');
+const audited=await request(55432,`/activity_events?entity_id=eq.${task}`,undefined,users[0].token);
+assert.equal(audited.status,200); assert.equal(audited.data.length,1);
+const auditId=audited.data[0].id;
+assert.equal(audited.data[0].metadata._basoul_task_transition,true);
+assert.equal((await request(55432,`/activity_events?id=eq.${auditId}`,{metadata:{}},users[0].token,'PATCH')).status,403);
+assert.equal((await request(55432,`/activity_events?id=eq.${auditId}`,undefined,users[0].token,'DELETE')).status,403);
+assert.equal((await request(55432,'/activity_events',{user_id:users[0].id,organization_id:org,module:'tasks',action:'updated',title:'forged',metadata:{_basoul_task_transition:true}},users[0].token)).status,403);
+assert.equal(sql(`SELECT count(*) FROM activity_events WHERE entity_id='${task}';`),'1');
 const view=await request(55432,`/tasks?id=eq.${task}`,undefined,users[0].token);assert.equal(view.status,200);
 assert.equal((await request(55432,`/tasks?id=eq.${task}`,undefined,users[2].token)).data.length,0);
 const current=view.data[0];
