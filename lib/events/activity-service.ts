@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { ActivityAction, ActivityModule, NotificationPriority } from "@/lib/types";
+import {selectedOrganization} from '@/lib/organizations/workspace-selection';
 
 type ActivityInput = {
   userId: string; module: ActivityModule; action: ActivityAction; title: string;
@@ -18,8 +19,10 @@ function notificationRule(input: ActivityInput): RuleResult {
 }
 
 export async function recordActivity(input: ActivityInput): Promise<string | null> {
+  const organizationId=selectedOrganization(input.userId);
+  if(!organizationId) return 'Organization context required';
   const { data, error } = await supabase.from("activity_events").insert({
-    user_id: input.userId, module: input.module, action: input.action,
+    user_id: input.userId, organization_id:organizationId, module: input.module, action: input.action,
     entity_id: input.entityId ?? null, title: input.title, description: input.description ?? null,
     metadata: input.metadata ?? {},
   }).select("id").single();
@@ -28,7 +31,7 @@ export async function recordActivity(input: ActivityInput): Promise<string | nul
   const rule = notificationRule(input);
   if (!rule) return null;
   const { error: notificationError } = await supabase.from("notifications").insert({
-    user_id: input.userId, activity_event_id: data.id, module: input.module,
+    user_id: input.userId, organization_id:organizationId, activity_event_id: data.id, module: input.module,
     priority: rule.priority, title: input.title, message: rule.message,
     entity_id: input.entityId ?? null,
   });

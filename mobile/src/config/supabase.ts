@@ -6,6 +6,7 @@ const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 export const isMobileConfigured = Boolean(url && anonKey);
+export const isSyntheticLocalEnvironment = url === 'http://127.0.0.1:35439';
 
 export const supabase = url && anonKey
   ? createClient(url, anonKey, {

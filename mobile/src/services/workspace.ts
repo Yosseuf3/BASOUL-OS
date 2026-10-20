@@ -4,6 +4,7 @@ import type { ArchitecturalDrawing, ArchitecturalFinding, ArchitecturalPlanEleme
 import type { OrganizationContext } from "../organizations/context";
 import { requireOrganizationRecord, validateOrganizationContext } from "./organizations";
 import { assertLegacyTaskWrite, TASK_WORKFLOW_WRITES_ENABLED } from "../../../packages/shared-types/src/task-status-contract";
+import { deliverTaskNotifications } from '../../../packages/shared-types/src/task-notifications';
 import { transitionMobileTask } from './task-transitions';
 
 const ARCHITECTURAL_DRAWINGS_BUCKET = "architectural-drawings";
@@ -55,6 +56,7 @@ export async function loadMobileWorkspace(context: OrganizationContext): Promise
   if (!supabase) throw new Error("Supabase is not configured.");
   await validateOrganizationContext(context);
 
+  await deliverTaskNotifications(supabase,context.organizationId);
   const [projectsResult, tasksResult, notificationsResult, drawingsResult, reviewsResult, planElementsResult, reviewCommentsResult] = await Promise.all([
     supabase
       .from("projects")
@@ -63,12 +65,12 @@ export async function loadMobileWorkspace(context: OrganizationContext): Promise
       .order("updated_at", { ascending: false }),
     supabase
       .from("tasks")
-      .select("id,project_id,title,status,priority,progress,due_date,updated_at")
+        .select("*")
       .eq("organization_id", context.organizationId)
       .order("due_date", { ascending: true, nullsFirst: false }),
     supabase
       .from("notifications")
-      .select("id,title,message,priority,is_read,created_at")
+      .select("id,title,message,priority,is_read,created_at,module,entity_id")
       .eq("organization_id", context.organizationId).eq("user_id", context.userId)
       .order("created_at", { ascending: false })
       .limit(30),
@@ -104,7 +106,7 @@ export async function loadMobileWorkspace(context: OrganizationContext): Promise
 
   return {
     projects: (projectsResult.data ?? []) as Project[],
-    tasks: (tasksResult.data ?? []) as Task[],
+    tasks: ((tasksResult.data ?? []) as Task[]).filter(task=>!task.archived),
     notifications: (notificationsResult.data ?? []) as Notification[],
     drawings: (drawingsResult.data ?? []) as ArchitecturalDrawing[],
     reviews: (reviewsResult.data ?? []) as ArchitecturalReview[],
@@ -312,11 +314,6 @@ export async function createMobileTask(context: OrganizationContext, input: { ti
 }
 
 export async function advanceMobileTask(context: OrganizationContext, task: Task): Promise<void> {
-  if (TASK_WORKFLOW_WRITES_ENABLED) { await transitionMobileTask(context,task,'In Progress'); return; }
-  if (!supabase) throw new Error("Supabase is not configured.");
-  assertLegacyTaskWrite(task.status);
-  if (task.status !== "To Do") throw new Error("TASK_WORKFLOW_NOT_ACTIVATED");
-  await validateOrganizationContext(context, "update");
-  const { error } = await supabase.from("tasks").update({ status: "In Progress", progress: task.progress }).eq("id", task.id).eq("organization_id", context.organizationId).eq("user_id", context.userId).select("id").single();
-  if (error) throw error;
+  if (!TASK_WORKFLOW_WRITES_ENABLED) throw Object.assign(new Error('TASK_UPDATE_REQUIRED'),{code:'TASK_UPDATE_REQUIRED'});
+  await transitionMobileTask(context,task,'In Progress');
 }

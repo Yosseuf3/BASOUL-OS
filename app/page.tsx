@@ -1,5 +1,7 @@
 "use client";
 import { TASK_STATUSES, taskStatusLabel, taskStatusClass, isTaskStatus, assertCompatibilityTaskWrite, TASK_WORKFLOW_WRITES_ENABLED, canTransitionTask } from "../packages/shared-types/src/task-status-contract";
+import { TaskReasonConfirmation } from '../features/tasks/task-reason-confirmation';
+import {rememberOrganization} from "../lib/organizations/workspace-selection";
 import { transitionWebTask } from '@/lib/data/task-transition-client';
 
 import type { Session } from "@supabase/supabase-js";
@@ -8,7 +10,7 @@ import {
   ClipboardList, FolderKanban, LayoutDashboard, LogOut, Menu, MoreHorizontal, Users, Mail, Phone, Building2,
   Pencil, Plus, Search, Trash2, X, List, Columns3, ArrowUpDown, Clock3, Film, Hash, Send, BookOpen, Star, FileText, Lightbulb, Library, Wallet, Activity, Bell, ScanLine,
 } from "lucide-react";
-import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
+import { FormEvent, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Client, ClientInput, ClientStatus, ContentItem, ContentInput, ContentPlatform, ContentStatus, ActivityEvent, Notification, FinanceTransaction, FinanceTransactionInput, KnowledgeInput, KnowledgeItem, KnowledgeType, PriorityLevel, Project, ProjectInput, ProjectStatus, ProjectType, DesignPhase, Task, TaskInput, TaskStatus } from "@/lib/types";
 import { loadWorkspaceData } from "@/lib/data/workspace-service";
@@ -122,9 +124,16 @@ export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceId>(DEFAULT_WORKSPACE);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
 
+  const [organizationId,setOrganizationId]=useState<string|undefined>();
+  const [activeRole,setActiveRole]=useState("viewer");
+  const [organizations,setOrganizations]=useState<{id:string;name:string}[]>([]);
+  const loadRevision=useRef(0);
+  const authUserRef=useRef<string|null>(null);
+  const activeOrganizationRef=useRef<string|null>(null);
+  const archiveInFlight=useRef(false);
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthLoading(false); });
-    const { data } = supabase.auth.onAuthStateChange((_event, current) => { setSession(current); setAuthLoading(false); });
+    const { data } = supabase.auth.onAuthStateChange((_event, current) => { if(authUserRef.current!==(current?.user.id??null)){loadRevision.current++;activeOrganizationRef.current=null;setOrganizationId(undefined);setOrganizations([]);setTasks([]);setProjects([]);setNotifications([]);setTaskModal(null);setDeleteTaskTarget(null);}authUserRef.current=current?.user.id??null;setSession(current); setAuthLoading(false); });
     return () => data.subscription.unsubscribe();
   }, []);
 
@@ -134,10 +143,16 @@ export default function Home() {
 
   const loadData = useCallback(async () => {
     if (!session) return;
+    const revision=++loadRevision.current;
     setLoading(true);
     try {
       await acceptPendingInvitations().catch(() => undefined);
-      const result = await loadWorkspaceData();
+      const result = await loadWorkspaceData(organizationId);
+      if(revision!==loadRevision.current)return;
+      rememberOrganization(session.user.id,result.organizationId);
+      activeOrganizationRef.current=result.organizationId;
+      setOrganizations(result.organizations);
+      setActiveRole(result.role);
       setProjects(result.data.projects);
       setTasks(result.data.tasks);
       setClients(result.data.clients);
@@ -150,13 +165,14 @@ export default function Home() {
       setLastSyncedAt(result.loadedAt);
       if (result.errors.length) showToast(`تم تحميل مساحة العمل جزئيًا (${result.errors.length} وحدات تحتاج إعادة محاولة).`, "error");
     } catch (error) {
+      if(revision!==loadRevision.current)return;
       const message = error instanceof Error ? error.message : "تعذر الاتصال بالخدمة";
       setLoadErrors([message]);
       showToast(`تعذر تحميل مساحة العمل: ${message}`, "error");
     } finally {
-      setLoading(false);
+      if(revision===loadRevision.current)setLoading(false);
     }
-  }, [session, showToast]);
+  }, [session, showToast, organizationId]);
 
   useEffect(() => { if (session) void loadData(); }, [session, loadData]);
 
@@ -217,8 +233,10 @@ export default function Home() {
     showToast(current ? "تم تحديث المشروع." : "تم إنشاء المشروع.", "success"); await loadData(); return true;
   }
 
-  async function saveTask(input: TaskInput, current?: Task) {
+  async function saveTask(input: TaskInput, current?: Task, reason?: string) {
     if (!session) return false;
+    const actor=session.user.id,tenant=activeOrganizationRef.current;
+    const stillCurrent=()=>actor===authUserRef.current && tenant===activeOrganizationRef.current;
     if (TASK_WORKFLOW_WRITES_ENABLED && current && input.status!==current.status) {
       // Separate transition from explicit field/progress edits; never silently
       // drop other form changes or perform a partially committed two-write save.
@@ -226,7 +244,8 @@ export default function Home() {
         showToast('احفظ تعديل البيانات منفصلاً عن انتقال الحالة.','error'); return false;
       }
       const result=await transitionWebTask(session,{taskId:current.id,organizationId:current.organization_id,
-        expectedStatus:current.status,expectedUpdatedAt:current.updated_at,targetStatus:input.status});
+        expectedStatus:current.status,expectedUpdatedAt:current.updated_at,targetStatus:input.status,reason});
+      if(!stillCurrent())return false;
       if (!result.ok) {
         if (result.code==='TASK_TRANSITION_CONFLICT') await loadData();
         showToast(result.message,'error'); return false;
@@ -235,9 +254,11 @@ export default function Home() {
       showToast('تم تحديث حالة المهمة.','success'); await loadData(); return true;
     }
     try { assertCompatibilityTaskWrite(input.status, current?.status); } catch { showToast("هذه الحالة غير متاحة للكتابة قبل تفعيل عقد المهام.", "error"); return false; }
-    const error = await authorizedWorkspaceWrite("tasks", session, input, current?.id);
+    let taskAuditRecorded = false;
+    const error = await authorizedWorkspaceWrite("tasks", session, input, current?.id, current ? {updatedAt:current.updated_at,organizationId:current.organization_id,onAuditRecorded:()=>{taskAuditRecorded=true;}} : undefined);
+    if(!stillCurrent())return false;
     if (error) { showToast(`لم يتم حفظ المهمة: ${error}`, "error"); return false; }
-    await logActivity("tasks", input.status === "Done" && current?.status !== "Done" ? "completed" : current ? "updated" : "created", input.status === "Done" && current?.status !== "Done" ? `اكتملت المهمة: ${input.title}` : current ? `تم تحديث المهمة: ${input.title}` : `تم إنشاء مهمة جديدة: ${input.title}`, current?.id, input.status);
+    if (!taskAuditRecorded) await logActivity("tasks", input.status === "Done" && current?.status !== "Done" ? "completed" : current ? "updated" : "created", input.status === "Done" && current?.status !== "Done" ? `اكتملت المهمة: ${input.title}` : current ? `تم تحديث المهمة: ${input.title}` : `تم إنشاء مهمة جديدة: ${input.title}`, current?.id, input.status);
     showToast(current ? "تم تحديث المهمة." : "تم إنشاء المهمة.", "success"); await loadData(); return true;
   }
 
@@ -285,9 +306,15 @@ export default function Home() {
     else { await logActivity("projects", "deleted", `تم حذف المشروع: ${project.name}`, project.id); setDeleteProjectTarget(null); showToast("تم حذف المشروع ومهامه.", "success"); await loadData(); }
   }
   async function deleteTask(task: Task) {
-    const { error } = await supabase.from("tasks").delete().eq("id", task.id);
-    if (error) showToast(`تعذر حذف المهمة: ${error.message}`, "error");
-    else { await logActivity("tasks", "deleted", `تم حذف المهمة: ${task.title}`, task.id); setDeleteTaskTarget(null); showToast("تم حذف المهمة.", "success"); await loadData(); }
+    if(!session || archiveInFlight.current || task.organization_id!==activeOrganizationRef.current) return;
+    archiveInFlight.current=true;
+    const actor=session.user.id,tenant=activeOrganizationRef.current;
+    try {
+      const error=await authorizedWorkspaceWrite('tasks',session,{archived:true},task.id,{updatedAt:task.updated_at,organizationId:task.organization_id});
+      if(actor!==authUserRef.current || tenant!==activeOrganizationRef.current) return;
+      if(error) showToast(error,'error');
+      else {setDeleteTaskTarget(null);showToast('تمت الأرشفة وحفظ السجل. / Archived; history preserved.','success');await loadData();}
+    } finally {archiveInFlight.current=false;}
   }
 
 
@@ -378,15 +405,15 @@ export default function Home() {
     </aside>
 
     <main className="main">
-      <header className="topbar"><div><span className="eyebrow">BASOUL · {workspace === "executive" ? "EXECUTIVE" : workspace === "operations" ? "OPERATIONS" : workspace === "knowledge" ? "KNOWLEDGE" : "ENGINEERING"}</span><h1>{view === "dashboard" ? "لوحة القيادة" : view === "projects" ? "إدارة المشاريع" : view === "tasks" ? "محرك المهام" : view === "clients" ? "إدارة العملاء" : view === "content" ? "استوديو المحتوى" : view === "knowledge" ? "قاعدة المعرفة" : view === "finance" ? "الإدارة المالية" : view === "activity" ? "سجل النشاط" : "مركز الإشعارات"}</h1><p>{view === "tasks" ? "أنشئ المهام واربطها بمشاريعك وتابع التنفيذ." : view === "clients" ? "نظّم بيانات العملاء واربطهم بأعمالك." : view === "content" ? "حوّل الأفكار إلى محتوى منشور عبر دورة إنتاج واضحة." : view === "knowledge" ? "احفظ أفكارك وملاحظاتك وقوالبك ومراجعك في مكان واحد." : view === "finance" ? "سجّل الدخل والمصروفات وتابع صافي التدفق المالي." : view === "activity" ? "تابع كل ما يحدث داخل وحدات النظام في خط زمني واحد." : view === "notifications" ? "راجع التنبيهات المهمة وانتقل مباشرة إلى مصدرها." : "تابع أعمالك من مكان واحد."}</p></div><div className="topbar-actions"><div className={`sync-state ${loadErrors.length ? "warning" : "ok"}`}><span>{loading ? "جارٍ التحديث…" : loadErrors.length ? "مزامنة جزئية" : "البيانات محدثة"}</span><small>{lastSyncedAt ? new Intl.DateTimeFormat("ar-SA",{hour:"numeric",minute:"2-digit"}).format(new Date(lastSyncedAt)) : "—"}</small>{loadErrors.length > 0 && <button onClick={() => void loadData()} aria-label="إعادة المزامنة">إعادة المحاولة</button>}</div><GlobalSearch projects={projects} tasks={tasks} clients={clients} contentItems={contentItems} knowledgeItems={knowledgeItems} financeItems={financeItems} onNavigate={navigate} /><button className="primary universal-create-button" onClick={() => setQuickCreateOpen(true)}><Plus size={18}/> إنشاء <kbd>N</kbd></button></div></header>
+      <header className="topbar"><div><span className="eyebrow">BASOUL · {workspace === "executive" ? "EXECUTIVE" : workspace === "operations" ? "OPERATIONS" : workspace === "knowledge" ? "KNOWLEDGE" : "ENGINEERING"}</span><h1>{view === "dashboard" ? "لوحة القيادة" : view === "projects" ? "إدارة المشاريع" : view === "tasks" ? "محرك المهام" : view === "clients" ? "إدارة العملاء" : view === "content" ? "استوديو المحتوى" : view === "knowledge" ? "قاعدة المعرفة" : view === "finance" ? "الإدارة المالية" : view === "activity" ? "سجل النشاط" : "مركز الإشعارات"}</h1><p>{view === "tasks" ? "أنشئ المهام واربطها بمشاريعك وتابع التنفيذ." : view === "clients" ? "نظّم بيانات العملاء واربطهم بأعمالك." : view === "content" ? "حوّل الأفكار إلى محتوى منشور عبر دورة إنتاج واضحة." : view === "knowledge" ? "احفظ أفكارك وملاحظاتك وقوالبك ومراجعك في مكان واحد." : view === "finance" ? "سجّل الدخل والمصروفات وتابع صافي التدفق المالي." : view === "activity" ? "تابع كل ما يحدث داخل وحدات النظام في خط زمني واحد." : view === "notifications" ? "راجع التنبيهات المهمة وانتقل مباشرة إلى مصدرها." : "تابع أعمالك من مكان واحد."}</p></div><div className="topbar-actions">{organizations.length>1&&<select aria-label="المؤسسة / Organization" value={organizationId??organizations[0]?.id} onChange={event=>{loadRevision.current++;activeOrganizationRef.current=null;setTasks([]);setProjects([]);setNotifications([]);setTaskModal(null);setDeleteTaskTarget(null);setOrganizationId(event.target.value);}}>{organizations.map(org=><option key={org.id} value={org.id}>{org.name}</option>)}</select>}<div className={`sync-state ${loadErrors.length ? "warning" : "ok"}`}><span>{loading ? "جارٍ التحديث…" : loadErrors.length ? "مزامنة جزئية" : "البيانات محدثة"}</span><small>{lastSyncedAt ? new Intl.DateTimeFormat("ar-SA",{hour:"numeric",minute:"2-digit"}).format(new Date(lastSyncedAt)) : "—"}</small>{loadErrors.length > 0 && <button onClick={() => void loadData()} aria-label="إعادة المزامنة">إعادة المحاولة</button>}</div><GlobalSearch projects={projects} tasks={tasks} clients={clients} contentItems={contentItems} knowledgeItems={knowledgeItems} financeItems={financeItems} onNavigate={navigate} /><button className="primary universal-create-button" onClick={() => setQuickCreateOpen(true)}><Plus size={18}/> إنشاء <kbd>N</kbd></button></div></header>
       {loading && <div className="loading-bar"><i /></div>}
       {view === "dashboard" && loading && !lastSyncedAt ? <DashboardSkeleton /> : view === "dashboard" && <DashboardView projects={projects} tasks={tasks} clients={clients} financeItems={financeItems} activityEvents={activityEvents} notifications={notifications} userName="Yosseuf" onNavigate={navigate} onQuickAction={(action) => action === "project" ? setProjectModal({ mode: "create", project: null }) : action === "task" ? requestCreateTask() : action === "client" ? setClientModal({ mode: "create", client: null }) : action === "finance" ? setFinanceModal("create") : action === "knowledge" ? setKnowledgeModal({ mode: "create", item: null }) : setContentModal({ mode: "create", item: null })} />}
       {view === "activity" && <ActivityView events={activityEvents} onNavigate={navigate} onClear={() => void clearActivity()} />}
-      {view === "notifications" && <NotificationsView notifications={notifications} onNavigate={navigate} onToggleRead={(n)=>void toggleNotificationRead(n)} onMarkAll={()=>void markAllRead()} onDelete={(n)=>void removeNotification(n)} />}
+      {view === "notifications" && <NotificationsView onOpenTask={id=>{const task=tasks.find(item=>item.id===id);if(task)setTaskModal({mode:"edit",task});else showToast("المهمة غير متاحة / Task unavailable","error");}} notifications={notifications} onNavigate={navigate} onToggleRead={(n)=>void toggleNotificationRead(n)} onMarkAll={()=>void markAllRead()} onDelete={(n)=>void removeNotification(n)} />}
       {view === "architecture" && <ArchitectureReviewView projects={projects} />}
       {view === "administration" && <AdministrationView session={session} />}
       {view === "projects" && <ProjectsView projects={filteredProjects} totalCount={projects.length} query={projectQuery} filter={projectFilter} onQuery={setProjectQuery} onFilter={setProjectFilter} onCreate={() => setProjectModal({ mode: "create", project: null })} onOpen={setProjectDetail} onEdit={(project) => setProjectModal({ mode: "edit", project })} onDelete={setDeleteProjectTarget} />}
-      {view === "tasks" && <TasksView tasks={filteredTasks} allTasks={tasks} projects={projects} query={taskQuery} filter={taskFilter} projectFilter={taskProjectFilter} onQuery={setTaskQuery} onFilter={setTaskFilter} onProjectFilter={setTaskProjectFilter} onCreate={requestCreateTask} onEdit={(task) => setTaskModal({ mode: "edit", task })} onDelete={setDeleteTaskTarget} />}
+      {view === "tasks" && <TasksView tasks={filteredTasks} allTasks={tasks} projects={projects} query={taskQuery} filter={taskFilter} projectFilter={taskProjectFilter} onQuery={setTaskQuery} onFilter={setTaskFilter} onProjectFilter={setTaskProjectFilter} onCreate={requestCreateTask} onEdit={(task) => {if(task.user_id!==session.user.id || activeRole==="viewer")showToast("قراءة فقط / Read only","error");else setTaskModal({ mode: "edit", task });}} onDelete={setDeleteTaskTarget} />}
       {view === "clients" && <ClientsView clients={filteredClients} allClients={clients} projects={projects} query={clientQuery} filter={clientFilter} onQuery={setClientQuery} onFilter={setClientFilter} onCreate={() => setClientModal({ mode: "create", client: null })} onEdit={(client) => setClientModal({ mode: "edit", client })} onDelete={setDeleteClientTarget} />}
       {view === "finance" && <FinanceView items={financeItems} projects={projects} clients={clients} onCreate={() => setFinanceModal("create")} onEdit={setFinanceModal} onDelete={setDeleteFinanceTarget} />}
       {view === "knowledge" && <KnowledgeView items={filteredKnowledge} allItems={knowledgeItems} query={knowledgeQuery} filter={knowledgeFilter} favoriteOnly={favoriteKnowledgeOnly} onQuery={setKnowledgeQuery} onFilter={setKnowledgeFilter} onFavoriteOnly={setFavoriteKnowledgeOnly} onCreate={() => setKnowledgeModal({ mode: "create", item: null })} onEdit={(item) => setKnowledgeModal({ mode: "edit", item })} onDelete={setDeleteKnowledgeTarget} />}
@@ -399,13 +426,13 @@ export default function Home() {
     {knowledgeModal && <KnowledgeModal state={knowledgeModal} onClose={() => setKnowledgeModal(null)} onSave={async (input, item) => { const ok = await saveKnowledge(input, item); if (ok) setKnowledgeModal(null); return ok; }} />}
     {contentModal && <ContentModal state={contentModal} projects={projects} clients={clients} onClose={() => setContentModal(null)} onSave={async (input, item) => { const ok = await saveContent(input, item); if (ok) setContentModal(null); return ok; }} />}
     {clientModal && <ClientModal state={clientModal} onClose={() => setClientModal(null)} onSave={async (input, client) => { const ok = await saveClient(input, client); if (ok) setClientModal(null); return ok; }} />}
-    {taskModal && <TaskModal state={taskModal} projects={projects} onClose={() => setTaskModal(null)} onSave={async (input, task) => { const ok = await saveTask(input, task); if (ok) setTaskModal(null); return ok; }} />}
+    {taskModal && <TaskModal state={taskModal} projects={projects} onClose={() => setTaskModal(null)} onSave={async (input, task, reason) => { const ok = await saveTask(input, task, reason); if (ok) setTaskModal(null); return ok; }} />}
     {deleteFinanceTarget && <ConfirmDelete title="حذف المعاملة؟" text={`سيتم حذف «${deleteFinanceTarget.description}» نهائيًا.`} onCancel={() => setDeleteFinanceTarget(null)} onConfirm={() => void deleteFinance(deleteFinanceTarget)} />}
     {deleteProjectTarget && <ConfirmDelete title="حذف المشروع؟" text={`سيتم حذف «${deleteProjectTarget.name}» وجميع مهامه نهائيًا.`} onCancel={() => setDeleteProjectTarget(null)} onConfirm={() => void deleteProject(deleteProjectTarget)} />}
     {deleteClientTarget && <ConfirmDelete title="حذف العميل؟" text={`سيتم حذف «${deleteClientTarget.name}». ستبقى المشاريع المرتبطة دون عميل.`} onCancel={() => setDeleteClientTarget(null)} onConfirm={() => void deleteClient(deleteClientTarget)} />}
     {deleteKnowledgeTarget && <ConfirmDelete title="حذف عنصر المعرفة؟" text={`سيتم حذف «${deleteKnowledgeTarget.title}» نهائيًا.`} onCancel={() => setDeleteKnowledgeTarget(null)} onConfirm={() => void deleteKnowledge(deleteKnowledgeTarget)} />}
     {deleteContentTarget && <ConfirmDelete title="حذف المحتوى؟" text={`سيتم حذف «${deleteContentTarget.title}» نهائيًا.`} onCancel={() => setDeleteContentTarget(null)} onConfirm={() => void deleteContent(deleteContentTarget)} />}
-    {deleteTaskTarget && <ConfirmDelete title="حذف المهمة؟" text={`سيتم حذف «${deleteTaskTarget.title}» نهائيًا.`} onCancel={() => setDeleteTaskTarget(null)} onConfirm={() => void deleteTask(deleteTaskTarget)} />}
+    {deleteTaskTarget && <ConfirmDelete title="أرشفة المهمة / Archive task" text={`سيُحفظ سجل «${deleteTaskTarget.title}» دون حذف. / History will be preserved.`} confirmLabel="أرشفة / Archive" onCancel={() => setDeleteTaskTarget(null)} onConfirm={() => void deleteTask(deleteTaskTarget)} />}
     <button className="global-fab" onClick={() => setQuickCreateOpen(true)} aria-label="إنشاء سريع"><Plus size={22}/><span>إنشاء</span></button>
     <QuickCreate open={quickCreateOpen} onClose={() => setQuickCreateOpen(false)} onSelect={openQuickCreate} />
     {toast && <div className={`toast ${toast.tone}`}>{toast.message}</div>}
@@ -442,20 +469,20 @@ function TasksView({ tasks, allTasks, projects, query, filter, projectFilter, on
 }
 
 function TaskList({tasks,projects,onEdit,onDelete}:{tasks:Task[];projects:Project[];onEdit:(t:Task)=>void;onDelete:(t:Task)=>void}){
-  return <div className="task-table-wrap"><table className="task-table"><thead><tr><th>المهمة</th><th>المشروع</th><th>الحالة</th><th>الأولوية</th><th>الاستحقاق</th><th>التقدم</th><th></th></tr></thead><tbody>{tasks.map(t=><tr key={t.id}><td><button className="table-task-title" onClick={()=>onEdit(t)}><small>TSK-{t.id.slice(0,4).toUpperCase()}</small><b>{t.title}</b></button></td><td>{projectName(projects,t.project_id)}</td><td><span className={`status-pill ${taskStatusClass(t.status)}`}>{taskStatusLabel(t.status)}</span></td><td><i className={`priority ${t.priority.toLowerCase()}`}>{priorityLabels[t.priority]}</i></td><td className={isOverdue(t)?"overdue-text":""}>{formatDate(t.due_date)}</td><td><div className="table-progress"><span>{t.progress}%</span><div className="progress"><i style={{width:`${t.progress}%`}}/></div></div></td><td><div className="table-actions"><button onClick={()=>onEdit(t)}><Pencil size={15}/></button><button className="danger" onClick={()=>onDelete(t)}><Trash2 size={15}/></button></div></td></tr>)}</tbody></table></div>;
+  return <div className="task-table-wrap"><table className="task-table"><thead><tr><th>المهمة</th><th>المشروع</th><th>الحالة</th><th>الأولوية</th><th>الاستحقاق</th><th>التقدم</th><th></th></tr></thead><tbody>{tasks.map(t=><tr key={t.id}><td><button className="table-task-title" onClick={()=>onEdit(t)}><small>TSK-{t.id.slice(0,4).toUpperCase()}</small><b>{t.title}</b></button></td><td>{projectName(projects,t.project_id)}</td><td><span className={`status-pill ${taskStatusClass(t.status)}`}>{taskStatusLabel(t.status)}</span></td><td><i className={`priority ${t.priority.toLowerCase()}`}>{priorityLabels[t.priority]}</i></td><td className={isOverdue(t)?"overdue-text":""}>{formatDate(t.due_date)}</td><td><div className="table-progress"><span>{t.progress}%</span><div className="progress"><i style={{width:`${t.progress}%`}}/></div></div></td><td><div className="table-actions"><button onClick={()=>onEdit(t)}><Pencil size={15}/></button><button className="danger" aria-label="أرشفة / Archive" onClick={()=>onDelete(t)}><Trash2 size={15}/></button></div></td></tr>)}</tbody></table></div>;
 }
 
 function KanbanBoard({tasks,projects,onEdit,onDelete}:{tasks:Task[];projects:Project[];onEdit:(t:Task)=>void;onDelete:(t:Task)=>void}){
-  return <div className="kanban-board">{taskFilters.slice(1).map(rawStatus=>{const status=rawStatus;const column=tasks.filter(t=>status==="Unknown" ? !isTaskStatus(t.status) : t.status===status);return <section className="kanban-column" key={status}><header><span className={`status-dot ${taskStatusClass(status)}`}/><h3>{taskStatusLabel(status)}</h3><b>{column.length}</b></header><div className="kanban-stack">{column.map(t=><article className="kanban-card" key={t.id}><button onClick={()=>onEdit(t)}><small>TSK-{t.id.slice(0,4).toUpperCase()}</small><strong>{t.title}</strong><span><FolderKanban size={13}/>{projectName(projects,t.project_id)}</span></button><footer><i className={`priority ${t.priority.toLowerCase()}`}>{priorityLabels[t.priority]}</i><span className={isOverdue(t)?"overdue-text":""}><Clock3 size={13}/>{formatDate(t.due_date)}</span><button className="kanban-delete" onClick={()=>onDelete(t)}><Trash2 size={14}/></button></footer></article>)}{!column.length&&<div className="kanban-empty">لا توجد مهام</div>}</div></section>})}</div>;
+  return <div className="kanban-board">{taskFilters.slice(1).map(rawStatus=>{const status=rawStatus;const column=tasks.filter(t=>status==="Unknown" ? !isTaskStatus(t.status) : t.status===status);return <section className="kanban-column" key={status}><header><span className={`status-dot ${taskStatusClass(status)}`}/><h3>{taskStatusLabel(status)}</h3><b>{column.length}</b></header><div className="kanban-stack">{column.map(t=><article className="kanban-card" key={t.id}><button onClick={()=>onEdit(t)}><small>TSK-{t.id.slice(0,4).toUpperCase()}</small><strong>{t.title}</strong><span><FolderKanban size={13}/>{projectName(projects,t.project_id)}</span></button><footer><i className={`priority ${t.priority.toLowerCase()}`}>{priorityLabels[t.priority]}</i><span className={isOverdue(t)?"overdue-text":""}><Clock3 size={13}/>{formatDate(t.due_date)}</span><button className="kanban-delete" aria-label="أرشفة / Archive" onClick={()=>onDelete(t)}><Trash2 size={14}/></button></footer></article>)}{!column.length&&<div className="kanban-empty">لا توجد مهام</div>}</div></section>})}</div>;
 }
 
 function Toolbar({ title, count, query, placeholder, onQuery, onCreate }: { title:string; count:number; query:string; placeholder:string; onQuery:(v:string)=>void; onCreate:()=>void }) { return <div className="projects-toolbar"><div><span className="section-kicker">DIRECTORY</span><h2>{title} <small>{count}</small></h2></div><div className="toolbar-actions"><label className="search-box"><Search size={17}/><input value={query} onChange={(e)=>onQuery(e.target.value)} placeholder={placeholder}/></label><button className="primary compact" onClick={onCreate}><Plus size={17}/> إضافة</button></div></div>; }
 
 function ProjectCard({ project, onOpen, onEdit, onDelete }: { project:Project; onOpen:()=>void; onEdit:()=>void; onDelete:()=>void }) { const [open,setOpen]=useState(false); return <article className="project-card"><div className="project-card-top"><span className={`status-pill ${projectStatusClass(project.status)}`}>{projectStatusLabels[project.status]}</span><CardMenu open={open} setOpen={setOpen} onEdit={onEdit} onDelete={onDelete}/></div><button className="project-card-body" onClick={onOpen}><span className="project-icon"><FolderKanban size={21}/></span><h3>{project.name}</h3><p>{project.notes||project.client_name||project.area||"مشروع جديد"}</p></button><div className="project-meta"><span><b>الأولوية</b><i className={`priority ${project.priority.toLowerCase()}`}>{priorityLabels[project.priority]}</i></span><span><b>موعد التسليم</b>{formatDate(project.due_date)}</span></div><div className="card-progress-head"><span>التقدم</span><b>{project.progress}%</b></div><div className="progress"><i style={{width:`${project.progress}%`}}/></div></article>; }
 
-function TaskCard({ task, project, onEdit, onDelete }: { task:Task; project?:Project; onEdit:()=>void; onDelete:()=>void }) { const [open,setOpen]=useState(false); return <article className="task-card"><div className="project-card-top"><span className={`status-pill ${taskStatusClass(task.status)}`}>{taskStatusLabel(task.status)}</span><CardMenu open={open} setOpen={setOpen} onEdit={onEdit} onDelete={onDelete}/></div><button className="task-card-body" onClick={onEdit}><div className="task-code">TSK-{task.id.slice(0,4).toUpperCase()}</div><h3>{task.title}</h3><p>{task.description||"بدون وصف"}</p></button><div className="task-project"><FolderKanban size={14}/>{project?.name||"مشروع غير متاح"}</div><div className="project-meta"><span><b>الأولوية</b><i className={`priority ${task.priority.toLowerCase()}`}>{priorityLabels[task.priority]}</i></span><span><b>الاستحقاق</b>{formatDate(task.due_date)}</span></div><div className="card-progress-head"><span>التقدم</span><b>{task.progress}%</b></div><div className="progress"><i style={{width:`${task.progress}%`}}/></div></article>; }
+function TaskCard({ task, project, onEdit, onDelete }: { task:Task; project?:Project; onEdit:()=>void; onDelete:()=>void }) { const [open,setOpen]=useState(false); return <article className="task-card"><div className="project-card-top"><span className={`status-pill ${taskStatusClass(task.status)}`}>{taskStatusLabel(task.status)}</span><CardMenu deleteLabel="أرشفة / Archive" open={open} setOpen={setOpen} onEdit={onEdit} onDelete={onDelete}/></div><button className="task-card-body" onClick={onEdit}><div className="task-code">TSK-{task.id.slice(0,4).toUpperCase()}</div><h3>{task.title}</h3><p>{task.description||"بدون وصف"}</p></button><div className="task-project"><FolderKanban size={14}/>{project?.name||"مشروع غير متاح"}</div><div className="project-meta"><span><b>الأولوية</b><i className={`priority ${task.priority.toLowerCase()}`}>{priorityLabels[task.priority]}</i></span><span><b>الاستحقاق</b>{formatDate(task.due_date)}</span></div><div className="card-progress-head"><span>التقدم</span><b>{task.progress}%</b></div><div className="progress"><i style={{width:`${task.progress}%`}}/></div></article>; }
 
-function CardMenu({ open, setOpen, onEdit, onDelete }: { open:boolean; setOpen:(v:boolean)=>void; onEdit:()=>void; onDelete:()=>void }) { return <div className="card-menu-wrap"><button className="icon-button" onClick={()=>setOpen(!open)}><MoreHorizontal size={19}/></button>{open&&<div className="card-menu"><button onClick={()=>{setOpen(false);onEdit();}}><Pencil size={15}/> تعديل</button><button className="danger" onClick={()=>{setOpen(false);onDelete();}}><Trash2 size={15}/> حذف</button></div>}</div>; }
+function CardMenu({ open, setOpen, onEdit, onDelete,deleteLabel="حذف" }: { open:boolean; setOpen:(v:boolean)=>void; onEdit:()=>void; onDelete:()=>void;deleteLabel?:string }) { return <div className="card-menu-wrap"><button className="icon-button" onClick={()=>setOpen(!open)}><MoreHorizontal size={19}/></button>{open&&<div className="card-menu"><button onClick={()=>{setOpen(false);onEdit();}}><Pencil size={15}/> تعديل</button><button className="danger" onClick={()=>{setOpen(false);onDelete();}}><Trash2 size={15}/> {deleteLabel}</button></div>}</div>; }
 
 function ClientsView({ clients, allClients, projects, query, filter, onQuery, onFilter, onCreate, onEdit, onDelete }: { clients:Client[]; allClients:Client[]; projects:Project[]; query:string; filter:ClientFilter; onQuery:(v:string)=>void; onFilter:(v:ClientFilter)=>void; onCreate:()=>void; onEdit:(c:Client)=>void; onDelete:(c:Client)=>void }) {
   const active=allClients.filter(c=>c.status==="Active").length;
@@ -760,14 +787,14 @@ function ProjectFilesPanel({projectId}:{projectId:string}) {
       </article>)}</div>}
   </section>;
 }
-function TaskModal({ state, projects, onClose, onSave }: { state:Exclude<TaskModalState,null>; projects:Project[]; onClose:()=>void; onSave:(i:TaskInput,t?:Task)=>Promise<boolean> }) { const t=state.task; const [saving,setSaving]=useState(false); async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setSaving(true);const f=new FormData(e.currentTarget);const status=String(f.get("status")) as TaskStatus;const input:TaskInput={project_id:String(f.get("project_id")),title:String(f.get("title")||"").trim(),description:nullableText(f.get("description")),status,priority:String(f.get("priority")) as PriorityLevel,progress:clamp(Number(f.get("progress")||0)),due_date:dateValue(f.get("due_date"))};if(!await onSave(input,t??undefined))setSaving(false);} return <Modal title={state.mode==="create"?"إنشاء مهمة جديدة":"تعديل المهمة"} kicker="TASK ENGINE" onClose={onClose}><form className="project-form" onSubmit={submit}><label className="full"><span>المشروع *</span><select name="project_id" defaultValue={t?.project_id||projects[0]?.id} required>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><Field name="title" label="عنوان المهمة *" defaultValue={t?.title} required full maxLength={160}/><label><span>الحالة</span><select name="status" defaultValue={t?.status||"To Do"}>{TASK_STATUSES.map(status=><option key={status} value={status} disabled={TASK_WORKFLOW_WRITES_ENABLED ? t ? status!==t.status && !canTransitionTask(t.status,status) : status!=="To Do" : status==="Review" || (status==="Waiting" && t?.status!=="Waiting")}>{taskStatusLabel(status)}</option>)}</select></label><Select name="priority" label="الأولوية" defaultValue={t?.priority||"Medium"} options={priorityLabels}/><Field name="progress" label="نسبة التقدم" type="number" defaultValue={t?.progress??0} min={0} max={100}/><Field name="due_date" label="موعد الاستحقاق" type="date" defaultValue={t?.due_date}/><label className="full"><span>الوصف</span><textarea name="description" rows={5} defaultValue={t?.description??""}/></label><Actions saving={saving} onClose={onClose}/></form></Modal>; }
+function TaskModal({ state, projects, onClose, onSave }: { state:Exclude<TaskModalState,null>; projects:Project[]; onClose:()=>void; onSave:(i:TaskInput,t?:Task,reason?:string)=>Promise<boolean> }) { const t=state.task; const submitting=useRef(false); const [saveError,setSaveError]=useState(""); const [pending,setPending]=useState<TaskInput|null>(null); const [saving,setSaving]=useState(false); async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();if(submitting.current)return;submitting.current=true;setSaving(true);setSaveError("");const f=new FormData(e.currentTarget);const status=String(f.get("status")) as TaskStatus;const input:TaskInput={project_id:String(f.get("project_id")),title:String(f.get("title")||"").trim(),description:nullableText(f.get("description")),status,priority:String(f.get("priority")) as PriorityLevel,progress:clamp(Number(f.get("progress")||0)),due_date:dateValue(f.get("due_date"))};if(TASK_WORKFLOW_WRITES_ENABLED && t && input.status!==t.status){setPending(input);submitting.current=false;setSaving(false);return;}try{if(!await onSave(input,t??undefined))setSaveError("لم يتأكد الحفظ. حدّث البيانات قبل المحاولة. / Save unconfirmed. Refresh before retrying.");}catch{setSaveError("تعذر الحفظ. حدّث البيانات. / Save failed. Refresh.");}finally{submitting.current=false;setSaving(false);}} if(pending && t) return <Modal title="تأكيد انتقال المهمة / Confirm task transition" kicker="TASK ENGINE" onClose={onClose}><TaskReasonConfirmation from={t.status} to={pending.status} onCancel={()=>setPending(null)} onConfirm={reason=>onSave(pending,t,reason)}/></Modal>; return <Modal title={state.mode==="create"?"إنشاء مهمة جديدة":"تعديل المهمة"} kicker="TASK ENGINE" onClose={onClose}><form className="project-form" onSubmit={submit}><label className="full"><span>المشروع *</span><select name="project_id" defaultValue={t?.project_id||projects[0]?.id} required>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><Field name="title" label="عنوان المهمة *" defaultValue={t?.title} required full maxLength={160}/><label><span>الحالة</span><select name="status" defaultValue={t?.status||"To Do"}>{TASK_STATUSES.map(status=><option key={status} value={status} disabled={TASK_WORKFLOW_WRITES_ENABLED ? t ? status!==t.status && !canTransitionTask(t.status,status) : status!=="To Do" : status==="Review" || (status==="Waiting" && t?.status!=="Waiting")}>{taskStatusLabel(status)}</option>)}</select></label><Select name="priority" label="الأولوية" defaultValue={t?.priority||"Medium"} options={priorityLabels}/><Field name="progress" label="نسبة التقدم" type="number" defaultValue={t?.progress??0} min={0} max={100}/><Field name="due_date" label="موعد الاستحقاق" type="date" defaultValue={t?.due_date}/><label className="full"><span>الوصف</span><textarea name="description" rows={5} defaultValue={t?.description??""}/></label><p role="alert" className="full">{saveError}</p><Actions saving={saving} onClose={onClose}/></form></Modal>; }
 
 function Modal({ title, kicker, onClose, children }: { title:string; kicker:string; onClose:()=>void; children:ReactNode }) { return <div className="modal-backdrop" onMouseDown={onClose}><div className="modal" onMouseDown={(e)=>e.stopPropagation()}><div className="modal-head"><div><span className="section-kicker">{kicker}</span><h2>{title}</h2></div><button className="icon-button" onClick={onClose}><X size={20}/></button></div>{children}</div></div>; }
 function Field({ name,label,defaultValue,type="text",required,full,min,max,maxLength }: { name:string;label:string;defaultValue?:string|number|null;type?:string;required?:boolean;full?:boolean;min?:number;max?:number;maxLength?:number }) { return <label className={full?"full":""}><span>{label}</span><input name={name} type={type} defaultValue={defaultValue??""} required={required} min={min} max={max} maxLength={maxLength}/></label>; }
 function Select<T extends string>({ name,label,defaultValue,options }: { name:string;label:string;defaultValue:T;options:Record<T,string> }) { return <label><span>{label}</span><select name={name} defaultValue={defaultValue}>{Object.entries(options).map(([v,l])=><option key={v} value={v}>{String(l)}</option>)}</select></label>; }
 function Actions({ saving,onClose }: { saving:boolean;onClose:()=>void }) { return <div className="form-actions full"><button type="button" onClick={onClose}>إلغاء</button><button className="primary" disabled={saving}>{saving?"جارٍ الحفظ…":"حفظ"}</button></div>; }
 
-function ConfirmDelete({ title,text,onCancel,onConfirm }: { title:string;text:string;onCancel:()=>void;onConfirm:()=>void }) { return <div className="modal-backdrop"><div className="confirm-modal"><div className="warning-icon"><AlertTriangle/></div><h2>{title}</h2><p>{text}</p><div className="form-actions"><button onClick={onCancel}>إلغاء</button><button className="delete-button" onClick={onConfirm}>حذف نهائي</button></div></div></div>; }
+function ConfirmDelete({ title,text,onCancel,onConfirm,confirmLabel="حذف نهائي" }: { title:string;text:string;onCancel:()=>void;onConfirm:()=>void;confirmLabel?:string }) { return <div className="modal-backdrop"><div className="confirm-modal"><div className="warning-icon"><AlertTriangle/></div><h2>{title}</h2><p>{text}</p><div className="form-actions"><button onClick={onCancel}>إلغاء</button><button className="delete-button" onClick={onConfirm}>{confirmLabel}</button></div></div></div>; }
 function Metric({ icon,label,value,detail,danger }: { icon:ReactNode;label:string;value:string|number;detail:string;danger?:boolean }) { return <div className={`metric-card ${danger?"danger":""}`}><span>{icon}</span><div><small>{label}</small><strong>{value}</strong><em>{detail}</em></div></div>; }
 function EmptyState({ text="لا توجد بيانات بعد.",compact,onCreate }: { text?:string;compact?:boolean;onCreate?:()=>void }) { return <div className={`empty-state ${compact?"compact":""}`}><span><ClipboardList/></span><h3>{text}</h3>{onCreate&&<button className="primary compact" onClick={onCreate}><Plus size={16}/> إضافة الآن</button>}</div>; }
 

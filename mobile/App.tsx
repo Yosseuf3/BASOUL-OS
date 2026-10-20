@@ -10,6 +10,9 @@ import { completeMobileAuthUrl, getInitialAuthUrl } from "./src/features/auth/mo
 import { DashboardScreen } from "./src/features/dashboard/DashboardScreen";
 import { NotificationsScreen } from "./src/features/notifications/NotificationsScreen";
 import { ProjectsScreen } from "./src/features/projects/ProjectsScreen";
+import { TaskDetailsScreen } from "./src/features/tasks/TaskDetailsScreen";
+import {hasMobilePermission} from "./src/permissions/organization";
+import { editMobileTask, archiveMobileTask } from "./src/services/task-edits";
 import { TasksScreen } from "./src/features/tasks/TasksScreen";
 import { CommandCenterScreen } from "./src/features/command-center/CommandCenterScreen";
 import { CreateTaskScreen, type NewTaskInput } from "./src/features/create/CreateTaskScreen";
@@ -41,12 +44,13 @@ import {
 import type { ArchitecturalFinding, ArchitecturalReviewComment, MobileWorkspaceData, Task } from "./src/types/domain";
 
 const emptyData: MobileWorkspaceData = { projects: [], tasks: [], notifications: [], drawings: [], reviews: [], planElements: [], reviewComments: [] };
-type ScreenName = "dashboard" | "projects" | "tasks" | "notifications" | "intelligence" | "architecture" | "createTask" | "timeline" | "search" | "administration" | "account";
+type ScreenName = "dashboard" | "projects" | "tasks" | "notifications" | "intelligence" | "architecture" | "createTask" | "taskDetails" | "timeline" | "search" | "administration" | "account";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [booting, setBooting] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [selectedTask,setSelectedTask]=useState<Task|null>(null);
   const [screen, setScreen] = useState<ScreenName>("dashboard");
   const [data, setData] = useState<MobileWorkspaceData>(emptyData);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +73,7 @@ export default function App() {
     const sessionVersion = sessionRevision.current;
     // Retain the last identity for presentation, but revision guards block writes
     // and tenant data while membership is being revalidated.
+    if(requestedOrganizationId){setSelectedTask(null);setScreen("dashboard");}
     setData(emptyData);
     setConvertingFindingId(""); setDecidingFindingId(""); setUpdatingPlanElementId(""); setUpdatingReviewCommentId(""); setUploadingDrawing(false); setRetryingDrawingId("");
     setLoading(true); setError(null);
@@ -106,7 +111,7 @@ export default function App() {
       if (changed) organizationStore.current.clear();
       authenticatedUser.current = nextSession?.user.id ?? null;
       setSession(nextSession); setSignOutError(null);
-      if (changed) { setScreen("dashboard"); setOrganization(null); setData(emptyData); setError(null); setLoading(false); }
+      if (changed) { setSelectedTask(null); setScreen("dashboard"); setOrganization(null); setData(emptyData); setError(null); setLoading(false); }
     });
     return () => { active = false; urlListener.remove(); authListener.subscription.unsubscribe(); };
   }, []);
@@ -147,10 +152,10 @@ export default function App() {
   async function readNotification(id: string) { try { await operate((context) => markMobileNotificationRead(context, id)); } catch { /* Error displayed only for the current context. */ } }
   async function createTask(input: NewTaskInput) { await operate((context) => createMobileTask(context, input), () => setScreen("tasks")); }
   async function advanceTask(task: Task) { try { await operate((context) => advanceMobileTask(context, task)); } catch { /* Error displayed by operate. */ } }
-  async function transitionTask(task: Task, target: CanonicalTaskStatus) {
+  async function transitionTask(task: Task, target: CanonicalTaskStatus, reason?: string) {
     const snapshot=activeOrganization();
     const sessionVersion=sessionRevision.current;
-    try { await operate(context=>transitionMobileTask(context,task,target)); }
+    try { await operate(context=>transitionMobileTask(context,task,target,reason)); return true; }
     catch(cause) {
       const code=cause && typeof cause==='object' && 'code' in cause ? cause.code : undefined;
       if((code==='PT409' || code==='40001') && sessionVersion===sessionRevision.current && organizationStore.current.isCurrent(snapshot.revision)) {
@@ -161,6 +166,7 @@ export default function App() {
         } catch { /* Retain the original conflict and current organization. */ }
       }
     }
+    return false;
   }
   async function convertFinding(finding: ArchitecturalFinding, projectId: string) {
     if (!session) return;
@@ -243,9 +249,10 @@ export default function App() {
     {error ? <View style={styles.errorBar}><Text style={styles.errorText}>{error}</Text><TouchableOpacity onPress={() => setError(null)}><Text style={styles.dismiss}>?</Text></TouchableOpacity></View> : null}
     {organizationReady ? <>
     {screen === "dashboard" ? <DashboardScreen data={data} onNavigate={setScreen} onRefresh={() => void refresh()} refreshing={loading} /> : null}
+    {screen === "taskDetails" && selectedTask ? <TaskDetailsScreen readOnly={selectedTask.user_id!==session.user.id || !hasMobilePermission(organization!.selected!.role,"update")} key={`${selectedTask.id}:${selectedTask.updated_at}`} task={selectedTask} onArchive={async()=>{await operate(context=>archiveMobileTask(context,selectedTask),()=>{setSelectedTask(null);setScreen("tasks");});}} onBack={()=>{setSelectedTask(null);setScreen("tasks");}} onSave={async input=>{await operate(context=>editMobileTask(context,selectedTask,input),()=>{setSelectedTask(null);setScreen("tasks");});}}/> : null}
     {screen === "projects" ? <ProjectsScreen projects={data.projects} onBack={() => setScreen("dashboard")} /> : null}
-    {screen === "tasks" ? <TasksScreen tasks={data.tasks} projects={data.projects} onBack={() => setScreen("dashboard")} onCreate={() => setScreen("createTask")} onAdvance={(task) => void advanceTask(task)} onTransition={(task,target)=>void transitionTask(task,target)} /> : null}
-    {screen === "notifications" ? <NotificationsScreen notifications={data.notifications} onBack={() => setScreen("dashboard")} onRead={readNotification} /> : null}
+    {screen === "tasks" ? <TasksScreen canUpdateTask={task=>task.user_id===session.user.id && hasMobilePermission(organization!.selected!.role,"update")} onOpenTask={task=>{setSelectedTask(task);setScreen("taskDetails");}} tasks={data.tasks} projects={data.projects} onBack={() => setScreen("dashboard")} onCreate={() => setScreen("createTask")} onAdvance={(task) => void advanceTask(task)} onTransition={(task,target,reason)=>transitionTask(task,target,reason)} /> : null}
+    {screen === "notifications" ? <NotificationsScreen onOpenTask={id=>{const task=data.tasks.find(task=>task.id===id);if(task){setSelectedTask(task);setScreen("taskDetails");}else setError("المهمة غير متاحة / Task unavailable");}} notifications={data.notifications} onBack={() => setScreen("dashboard")} onRead={readNotification} /> : null}
     {screen === "intelligence" ? <CommandCenterScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "architecture" ? <ArchitectureReviewScreen data={data} onBack={() => setScreen("dashboard")} onConvertFinding={(finding, projectId) => void convertFinding(finding, projectId)} convertingFindingId={convertingFindingId} onDecideFinding={(finding, status) => void decideFinding(finding, status)} decidingFindingId={decidingFindingId} onDecidePlanElement={(elementId, status) => void decidePlanElement(elementId, status)} updatingPlanElementId={updatingPlanElementId} onUpdateReviewComment={(comment, status) => void decideReviewComment(comment, status)} updatingReviewCommentId={updatingReviewCommentId} onUploadDrawing={uploadDrawing} uploadingDrawing={uploadingDrawing} onRetryDrawing={retryDrawing} retryingDrawingId={retryingDrawingId} /> : null}
     {screen === "createTask" ? <CreateTaskScreen projects={data.projects} onCancel={() => setScreen("dashboard")} onSubmit={createTask} /> : null}

@@ -1,7 +1,8 @@
 // Restore only the existing disposable, internal-network synthetic fixture stack.
 // Never accepts connection URLs, credentials, container names or external targets.
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync,readdirSync } from 'node:fs';
+import { historicalMigrationPlan } from './task-historical-manifest.mjs';
 import { createHmac } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
@@ -108,22 +109,30 @@ try {
       nullif(current_setting('request.jwt.claims',true),'')::jsonb ->> 'sub')::uuid $$;
       GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated;`);
     sql(read('supabase/schema.sql'));
-    sql(read('database/migrations/009_activity_feed_foundation.sql'));
-    sql(read('supabase/migrations/20260802204811_iam_foundation.sql'));
-    sql(read('supabase/migrations/20260802204818_iam_rls.sql').split('-- Storage remains')[0] + '\nCOMMIT;');
     let fixtures = read('tests/fixtures/task-postgres-fixtures.sql');
     fixtures = fixtures.slice(fixtures.indexOf('INSERT INTO organizations'));
     users.forEach((id, index) => { fixtures = fixtures.replaceAll(`00000000-0000-0000-0000-00000000000${index + 1}`, id); });
-    sql(fixtures);
+    if(sql("SELECT to_regclass('storage.objects') IS NULL;")==='t')sql(read('tests/fixtures/historical-storage-catalog.sql'));
+    const history=historicalMigrationPlan(readdirSync(new URL('../supabase/',import.meta.url)),readdirSync(new URL('../supabase/migrations/',import.meta.url)));
+    for(const migration of history){
+      sql(read(migration));
+      if(migration.endsWith('20260802204818_iam_rls.sql'))sql(fixtures);
+    }
     sql(`GRANT USAGE ON SCHEMA public TO authenticated;
       GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
       REVOKE CREATE ON SCHEMA public,private FROM PUBLIC,anon,authenticated;`);
     sql('BEGIN;\n' + read('docs/database/proposed-task-security-hardening.sql') + '\nCOMMIT;');
     sql('BEGIN;\n' + read('docs/database/proposed-task-transition-enforcement.sql') + '\nCOMMIT;');
   }
+  if (sql("SELECT to_regclass('private.task_workflow_activation') IS NULL;") === 't') sql(read('docs/database/proposed-task-rollout-gate.sql'));
+  // Exact synthetic organization only, never an externally supplied tenant.
+  sql("INSERT INTO private.task_workflow_activation VALUES('10000000-0000-0000-0000-000000000001',true) ON CONFLICT(organization_id) DO UPDATE SET enabled=true;");
+  if (sql("SELECT to_regclass('private.task_notification_receipts') IS NULL;") === 't') sql(read('docs/database/proposed-task-notifications.sql'));
+  if(sql("SELECT to_regprocedure('public.edit_task_fields(uuid,uuid,timestamp with time zone,jsonb)') IS NULL;")==='t') sql(read('docs/database/proposed-task-edit-cas.sql'));
   docker(['start', services[3]]);
   sql("NOTIFY pgrst, 'reload schema';");
-  const result = spawnSync(process.execPath, [fileURLToPath(new URL('./validate-task-auth-http.mjs', import.meta.url))], { encoding: 'utf8' });
+  const runner=process.argv.includes('--mobile')?'./validate-task-mobile-local.mjs':process.argv.includes('--browser')?'./validate-task-browser-local.mjs':'./validate-task-auth-http.mjs';
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL(runner, import.meta.url))], { encoding: 'utf8',maxBuffer:8*1024*1024 });
   process.stdout.write(result.stdout ?? '');
   if (result.status !== 0) {
     let diagnostic = result.stderr ?? '';

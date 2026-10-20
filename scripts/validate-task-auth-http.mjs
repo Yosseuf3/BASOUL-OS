@@ -63,14 +63,18 @@ const enforcement=read('docs/database/proposed-task-transition-enforcement.sql')
 sql(enforcement.slice(enforcement.indexOf('CREATE OR REPLACE FUNCTION private.audit_task_transition()'),enforcement.indexOf('REVOKE ALL ON FUNCTION private.audit_task_transition()')));
 ready=false;for(let i=0;i<30;i++){try{if((await request(55432,'/')).status===200){ready=true;break;}}catch{}await pause(1000);}assert.ok(ready,'PostgREST health not ready');
 const task=randomUUID(),org='10000000-0000-0000-0000-000000000001';
+const createPayload={user_id:users[0].id,organization_id:org,project_id:'40000000-0000-0000-0000-000000000001',title:'Synthetic rejected creation',status:'Done'};
+assert.equal((await request(55432,'/tasks',createPayload,users[0].token)).status,400);
+assert.equal((await request(55432,'/tasks',{...createPayload,status:'To Do',project_id:'40000000-0000-0000-0000-000000000002'},users[0].token)).status,403);
 const membership=await request(55432,`/organization_memberships?organization_id=eq.${org}&user_id=eq.${users[0].id}`,undefined,users[0].token);
 assert.equal(membership.status,200); assert.equal(membership.data[0]?.role,'owner');
-sql(`INSERT INTO public.tasks(id,user_id,organization_id,project_id,title,status,progress,updated_at)
-VALUES('${task}','${users[0].id}','${org}','40000000-0000-0000-0000-000000000001','Synthetic HTTP regression','Waiting',15,'2026-10-11T00:00:00Z');`);
+sql(`SELECT set_config('request.jwt.claim.sub','${users[0].id}',false);
+INSERT INTO public.tasks(id,user_id,organization_id,project_id,title,status,progress,updated_at)
+VALUES('${task}','${users[0].id}','${org}','40000000-0000-0000-0000-000000000001','Synthetic HTTP regression','To Do',15,'2026-10-11T00:00:00Z');`);
 function load(path,require=()=>({})) {const m={exports:{}};runInNewContext(ts.transpileModule(read(path),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{module:m,exports:m.exports,require});return m.exports;}
 const contract=load('packages/shared-types/src/task-status-contract.ts');
 const client=load('packages/shared-types/src/task-transition-client.ts',()=>contract);
-const args=client.taskTransitionRpcArgs({taskId:task,organizationId:org,expectedStatus:'Waiting',expectedUpdatedAt:'2026-10-11T00:00:00Z',targetStatus:'In Progress',reason:'synthetic dependency resolved'});
+const args=client.taskTransitionRpcArgs({taskId:task,organizationId:org,expectedStatus:'To Do',expectedUpdatedAt:'2026-10-11T00:00:00Z',targetStatus:'In Progress',reason:'synthetic dependency resolved'});
 const rpc=(payload,actor=0)=>request(55432,'/rpc/transition_task_status',payload,users[actor].token);
 for(const actor of [1,2,3]) assert.equal((await rpc(args,actor)).status,403,'Forbidden actor allowed');
 assert.equal((await request(55432,'/tasks',undefined,'invalid')).status,401);
@@ -83,12 +87,16 @@ assert.equal(direct.status,409); assert.equal(direct.data.code,'PT409');
 assert.equal(client.taskTransitionError(direct.data).code,'TASK_TRANSITION_CONFLICT');
 const [a,b]=await Promise.all([rpc(args),rpc(args)]);
 assert.deepEqual([a.status,b.status].sort(),[200,409]);
+assert.ok(client.confirmedTaskTransition((a.status===200?a:b).data,{
+ taskId:task,organizationId:org,expectedStatus:'To Do',expectedUpdatedAt:args.p_expected_updated_at,targetStatus:'In Progress',
+}),'Real RPC response must satisfy the shared Web/Mobile confirmation contract');
 assert.equal(sql(`SELECT count(*) FROM activity_events WHERE entity_id='${task}';`),'1');
 assert.equal(sql(`SELECT progress FROM tasks WHERE id='${task}';`),'15');
 const audited=await request(55432,`/activity_events?entity_id=eq.${task}`,undefined,users[0].token);
 assert.equal(audited.status,200); assert.equal(audited.data.length,1);
 const auditId=audited.data[0].id;
 assert.equal(audited.data[0].metadata._basoul_task_transition,true);
+assert.equal(audited.data[0].metadata.reason,'synthetic dependency resolved');
 assert.equal((await request(55432,`/activity_events?id=eq.${auditId}`,{metadata:{}},users[0].token,'PATCH')).status,403);
 assert.equal((await request(55432,`/activity_events?id=eq.${auditId}`,undefined,users[0].token,'DELETE')).status,403);
 assert.equal((await request(55432,'/activity_events',{user_id:users[0].id,organization_id:org,module:'tasks',action:'updated',title:'forged',metadata:{_basoul_task_transition:true}},users[0].token)).status,403);
@@ -103,5 +111,51 @@ assert.equal(fail.status,403);assert.equal(sql(`SELECT status FROM tasks WHERE i
 assert.equal(sql(`SELECT count(*) FROM activity_events WHERE entity_id='${task}';`),'1');
 } finally { sql('GRANT INSERT ON activity_events TO authenticated;'); }
 const project=await request(55432,'/projects',undefined,users[0].token);assert.equal(project.status,200);assert.equal(project.data.length,1);
+// Delivery is separate from the committed transition and safely retryable.
+const deliver=(actor=0,organizationId=org)=>request(55432,'/rpc/deliver_task_transition_notifications',{p_organization_id:organizationId,p_limit:10},users[actor].token);
+assert.equal((await deliver()).data.delivered,0,'Actor must not receive own transition');
+// Privileged synthetic historical event; does not widen transition authorization.
+sql(`BEGIN; ALTER TABLE activity_events DISABLE TRIGGER protect_task_transition_audit;
+ UPDATE activity_events SET user_id='${users[1].id}',metadata=jsonb_set(metadata,'{actor_id}','"${users[1].id}"') WHERE entity_id='${task}';
+ ALTER TABLE activity_events ENABLE TRIGGER protect_task_transition_audit; COMMIT;`);
+sql('REVOKE INSERT ON notifications FROM authenticated;');
+try {
+ const failure=await deliver(); assert.equal(failure.status,200); assert.equal(failure.data.failed,1);
+ assert.equal(sql(`SELECT status FROM tasks WHERE id='${task}';`),'In Progress');
+} finally {sql('GRANT INSERT ON notifications TO authenticated;');}
+const deliveries=await Promise.all([deliver(),deliver()]);
+assert.equal(deliveries.reduce((total,result)=>total+result.data.delivered,0),1);
+const inbox=await request(55432,`/notifications?entity_id=eq.${task}`,undefined,users[0].token);
+assert.equal(inbox.data.length,1); assert.equal(inbox.data[0].entity_id,task);
+assert.equal((await request(55432,`/notifications?entity_id=eq.${task}`,undefined,users[1].token)).data.length,0);
+assert.equal((await deliver(2)).status,403);
+assert.equal((await deliver()).data.delivered,0);
+const beforeEdit=(await request(55432,`/tasks?id=eq.${task}`,undefined,users[0].token)).data[0];
+const editPayload={p_task_id:task,p_organization_id:org,p_expected_updated_at:beforeEdit.updated_at,p_changes:{title:'Synthetic CAS fields edit',progress:28}};
+const edit=(payload,actor=0)=>request(55432,'/rpc/edit_task_fields',payload,users[actor].token);
+const edits=await Promise.all([edit(editPayload),edit(editPayload)]);
+assert.deepEqual(edits.map(result=>result.status).sort(),[200,409]);
+assert.equal((await edit({...editPayload,p_changes:{status:'Done'}})).status,400);
+assert.equal((await edit(editPayload,1)).status,403);
+const latest=(await request(55432,`/tasks?id=eq.${task}`,undefined,users[0].token)).data[0];
+assert.equal((await request(55432,`/tasks?id=eq.${task}`,{title:'unsupported legacy edit'},users[0].token,'PATCH')).status,409);
+assert.equal(sql(`SELECT count(*) FROM activity_events WHERE entity_id='${task}' AND metadata->>'_basoul_task_edit'='true';`),'1');
+sql('REVOKE INSERT ON activity_events FROM authenticated;');
+try { assert.equal((await edit({...editPayload,p_expected_updated_at:latest.updated_at,p_changes:{title:'must roll back'}})).status,403);
+ assert.equal(sql(`SELECT title FROM tasks WHERE id='${task}';`),'Synthetic CAS fields edit');
+} finally {sql('GRANT INSERT ON activity_events TO authenticated;');}
+assert.equal((await request(55432,`/tasks?id=eq.${task}`,undefined,users[0].token,'DELETE')).status,403);
+assert.equal((await edit({...editPayload,p_expected_updated_at:latest.updated_at,p_changes:{archived:true}},1)).status,403);
+assert.equal((await edit({...editPayload,p_expected_updated_at:beforeEdit.updated_at,p_changes:{archived:true}})).status,409);
+sql('REVOKE INSERT ON activity_events FROM authenticated;');
+try {assert.equal((await edit({...editPayload,p_expected_updated_at:latest.updated_at,p_changes:{archived:true}})).status,403);
+ assert.equal(sql(`SELECT archived FROM tasks WHERE id='${task}';`),'f');
+} finally {sql('GRANT INSERT ON activity_events TO authenticated;');}
+const archived=await edit({...editPayload,p_expected_updated_at:latest.updated_at,p_changes:{archived:true}});
+assert.equal(archived.status,200);assert.equal(archived.data.archived,true);
+assert.equal((await edit({...editPayload,p_expected_updated_at:archived.data.updated_at,p_changes:{title:'archived bypass'}})).status,403);
+assert.equal((await rpc({...args,p_expected_status:archived.data.status,p_expected_updated_at:archived.data.updated_at,p_target_status:'Review'})).status,403);
+assert.equal(sql(`SELECT count(*) FROM activity_events WHERE entity_id='${task}' AND metadata->>'new_archived'='true';`),'1');
+console.log('PASS no self-notification; synthetic historical other-actor delivery/retry/deduplication/privacy; CAS archive/physical-delete denial/authorization/atomic rollback/read-only history');
 console.log('PASS actual password Auth identity; invalid/expired JWT; HTTP RLS owner/creator/viewer/tenant negatives; direct legacy rejection; shared client payload and error normalization; RPC concurrent CAS; audit atomicity; unrelated project reads');
 console.log('Synthetic DB:',db,'Task fixture:',task,'Internal-network HTTP only; no secrets emitted.');

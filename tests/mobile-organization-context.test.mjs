@@ -88,7 +88,7 @@ function clientFixture() {
   const calls = [], tables = {
     organization_memberships: [{ user_id: "u1", organization_id: "a", role: "owner", status: "active", organizations: { id: "a", name: "Organization a" } }],
     projects: [{ id: "pa", organization_id: "a", user_id: "colleague" }, { id: "pb", organization_id: "b", user_id: "u1" }],
-    tasks: [{ id: "ta", organization_id: "a", user_id: "u1", status: "To Do", progress: 0 }, { id: "tb", organization_id: "b", user_id: "u1" }],
+    tasks: [{ id: "ta", organization_id: "a", user_id: "u1", status: "To Do", progress: 0, updated_at: "v1" }, { id: "tb", organization_id: "b", user_id: "u1" }],
     notifications: [{ id: "na", organization_id: "a", user_id: "u1" }, { id: "other-recipient", organization_id: "a", user_id: "u2" }, { id: "nb", organization_id: "b", user_id: "u1" }],
     architectural_drawings: [], architectural_reviews: [], architectural_plan_elements: [], architectural_review_comments: [], architectural_review_findings: [],
   };
@@ -134,7 +134,7 @@ test("cross-organization project references are rejected before a task write", a
   assert.ok(!f.calls.some((call) => call.kind === "insert"));
 });
 test("cross-organization task mutations cannot modify a stale record", async () => {
-  const f = clientFixture(); await assert.rejects(f.services.advanceMobileTask(org("a"), { id: "tb", status: "To Do", progress: 0 }), /Scoped record/);
+  const f = clientFixture(); await assert.rejects(f.services.advanceMobileTask(org("a"), { id: "tb", status: "To Do", progress: 0, updated_at: "v1" }), /TASK_UPDATE_REQUIRED/);
   assert.equal(f.tables.tasks.find((row) => row.id === "tb").status, undefined);
 });
 test("revoked membership and different authenticated user reject reads and writes before workspace I/O", async () => {
@@ -194,8 +194,8 @@ test("confirmed revocation removes context while permission rejection alone does
 test("temporary identity verification failure blocks task submission without claiming revocation", async () => {
   const f = clientFixture(); f.client.auth.getUser = async () => ({ data: { user: null }, error: { message: "Network request failed" } });
   let failure;
-  try { await f.services.advanceMobileTask(org("a"), { id: "ta", status: "To Do", progress: 0 }); } catch (cause) { failure = cause; }
-  assert.equal(failure.reason, "unverified"); assert.equal(losesOrganizationAccess(failure), false);
+  try { await f.services.advanceMobileTask(org("a"), { id: "ta", status: "To Do", progress: 0, updated_at: "v1" }); } catch (cause) { failure = cause; }
+  assert.equal(failure.code, "TASK_UPDATE_REQUIRED"); assert.equal(losesOrganizationAccess(failure), false);
   assert.ok(!f.calls.some((call) => call.kind === "update")); assert.equal(f.tables.tasks[0].status, "To Do");
 });
 
@@ -238,10 +238,10 @@ test("App delegates guarded operations and only clears auth state on account cha
   assert.ok(!app.includes("organizationStore.current.invalidate(); setOrganization(null)"));
 });
 
-test("Mobile start action preserves stored execution percentage", async () => {
+test("Inactive Mobile start fails closed and preserves stored execution percentage", async () => {
   const f = clientFixture(); f.tables.tasks[0].progress = 0;
-  await f.services.advanceMobileTask(org("a"), { id: "ta", status: "To Do", progress: 0 });
-  assert.equal(f.tables.tasks[0].status, "In Progress"); assert.equal(f.tables.tasks[0].progress, 0);
+  await assert.rejects(f.services.advanceMobileTask(org("a"), { id: "ta", status: "To Do", progress: 0, updated_at: "v1" }), /TASK_UPDATE_REQUIRED/);
+  assert.equal(f.tables.tasks[0].status, "To Do"); assert.equal(f.tables.tasks[0].progress, 0);
 });
 
 test("Mobile new workflow and unknown states are rejected before any database query", async () => {

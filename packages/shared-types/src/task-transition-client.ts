@@ -5,6 +5,23 @@ export type TaskTransitionRequest = {
   // Opaque PostgreSQL microsecond timestamp. Never round-trip through JS Date.
   expectedUpdatedAt: string; targetStatus: CanonicalTaskStatus; reason?: string;
 };
+export type TaskTransitionConfirmation = {
+  id: string; organization_id: string; status: CanonicalTaskStatus;
+  updated_at: string; progress: number;
+};
+/** A transport success alone does not confirm that the requested task changed. */
+export function confirmedTaskTransition(value: unknown, input: TaskTransitionRequest): TaskTransitionConfirmation | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const task = value as Record<string, unknown>;
+  if (task.id !== input.taskId || task.organization_id !== input.organizationId
+    || task.status !== input.targetStatus || typeof task.updated_at !== 'string'
+    || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(task.updated_at)
+    || task.updated_at === input.expectedUpdatedAt
+    || typeof task.progress !== 'number' || !Number.isInteger(task.progress)
+    || task.progress < 0 || task.progress > 100) return null;
+  return { id: task.id as string, organization_id: task.organization_id as string,
+    status: input.targetStatus, updated_at: task.updated_at, progress: task.progress };
+}
 export function taskTransitionRpcArgs(input: TaskTransitionRequest) {
   if (typeof input.taskId!=='string' || typeof input.organizationId!=='string' || !input.taskId || !input.organizationId
     || typeof input.expectedUpdatedAt!=='string' || !input.expectedUpdatedAt
@@ -13,7 +30,7 @@ export function taskTransitionRpcArgs(input: TaskTransitionRequest) {
   if (input.reason!==undefined && (typeof input.reason!=='string' || input.reason.length>1000)) throw new Error('TASK_REASON_TOO_LONG');
   return { p_task_id: input.taskId, p_organization_id: input.organizationId,
     p_expected_status: input.expectedStatus, p_expected_updated_at: input.expectedUpdatedAt,
-    p_target_status: input.targetStatus, p_reason: input.reason ?? null };
+    p_target_status: input.targetStatus, p_reason: input.reason?.trim() || null };
 }
 export function taskTransitionError(cause: unknown) {
   const error = cause && typeof cause==='object' ? cause as {code?:unknown; message?:unknown} : {};

@@ -14,6 +14,12 @@ assert.equal(isolation.HostConfig.NetworkMode, 'none');
 assert.deepEqual(isolation.Mounts, []);
 assert.ok(isolation.HostConfig.Tmpfs['/var/lib/postgresql/data']);
 assert.deepEqual(isolation.NetworkSettings.Ports, {});
+let ready=false;
+for(let attempt=0;attempt<30;attempt++) {
+  if(spawnSync('docker',['exec',container,'pg_isready','-h','127.0.0.1','-U','postgres']).status===0) { ready=true; break; }
+  await new Promise(resolve=>setTimeout(resolve,1000));
+}
+assert.ok(ready,'Isolated PostgreSQL not ready');
 const query = (db, sql) => docker(['exec', '-i', container, 'psql', '-X', '-U', 'postgres', '-d', db, '-v', 'ON_ERROR_STOP=1', '-At'], sql);
 const auth = `CREATE SCHEMA auth; CREATE TABLE auth.users(id uuid PRIMARY KEY,email text);
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS
@@ -32,6 +38,7 @@ for (const path of ['fresh', 'upgrade']) {
   }
   query(db, bootstrap);
   query(db, read('database/migrations/009_activity_feed_foundation.sql'));
+  query(db, read('database/migrations/010_notification_center.sql'));
   query(db, read('supabase/migrations/20260802204811_iam_foundation.sql'));
   // Exact repository organization/table policies. Storage tests are out of scope.
   query(db, read('supabase/migrations/20260802204818_iam_rls.sql').split('-- Storage remains')[0] + '\nCOMMIT;');
@@ -62,11 +69,39 @@ for (const path of ['fresh', 'upgrade']) {
     COMMIT;`), /TASK_VERSION_PREFLIGHT_REQUIRED/);
   assert.equal(rows(), before, 'failed null preflight must roll back');
   query(db, 'BEGIN;\n' + read('docs/database/proposed-task-security-hardening.sql') + '\nCOMMIT;');
+  query(db,read('docs/database/proposed-task-rollout-gate.sql'));
+  assert.equal(query(db,'SELECT count(*) FROM private.task_workflow_activation;'),'0','Schema must not activate tenants');
+  // Privileged fixture setup authorizes only synthetic A; synthetic B stays off.
+  query(db,"INSERT INTO private.task_workflow_activation VALUES('10000000-0000-0000-0000-000000000001',true);");
   assert.equal(rows(), before, 'security hardening changed stored rows');
   query(db, 'BEGIN;\n' + read('docs/database/proposed-task-transition-enforcement.sql') + '\nCOMMIT;');
   assert.equal(policies(), policiesBefore, 'enforcement changed RLS');
   query(db, read('tests/fixtures/task-postgres-regression.sql'));
   query(db, read('tests/fixtures/task-security-regression.sql'));
+  query(db, read('docs/database/proposed-task-notifications.sql'));
+  query(db, read('tests/fixtures/task-notification-regression.sql'));
+  query(db, read('docs/database/proposed-task-edit-cas.sql'));
+  query(db, read('tests/fixtures/task-edit-regression.sql'));
+  query(db,`SET ROLE authenticated;
+    SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
+    DO $$ DECLARE t tasks; BEGIN
+      SELECT * INTO t FROM tasks WHERE id='20000000-0000-0000-0000-000000000002';
+      BEGIN PERFORM transition_task_status(t.id,t.organization_id,t.status,t.updated_at,'Review');
+      RAISE EXCEPTION 'NON_PILOT_TENANT_ACTIVATED'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+    END $$; RESET ROLE;`);
+  query(db,`BEGIN;
+    UPDATE private.task_workflow_activation SET enabled=false;
+    SET ROLE authenticated;
+    SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
+    DO $$ DECLARE t tasks; BEGIN
+      SELECT * INTO t FROM tasks WHERE id='20000000-0000-0000-0000-000000000001';
+      BEGIN PERFORM transition_task_status(t.id,t.organization_id,t.status,t.updated_at,'In Progress');
+      RAISE EXCEPTION 'ROLLOUT_DISABLED_BYPASSED'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+      BEGIN UPDATE private.task_workflow_activation SET enabled=true;
+      RAISE EXCEPTION 'CLIENT_ACTIVATED_ROLLOUT'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+      IF deliver_task_transition_notifications(t.organization_id,10) <> '{"delivered":0,"failed":0}'::jsonb THEN RAISE EXCEPTION 'DELIVERY_WHILE_DISABLED'; END IF;
+    END $$;
+    RESET ROLE; ROLLBACK;`);
   console.log(`${path}: migration, preservation, 25 transitions, RLS, audit and legacy-request tests PASS`);
 }
 const schema = (db) => query(db, `SELECT data_type||':'||udt_name||':'||column_default FROM information_schema.columns WHERE table_schema='public' AND table_name='tasks' AND column_name='status';

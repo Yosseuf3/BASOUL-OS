@@ -17,7 +17,10 @@ export type Project = {
 };
 
 export type Task = {
+  archived?: boolean;
   id: string;
+  user_id?: string;
+  organization_id?: string;
   project_id: string;
   title: string;
   status: CanonicalTaskStatus;
@@ -34,6 +37,8 @@ export type Notification = {
   priority: "info" | "medium" | "high";
   is_read: boolean;
   created_at: string;
+  module?: string;
+  entity_id?: string | null;
 };
 
 export type ArchitecturalDrawing = {

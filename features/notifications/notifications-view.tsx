@@ -7,14 +7,14 @@ import { useLanguage } from "@/components/i18n/language-provider";
 type View = "dashboard" | "projects" | "tasks" | "clients" | "content" | "knowledge" | "finance" | "activity" | "notifications";
 type Filter = "all" | "unread" | NotificationPriority;
 
-export function NotificationsView({notifications,onNavigate,onToggleRead,onMarkAll,onDelete}:{notifications:Notification[];onNavigate:(v:View)=>void;onToggleRead:(n:Notification)=>void;onMarkAll:()=>void;onDelete:(n:Notification)=>void}){
+export function NotificationsView({notifications,onNavigate,onToggleRead,onMarkAll,onDelete,onOpenTask}:{notifications:Notification[];onNavigate:(v:View)=>void;onToggleRead:(n:Notification)=>void;onMarkAll:()=>void;onDelete:(n:Notification)=>void;onOpenTask?:(id:string)=>void}){
  const {locale,text}=useLanguage();
  const moduleLabels:Record<ActivityModule,string>={projects:text("المشاريع","Projects"),tasks:text("المهام","Tasks"),clients:text("العملاء","Clients"),content:text("المحتوى","Content"),knowledge:text("المعرفة","Knowledge"),finance:text("المالية","Finance"),system:text("النظام","System")};
  const priorityLabels:Record<NotificationPriority,string>={high:text("عالية","High"),medium:text("متوسطة","Medium"),info:text("معلومات","Info")};
  const [query,setQuery]=useState(""); const [filter,setFilter]=useState<Filter>("all");
  const filtered=useMemo(()=>notifications.filter(n=>{const q=query.trim().toLowerCase();return(!q||[n.title,n.message,moduleLabels[n.module]].some(v=>(v??"").toLowerCase().includes(q)))&&(filter==="all"||(filter==="unread"?!n.is_read:n.priority===filter));}),[notifications,query,filter,locale]);
  const unread=notifications.filter(n=>!n.is_read).length;
- function open(n:Notification){if(!n.is_read)onToggleRead(n);if(n.module!=="system")onNavigate(n.module as View)}
+ function open(n:Notification){if(!n.is_read)onToggleRead(n);if(n.module!=="system")onNavigate(n.module as View);if(n.module==="tasks" && n.entity_id)onOpenTask?.(n.entity_id)}
  const filters:[Filter,string][]=[["all",text("الكل","All")],["unread",text("غير المقروءة","Unread")],["high",text("عالية","High")],["medium",text("متوسطة","Medium")],["info",text("معلومات","Info")]];
  return <section className="notifications-page">
   <div className="panel notification-summary"><div><span className="section-kicker">NOTIFICATION CENTER</span><h2>{unread?text(`${unread} إشعار غير مقروء`,`${unread} unread notification(s)`):text("أنت على اطلاع كامل","You're all caught up")}</h2><p>{unread?text("راجع العناصر المهمة ثم انتقل مباشرة إلى مصدرها.","Review important items, then jump directly to their source."):text("لا توجد إشعارات جديدة الآن.","There are no new notifications right now.")}</p></div><button className="secondary" onClick={onMarkAll} disabled={!unread}><CheckCheck size={17}/> {text("تعليم الكل كمقروء","Mark all as read")}</button></div>

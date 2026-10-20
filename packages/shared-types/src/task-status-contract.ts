@@ -1,7 +1,10 @@
 /** Canonical read contract. New workflow writes remain disabled in Phase 1. */
 export const TASK_STATUSES = ["To Do", "In Progress", "Waiting", "Review", "Done"] as const;
 export type CanonicalTaskStatus = typeof TASK_STATUSES[number];
-export const TASK_WORKFLOW_WRITES_ENABLED = false;
+// Synthetic local rehearsal only. Production builds and remote URLs fail closed.
+export const TASK_WORKFLOW_WRITES_ENABLED = typeof process !== 'undefined' && process.env.NODE_ENV !== 'production'
+  && ((process.env.NEXT_PUBLIC_BASOUL_LOCAL_WORKFLOW === '1' && process.env.NEXT_PUBLIC_SUPABASE_URL === 'http://127.0.0.1:35439')
+    || (process.env.EXPO_PUBLIC_BASOUL_LOCAL_WORKFLOW === '1' && process.env.EXPO_PUBLIC_SUPABASE_URL === 'http://127.0.0.1:35439'));
 export const TASK_STATUS_LABELS: Record<CanonicalTaskStatus, string> = {
   "To Do": "للعمل", "In Progress": "قيد التنفيذ", Waiting: "بانتظار متطلب خارجي", Review: "بانتظار المراجعة", Done: "مكتملة",
 };

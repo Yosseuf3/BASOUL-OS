@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
@@ -15,7 +15,8 @@ function load(relative, stateOverride) {
     if (name === "react-native") return { Text: "Text", TextInput: "TextInput", View: "View", TouchableOpacity: "TouchableOpacity", StyleSheet: { create: (value) => value } };
     if (name === "@basoul/yvl-adapter/native") return { basoulYvlNative: { colors: {}, space: {}, radius: {} } };
     if (name.endsWith("/Screen")) return { Screen: "Screen" };
-    return load(resolve(dirname(filename), `${name}.ts`));
+    const target = resolve(dirname(filename), `${name}.ts`);
+    return load(existsSync(target) ? target : resolve(dirname(filename), `${name}.tsx`));
   };
   runInNewContext(ts.transpileModule(readFileSync(filename, "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText,
     { exports: compiled.exports, module: compiled, require, Date, Intl });

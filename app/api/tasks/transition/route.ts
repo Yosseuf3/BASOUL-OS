@@ -6,7 +6,7 @@ import { taskTransitionError, taskTransitionRpcArgs, type TaskTransitionRequest 
 
 export async function POST(request: NextRequest) {
   // No production workflow activation is included in this PR.
-  if (!TASK_WORKFLOW_WRITES_ENABLED) return NextResponse.json({code:'TASK_UPDATE_REQUIRED',error:'انتقالات المهام غير مفعلة بعد.'},{status:503});
+  if (!TASK_WORKFLOW_WRITES_ENABLED) return NextResponse.json({code:'TASK_UPDATE_REQUIRED',error:'حدّث التطبيق؛ انتقالات المهام غير مفعلة. / Upgrade required; task transitions are not activated.'},{status:503});
   const organizationId=requestedOrganization(request.headers);
   if (!organizationId) return NextResponse.json({code:'TASK_TRANSITION_REJECTED',error:'Organization context required'},{status:400});
   const token=request.headers.get('authorization') ?? '';
