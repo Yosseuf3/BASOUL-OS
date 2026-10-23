@@ -71,6 +71,13 @@ test("cache generation is invalidated as soon as organization switch begins", as
   const f = storeFixture([org("a"), org("b")]); const first = await f.store.refresh("u1", "a");
   const pending = f.store.refresh("u1", "b"); assert.equal(f.store.isCurrent(first.revision), false); await pending;
 });
+
+test('Mobile operation leases do not revive after A -> B -> A',async()=>{
+  const f=storeFixture([org('a'),org('b')]);const first=await f.store.refresh('u1','a');
+  assert.equal(first.selected.isCurrent(),true);
+  const pending=f.store.refresh('u1','b');assert.equal(first.selected.isCurrent(),false);await pending;
+  await f.store.refresh('u1','a');assert.equal(first.selected.isCurrent(),false);
+});
 test("late membership responses cannot replace a newly selected organization", async () => {
   const f = storeFixture(); let release; let calls = 0;
   const store = new OrganizationContextStore(f.storage, async () => ++calls === 1 ? new Promise((done) => { release = done; }) : [org("a"), org("b")]);
@@ -88,7 +95,7 @@ function clientFixture() {
   const calls = [], tables = {
     organization_memberships: [{ user_id: "u1", organization_id: "a", role: "owner", status: "active", organizations: { id: "a", name: "Organization a" } }],
     projects: [{ id: "pa", organization_id: "a", user_id: "colleague" }, { id: "pb", organization_id: "b", user_id: "u1" }],
-    tasks: [{ id: "ta", organization_id: "a", user_id: "u1", status: "To Do", progress: 0 }, { id: "tb", organization_id: "b", user_id: "u1" }],
+    tasks: [{ id: "ta", organization_id: "a", user_id: "u1", status: "To Do", progress: 0, updated_at: "v1" }, { id: "tb", organization_id: "b", user_id: "u1" }],
     notifications: [{ id: "na", organization_id: "a", user_id: "u1" }, { id: "other-recipient", organization_id: "a", user_id: "u2" }, { id: "nb", organization_id: "b", user_id: "u1" }],
     architectural_drawings: [], architectural_reviews: [], architectural_plan_elements: [], architectural_review_comments: [], architectural_review_findings: [],
   };
@@ -125,6 +132,22 @@ test("recipient-private notification behavior remains user filtered within the s
   const f = clientFixture(); const data = await f.services.loadMobileWorkspace(org("a"));
   assert.deepEqual(Array.from(data.notifications, (n) => n.id), ["na"]);
 });
+
+test('Mobile finding decisions preserve analysis state and reject stale or converted sources',async()=>{
+  const f=clientFixture();
+  const source={id:'finding',review_id:'review',organization_id:'a',user_id:'u1',status:'open',updated_at:'v1'};
+  f.tables.architectural_review_findings.push(source);
+  f.tables.architectural_reviews.push({id:'review',status:'ready'});
+  await f.services.updateMobileFindingDecision(org('a'),{...source},'resolved');
+  assert.equal(source.status,'resolved');
+  assert.equal(f.tables.architectural_reviews[0].status,'ready');
+  source.updated_at='v2';
+  await assert.rejects(f.services.updateMobileFindingDecision(org('a'),{...source,updated_at:'v1'},'accepted'));
+  assert.equal(source.status,'resolved');
+  source.status='converted_to_task';
+  await assert.rejects(f.services.updateMobileFindingDecision(org('a'),{...source},'rejected'));
+  assert.equal(source.status,'converted_to_task');
+});
 test("organization-scoped writes specify tenant and authenticated owner without default inference", async () => {
   const f = clientFixture(); await f.services.createMobileTask(org("a"), { title: "Fixture", project_id: "pa", priority: "Low", due_date: null });
   const inserted = f.tables.tasks.find((row) => row.id === "new"); assert.equal(inserted.organization_id, "a"); assert.equal(inserted.user_id, "u1");
@@ -134,7 +157,7 @@ test("cross-organization project references are rejected before a task write", a
   assert.ok(!f.calls.some((call) => call.kind === "insert"));
 });
 test("cross-organization task mutations cannot modify a stale record", async () => {
-  const f = clientFixture(); await assert.rejects(f.services.advanceMobileTask(org("a"), { id: "tb", status: "To Do", progress: 0 }), /Scoped record/);
+  const f = clientFixture(); await assert.rejects(f.services.advanceMobileTask(org("a"), { id: "tb", status: "To Do", progress: 0, updated_at: "v1" }), /TASK_UPDATE_REQUIRED/);
   assert.equal(f.tables.tasks.find((row) => row.id === "tb").status, undefined);
 });
 test("revoked membership and different authenticated user reject reads and writes before workspace I/O", async () => {
@@ -147,6 +170,16 @@ test("fresh role prevents viewer writes even if cached context claims owner", as
   const f = clientFixture(); f.tables.organization_memberships[0].role = "viewer";
   await assert.rejects(f.services.createMobileTask(org("a"), {}), /access denied/);
   assert.ok(!f.calls.some((call) => call.kind === "insert"));
+});
+
+test('Mobile selection changed during identity verification cannot submit a task',async()=>{
+  const f=clientFixture(),selection=storeFixture([org('a'),org('b')]);
+  const snapshot=await selection.store.refresh('u1','a');let release;
+  f.client.auth.getUser=()=>new Promise(done=>{release=done;});
+  const pending=f.services.createMobileTask(snapshot.selected,{title:'stale',project_id:'pa'});
+  await tick();await selection.store.refresh('u1','b');release({data:{user:{id:'u1'}},error:null});
+  await assert.rejects(pending,cause=>cause.code==='ORGANIZATION_CHANGED');
+  assert.ok(!f.calls.some(call=>call.kind==='insert'));
 });
 
 test("all Mobile mutation entry points reject foreign-tenant records or contexts", async () => {
@@ -194,8 +227,8 @@ test("confirmed revocation removes context while permission rejection alone does
 test("temporary identity verification failure blocks task submission without claiming revocation", async () => {
   const f = clientFixture(); f.client.auth.getUser = async () => ({ data: { user: null }, error: { message: "Network request failed" } });
   let failure;
-  try { await f.services.advanceMobileTask(org("a"), { id: "ta", status: "To Do", progress: 0 }); } catch (cause) { failure = cause; }
-  assert.equal(failure.reason, "unverified"); assert.equal(losesOrganizationAccess(failure), false);
+  try { await f.services.advanceMobileTask(org("a"), { id: "ta", status: "To Do", progress: 0, updated_at: "v1" }); } catch (cause) { failure = cause; }
+  assert.equal(failure.code, "TASK_UPDATE_REQUIRED"); assert.equal(losesOrganizationAccess(failure), false);
   assert.ok(!f.calls.some((call) => call.kind === "update")); assert.equal(f.tables.tasks[0].status, "To Do");
 });
 
@@ -236,4 +269,18 @@ test("App delegates guarded operations and only clears auth state on account cha
   assert.match(app, /return runOrganizationOperation/); assert.match(app, /if \(changed\).*setOrganization\(null\)/);
   assert.match(app, /if \(losesOrganizationAccess\(cause\)\)/);
   assert.ok(!app.includes("organizationStore.current.invalidate(); setOrganization(null)"));
+});
+
+test("Inactive Mobile start fails closed and preserves stored execution percentage", async () => {
+  const f = clientFixture(); f.tables.tasks[0].progress = 0;
+  await assert.rejects(f.services.advanceMobileTask(org("a"), { id: "ta", status: "To Do", progress: 0, updated_at: "v1" }), /TASK_UPDATE_REQUIRED/);
+  assert.equal(f.tables.tasks[0].status, "To Do"); assert.equal(f.tables.tasks[0].progress, 0);
+});
+
+test("Mobile new workflow and unknown states are rejected before any database query", async () => {
+  for (const status of ["In Progress", "Waiting", "Review", "Done", "unexpected"]) {
+    const f = clientFixture();
+    await assert.rejects(f.services.advanceMobileTask(org("a"), { id: "ta", status, progress: 15 }), /TASK_/);
+    assert.equal(f.calls.length, 0); assert.equal(f.tables.tasks[0].status, "To Do");
+  }
 });

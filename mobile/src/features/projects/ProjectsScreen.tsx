@@ -1,11 +1,13 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Screen } from "../../components/Screen";
 import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
-import type { Project } from "../../types/domain";
+import type { Project, Task } from "../../types/domain";
 
 const statusLabels: Record<Project["status"], string> = { Planning: "تخطيط", Active: "نشط", "On Hold": "متوقف مؤقتًا", Completed: "مكتمل" };
 
-export function ProjectsScreen({ projects, onBack }: { projects: Project[]; onBack: () => void }) {
+export function ProjectsScreen({projects,tasks,selectedId,onSelect,onTask,onCreate,onBack}:{projects:Project[];tasks:Task[];selectedId:string|null;onSelect:(id:string|null)=>void;onTask:(task:Task)=>void;onCreate:()=>void;onBack:()=>void}) {
+  const selected=projects.find(p=>p.id===selectedId);
+  if(selected)return <Screen><Header title={selected.name} onBack={()=>onSelect(null)}/><TouchableOpacity accessibilityRole="button" onPress={onCreate} style={styles.back}><Text style={styles.backText}>مهمة للمشروع / Project task</Text></TouchableOpacity>{tasks.filter(t=>t.project_id===selected.id).map(task=><TouchableOpacity key={task.id} accessibilityRole="button" style={styles.card} onPress={()=>onTask(task)}><Text style={styles.name}>{task.title}</Text><Text style={styles.meta}>{task.status}</Text></TouchableOpacity>)}<Text style={styles.empty}>إدارة الملفات والملاحظات متاحة عبر Web. / Files and notes are managed on Web.</Text></Screen>;
   return (
     <Screen>
       <Header title="المشاريع" onBack={onBack} />
@@ -13,7 +15,7 @@ export function ProjectsScreen({ projects, onBack }: { projects: Project[]; onBa
       {projects.length === 0 ? <Text style={styles.empty}>لا توجد مشاريع بعد.</Text> : projects.map((project) => (
         <View key={project.id} style={styles.card}>
           <View style={styles.cardTop}><Text style={styles.status}>{statusLabels[project.status]}</Text><Text style={styles.number}>{project.project_number || "PROJECT"}</Text></View>
-          <Text style={styles.name}>{project.name}</Text>
+          <TouchableOpacity accessibilityRole="button" onPress={()=>onSelect(project.id)}><Text style={styles.name}>{project.name}</Text><Text style={styles.backText}>فتح المشروع / Open project</Text></TouchableOpacity>
           <Text style={styles.meta}>{project.client_name || "بدون عميل"}{project.location ? ` · ${project.location}` : ""}</Text>
           <View style={styles.details}><Text style={styles.detail}>المرحلة: {project.design_phase || "غير محددة"}</Text><Text style={styles.detail}>الأولوية: {project.priority}</Text></View>
           <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.max(0, Math.min(100, project.progress))}%` }]} /></View>

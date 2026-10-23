@@ -2,7 +2,8 @@ export type ProjectStatus = "Planning" | "Active" | "On Hold" | "Completed";
 export type ProjectType = "Villa" | "Residential Building" | "Commercial" | "Office" | "Interior" | "Other";
 export type DesignPhase = "Concept" | "Schematic" | "Design Development" | "Construction Documents" | "Site Supervision" | "Handover";
 export type PriorityLevel = "Low" | "Medium" | "High" | "Critical";
-export type TaskStatus = "To Do" | "In Progress" | "Review" | "Done";
+export type { CanonicalTaskStatus as TaskStatus } from "../packages/shared-types/src/task-status-contract";
+import type { CanonicalTaskStatus as TaskStatus } from "../packages/shared-types/src/task-status-contract";
 export type ClientStatus = "Lead" | "Active" | "Inactive" | "Completed";
 
 export type Project = {
@@ -16,11 +17,12 @@ export type Project = {
 export type ProjectInput = Omit<Project, "id" | "user_id" | "created_at" | "updated_at">;
 
 export type Task = {
-  id: string; user_id: string; project_id: string; title: string; description: string | null;
+  archived?: boolean;
+  id: string; user_id: string; organization_id: string; project_id: string; title: string; description: string | null;
   status: TaskStatus; priority: PriorityLevel; progress: number; due_date: string | null;
   created_at: string; updated_at: string;
 };
-export type TaskInput = Omit<Task, "id" | "user_id" | "created_at" | "updated_at">;
+export type TaskInput = Omit<Task, "id" | "user_id" | "organization_id" | "created_at" | "updated_at">;
 
 export type Client = {
   id: string; user_id: string; name: string; company: string | null; status: ClientStatus;
@@ -69,6 +71,7 @@ export type ActivityEvent = {
 
 export type NotificationPriority = "info" | "medium" | "high";
 export type Notification = {
+  source_kind?: string | null;
   id: string; user_id: string; activity_event_id: string | null; module: ActivityModule;
   priority: NotificationPriority; title: string; message: string | null; entity_id: string | null;
   is_read: boolean; read_at: string | null; created_at: string;

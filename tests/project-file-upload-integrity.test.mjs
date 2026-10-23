@@ -10,8 +10,9 @@ const migration = await readFile(migrationPath, "utf8");
 
 test("project file uploads inherit organization_id from the selected project", () => {
   assert.match(service, /from\("projects"\)[\s\S]*select\("organization_id"\)[\s\S]*eq\("id", projectId\)/);
-  assert.match(service, /organization_id:\s*organizationId/);
-  assert.match(service, /const storagePath = `\$\{userData\.user\.id\}\/\$\{projectId\}\//);
+  assert.match(service, /organization_id:\s*lease\.organizationId/);
+  assert.match(service, /storage_path:lease\.userId\+'\/'\+projectId\+'\/'\+id/);
+  assert.match(service, /recoverFileUpload/);
 });
 
 test("project file migration repairs bucket and enforces project/organization integrity", () => {

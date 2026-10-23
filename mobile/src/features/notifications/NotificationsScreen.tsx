@@ -3,13 +3,13 @@ import { Screen } from "../../components/Screen";
 import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import type { Notification } from "../../types/domain";
 
-export function NotificationsScreen({ notifications, onBack, onRead }: { notifications: Notification[]; onBack: () => void; onRead: (id: string) => void }) {
+export function NotificationsScreen({ notifications, onBack, onRead, onOpenTask, onOpenMembership }: { notifications: Notification[]; onBack: () => void; onRead: (id: string) => void; onOpenTask?: (id: string) => void; onOpenMembership?: (id: string) => void }) {
   return (
     <Screen>
       <View style={styles.header}><TouchableOpacity onPress={onBack} style={styles.back}><Text style={styles.backText}>عودة</Text></TouchableOpacity><Text style={styles.title}>الإشعارات</Text></View>
       <Text style={styles.summary}>{notifications.filter((item) => !item.is_read).length} غير مقروء</Text>
       {notifications.length === 0 ? <Text style={styles.empty}>لا توجد إشعارات حاليًا.</Text> : notifications.map((item) => (
-        <TouchableOpacity key={item.id} style={[styles.card, !item.is_read && styles.unread]} onPress={() => !item.is_read && onRead(item.id)}>
+        <TouchableOpacity key={item.id} style={[styles.card, !item.is_read && styles.unread]} onPress={() => { if(!item.is_read)onRead(item.id);if(item.source_kind==="membership")onOpenMembership?.(item.id);else if(item.module==="tasks" && item.entity_id)onOpenTask?.(item.entity_id); }}>
           <View style={styles.cardTop}><Text style={styles.priority}>{item.priority === "high" ? "عاجل" : item.priority === "medium" ? "مهم" : "معلومة"}</Text><Text style={styles.date}>{new Intl.DateTimeFormat("ar-SA", { month: "short", day: "numeric" }).format(new Date(item.created_at))}</Text></View>
           <Text style={styles.name}>{item.title}</Text>
           {item.message ? <Text style={styles.message}>{item.message}</Text> : null}

@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import {organizationClient} from '../organizations/scoped-client';
 import type { CloudPlanElement } from "@/lib/architecture/plan-understanding-service";
 
 export type ReviewComment = {
@@ -18,12 +18,14 @@ export type ReviewComment = {
 };
 
 async function requireUserId(): Promise<string> {
+  const supabase=organizationClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw error ?? new Error("Authentication is required.");
   return data.user.id;
 }
 
 export async function listReviewComments(projectId?: string): Promise<ReviewComment[]> {
+  const supabase=organizationClient();
   let query = supabase
     .from("architectural_review_comments")
     .select("*")
@@ -41,6 +43,7 @@ export async function createReviewComment(input: {
   body: string;
   findingId?: string | null;
 }): Promise<ReviewComment> {
+  const supabase=organizationClient();
   const userId = await requireUserId();
   const page = typeof input.element.geometry.page === "number" ? input.element.geometry.page : null;
   const { data, error } = await supabase
@@ -62,6 +65,7 @@ export async function createReviewComment(input: {
 }
 
 export async function setReviewCommentStatus(commentId: string, status: "open" | "resolved"): Promise<void> {
+  const supabase=organizationClient();
   const userId = await requireUserId();
   const { error } = await supabase
     .from("architectural_review_comments")
@@ -76,6 +80,7 @@ export async function setReviewCommentStatus(commentId: string, status: "open" |
 }
 
 export async function deleteReviewComment(commentId: string): Promise<void> {
+  const supabase=organizationClient();
   const userId = await requireUserId();
   const { error } = await supabase
     .from("architectural_review_comments")

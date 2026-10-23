@@ -1,6 +1,15 @@
 import type { MobileOrganizationRole } from "../permissions/organization";
+import {assertOrganizationLease} from '../../../packages/shared-types/src/organization-scope';
+import {guardOrganizationClient} from '../../../packages/services/src/organization-guard';
+import {supabase} from '../config/supabase';
 
-export type OrganizationContext = { userId: string; organizationId: string; name: string; role: MobileOrganizationRole };
+export type OrganizationContext = { userId: string; organizationId: string; name: string; role: MobileOrganizationRole; revision?:number; isCurrent?:()=>boolean };
+export function assertCurrentOrganization(context:OrganizationContext) {assertOrganizationLease({isCurrent:()=>context.isCurrent?.()??true});}
+export function mobileOrganizationClient(context:OrganizationContext) {
+  assertCurrentOrganization(context);
+  if(!supabase)throw new Error('Supabase is not configured.');
+  return guardOrganizationClient(supabase,()=>context.isCurrent?.()??true);
+}
 export type OrganizationSnapshot = { userId: string | null; memberships: OrganizationContext[]; selected: OrganizationContext | null; revision: number };
 type SelectionStorage = { getItem(key: string): Promise<string | null>; setItem(key: string, value: string): Promise<void>; removeItem(key: string): Promise<void> };
 
@@ -41,9 +50,9 @@ export class OrganizationContextStore {
     const selected = memberships.find((membership) => membership.organizationId === candidate)
       ?? (memberships.length === 1 ? memberships[0] : null);
     if (requestedId && selected?.organizationId !== requestedId) throw new Error("Organization membership is no longer active");
-    this.selected = selected;
+    this.selected = selected?{...selected,revision,isCurrent:()=>this.isCurrent(revision)&&this.userId===userId&&this.selected?.organizationId===selected.organizationId}:null;
     await this.persist(userId, selected?.organizationId ?? null).catch(() => undefined);
     if (!this.isCurrent(revision)) return null;
-    return { userId, memberships, selected, revision };
+    return { userId, memberships, selected:this.selected, revision };
   }
 }

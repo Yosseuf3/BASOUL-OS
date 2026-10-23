@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import {organizationClient} from '../organizations/scoped-client';
 
 export type PlanElementType = "wall" | "opening" | "room" | "label" | "dimension";
 export type PlanElementStatus = "detected" | "confirmed" | "corrected" | "rejected";
@@ -67,12 +67,14 @@ export function formatPlanElementLocation(element: Pick<CloudPlanElement, "geome
 }
 
 async function requireUserId(): Promise<string> {
+  const supabase=organizationClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw error ?? new Error("Authentication is required.");
   return data.user.id;
 }
 
 export async function listPlanElements(projectId?: string): Promise<CloudPlanElement[]> {
+  const supabase=organizationClient();
   let query = supabase
     .from("architectural_plan_elements")
     .select("*")
@@ -84,6 +86,7 @@ export async function listPlanElements(projectId?: string): Promise<CloudPlanEle
 }
 
 export async function createPlanElement(input: PlanElementInput): Promise<CloudPlanElement> {
+  const supabase=organizationClient();
   const userId = await requireUserId();
   const { data, error } = await supabase
     .from("architectural_plan_elements")
@@ -110,6 +113,7 @@ export async function correctPlanElement(
   element: CloudPlanElement,
   input: Pick<PlanElementInput, "elementType" | "label" | "value" | "unit" | "notes">,
 ): Promise<void> {
+  const supabase=organizationClient();
   const userId = await requireUserId();
   const { error } = await supabase
     .from("architectural_plan_elements")
@@ -131,6 +135,7 @@ export async function updatePlanElementStatus(
   elementId: string,
   status: Extract<PlanElementStatus, "confirmed" | "rejected">,
 ): Promise<void> {
+  const supabase=organizationClient();
   const userId = await requireUserId();
   const { error } = await supabase
     .from("architectural_plan_elements")

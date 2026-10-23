@@ -86,8 +86,10 @@ export function PascalRuntimeViewer({
 
   useEffect(() => {
     setReady(false)
-    if (!activeScene || !cadProvenanceReady) return
+    if (!activeScene || !cadProvenanceReady) { setScene({}, []); return }
     setScene(activeScene.nodes as Record<AnyNodeId, AnyNode>, activeScene.rootNodeIds as AnyNodeId[])
+    // The viewer store is shared across mounts: never retain a previous tenant.
+    return () => { setScene({}, []) }
   }, [activeScene, cadProvenanceReady, setScene])
 
   if (!activeScene || !cadProvenanceReady) return null

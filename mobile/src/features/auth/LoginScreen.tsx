@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { YvlButton, YvlTextInput } from "../../components/yvl-primitives";
-import { isMobileConfigured, supabase } from "../../config/supabase";
+import { isMobileConfigured, isSyntheticLocalEnvironment, supabase } from "../../config/supabase";
 import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 
 export function LoginScreen() {
@@ -41,7 +41,7 @@ export function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+    <KeyboardAvoidingView testID={isSyntheticLocalEnvironment?'basoul-synthetic-login':undefined} style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : "height"}>
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled">
       <View style={styles.hero}>
         <Image source={require("../../../../brand/basoul/assets/primary-logo/BASOUL_Primary_Logo_Master.png")} style={styles.logo} resizeMode="contain" accessible accessibilityLabel="BASOUL" />

@@ -18,7 +18,8 @@ test("the server strips client identity claims and injects the verified user", a
   assert.match(route, /resolved\.auth\.organizationId/);
   assert.match(route, /eq\("organization_id", resolved\.auth\.organizationId\)/);
   assert.doesNotMatch(auth, /ensure_personal_organization/);
-  assert.match(auth, /select\("organization_id,role"\)/);
+  assert.match(auth, /select\("role,status"\)/);
+  assert.match(auth, /eq\("organization_id",\s*requestedOrganizationId\)/);
   assert.doesNotMatch(route, /service_role|SUPABASE_SERVICE/);
 });
 

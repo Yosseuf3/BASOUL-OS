@@ -1,3 +1,4 @@
+import type { CanonicalTaskStatus } from "../../../packages/shared-types/src/task-status-contract";
 export type ProjectStatus = "Planning" | "Active" | "On Hold" | "Completed";
 export type PriorityLevel = "Low" | "Medium" | "High" | "Critical";
 
@@ -16,22 +17,29 @@ export type Project = {
 };
 
 export type Task = {
+  archived?: boolean;
   id: string;
+  user_id?: string;
+  organization_id?: string;
   project_id: string;
   title: string;
-  status: "To Do" | "In Progress" | "Review" | "Done";
+  status: CanonicalTaskStatus;
   priority: PriorityLevel;
   progress: number;
   due_date: string | null;
+  updated_at: string;
 };
 
 export type Notification = {
+  source_kind?: string | null;
   id: string;
   title: string;
   message: string | null;
   priority: "info" | "medium" | "high";
   is_read: boolean;
   created_at: string;
+  module?: string;
+  entity_id?: string | null;
 };
 
 export type ArchitecturalDrawing = {
@@ -46,6 +54,7 @@ export type ArchitecturalDrawing = {
 };
 
 export type ArchitecturalFinding = {
+  updated_at: string;
   id: string;
   review_id: string;
   drawing_id: string;
@@ -65,7 +74,7 @@ export type ArchitecturalReview = {
   id: string;
   drawing_id: string;
   project_id: string;
-  status: "draft" | "ready" | "completed";
+  status: "draft" | "ready" | "completed" | "processing" | "failed" | "archived";
   plan_health: number;
   created_at: string;
   architectural_review_findings: ArchitecturalFinding[];
