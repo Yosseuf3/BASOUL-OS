@@ -13,6 +13,26 @@ permissions:
   contents: read
 
 jobs:
+  scope:
+    name: Release scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      web: ${{ steps.scope.outputs.web }}
+      mobile: ${{ steps.scope.outputs.mobile }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+      - run: node --test tests/release-scope.test.mjs
+      - id: scope
+        run: node scripts/release-scope.mjs
+
+  # Keep both existing required jobs unconditional until replacement rules
+  # are verified and separately approved. No active protection is bypassed.
   web:
     name: Web quality
     runs-on: ubuntu-latest
@@ -55,3 +75,33 @@ jobs:
       - run: npm run audit:production
       - run: npm run typecheck
       - run: npm run doctor
+
+  web-release:
+    name: Web release gate
+    if: ${{ always() }}
+    needs: [scope, web]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+      - run: node scripts/release-scope.mjs gate web
+        env:
+          RELEASE_NEEDS: ${{ toJSON(needs) }}
+
+  android-release:
+    name: Android release gate
+    if: ${{ always() }}
+    needs: [scope, mobile]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+      - run: node scripts/release-scope.mjs gate mobile
+        env:
+          RELEASE_NEEDS: ${{ toJSON(needs) }}

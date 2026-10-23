@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "main": false,
-      "codex/repository-reconciliation": false
+      "codex/repository-reconciliation": false,
+      "codex/path-aware-release-gates": false
     }
   },
   "services": {
