@@ -7,7 +7,8 @@ export function classify(paths) {
   const scope = {web: false, mobile: false};
   if (!paths.length) return {web: true, mobile: true};
   for (const path of paths) {
-    if (/^mobile\//.test(path)) scope.mobile = true;
+    if (/(^|\/)(api|auth|iam|rls|migrations?|security|permissions?)(\/|[.-]|$)/i.test(path)) { scope.web = true; scope.mobile = true; }
+    else if (/^mobile\//.test(path)) scope.mobile = true;
     else if (/^(app|components|public)\//.test(path) || /^(next\.config\.|next-env\.d\.ts$|postcss\.config\.)/.test(path)) scope.web = true;
     else { scope.web = true; scope.mobile = true; }
   }
@@ -19,8 +20,10 @@ export function evaluate(platform, needs) {
   if (needs.scope?.result !== 'success') throw new Error('Scope detection did not succeed');
   const affected = needs.scope.outputs?.[platform];
   if (!['true', 'false'].includes(affected)) throw new Error('Missing or invalid scope output');
-  if (affected === 'true' && needs[platform]?.result !== 'success') {
-    throw new Error(`${platform} is affected: mandatory quality/security job did not succeed`);
+  // Even non-affected Mobile needs its successful scope-verification job.
+  // A missing/skipped/cancelled dependency is never affirmative evidence.
+  if (needs[platform]?.result !== 'success') {
+    throw new Error(`${platform}: required quality/security or scope-verification job did not succeed`);
   }
   return affected === 'true' ? 'Validated affected platform' : 'Not affected; no release certification for this platform';
 }
