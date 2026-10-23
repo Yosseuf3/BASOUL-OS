@@ -55,3 +55,31 @@ jobs:
       - run: npm run audit:production
       - run: npm run typecheck
       - run: npm run doctor
+
+  dependency_refresh:
+    name: Temporary Expo lockfile refresh
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'Yosseuf3/BASOUL-OS' && github.head_ref == 'security/temporary-tooling-exception-20261030'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: security/temporary-tooling-exception-20261030
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+      - name: Resolve exact Expo SDK patch releases without lifecycle scripts
+        run: |
+          set -euo pipefail
+          npm --prefix mobile install --package-lock-only --ignore-scripts --save-exact expo@57.0.31 expo-dev-client@57.0.20
+          git diff --check
+          git add mobile/package.json mobile/package-lock.json
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'fix(mobile): align Expo SDK 57 patch dependencies'
+            git push origin HEAD:security/temporary-tooling-exception-20261030
+          fi
