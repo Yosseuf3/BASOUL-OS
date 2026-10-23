@@ -1,4 +1,4 @@
-name: One-time Next.js security lock refresh
+name: One-time security dependency refresh
 on:
   push:
     branches:
@@ -21,16 +21,19 @@ jobs:
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
-      - name: Upgrade Next.js and regenerate npm lockfile
+      - name: Upgrade Next.js and Expo SDK patch dependencies
         run: |
           set -euo pipefail
           npm install --save-exact next@16.4.3
+          npm --prefix mobile install --save-exact expo@57.0.31 expo-dev-client@57.0.20
           npm ci
+          npm --prefix mobile ci
           npm audit --omit=dev --audit-level=high
+          npm --prefix mobile run doctor
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          git diff --cached --quiet || git commit -m "fix(web): update Next.js to patched 16.4.3"
+          git add package.json package-lock.json mobile/package.json mobile/package-lock.json
+          git diff --cached --quiet || git commit -m "fix(deps): patch Next.js and align Expo SDK 57"
           if git rev-parse HEAD^ >/dev/null 2>&1 && git log -1 --format=%s | grep -q '^fix(web): update Next.js'; then
             git push origin HEAD:security/temporary-tooling-exception-20261030
           fi
