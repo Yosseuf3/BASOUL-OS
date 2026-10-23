@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 // Temporary BUILD/TOOLING-ONLY exception for GHSA-86w9-cpqp-85rv.
-// Revalidated 2026-10-08: expo@57.0.27 -> @expo/cli@57.0.28 -> node-forge@1.4.0,
+// Revalidated 2026-10-08: expo@57.0.31 -> @expo/cli@57.0.32 -> node-forge@1.4.0,
 // including @expo/code-signing-certificates@0.0.6 -> node-forge@1.4.0.
 // node-forge is not reachable from the BASOUL Android runtime graph. Upstream
 // has no patched release as of approval. This exception expires 2026-10-30.
@@ -12,8 +12,8 @@ const nodeForgeException = {
   advisory: "GHSA-86w9-cpqp-85rv",
   expiresAt: "2026-10-30T00:00:00Z",
   versions: {
-    expo: "57.0.27",
-    cli: "57.0.28",
+    expo: "57.0.31",
+    cli: "57.0.32",
     certificates: "0.0.6",
     forge: "1.4.0",
   },
@@ -72,12 +72,12 @@ const certificates = packageAt(
 const forge = packageAt("node_modules/node-forge", nodeForgeException.versions.forge);
 
 if (
-  manifest.dependencies?.expo !== "57.0.27" ||
+  manifest.dependencies?.expo !== "57.0.31" ||
   !expo ||
   !cli ||
   !certificates ||
   !forge ||
-  expo.dependencies?.["@expo/cli"] !== "^57.0.28" ||
+  expo.dependencies?.["@expo/cli"] !== "^57.0.32" ||
   cli.dependencies?.["node-forge"] !== "^1.3.3" ||
   cli.dependencies?.["@expo/code-signing-certificates"] !== "^0.0.6" ||
   certificates.dependencies?.["node-forge"] !== "^1.3.3"
