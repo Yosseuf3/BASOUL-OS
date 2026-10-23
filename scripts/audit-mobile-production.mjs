@@ -227,22 +227,14 @@ const highOrCriticalPackages = Object.entries(report.vulnerabilities ?? {})
   )
   .map(([name]) => name)
   .sort();
+// npm audit now reports only the forge advisory: do not require an already
+// resolved braces advisory to remain present. Keep both dependency topology
+// and exception-expiry checks above unchanged.
 const expectedAffectedPackages = [
   "@expo/cli",
   "@expo/code-signing-certificates",
-  "@expo/metro",
-  "@expo/metro-config",
-  "@react-native/community-cli-plugin",
-  "@react-native/virtualized-lists",
-  "braces",
   "expo",
-  "metro",
-  "metro-config",
-  "metro-file-map",
-  "metro-transform-worker",
-  "micromatch",
   "node-forge",
-  "react-native",
 ].sort();
 const highOrCriticalAdvisories = Object.values(report.vulnerabilities ?? {})
   .flatMap((vulnerability) => vulnerability.via ?? [])
@@ -266,9 +258,9 @@ const authorizedBracesAdvisories = highOrCriticalAdvisories.filter(
 
 if (
   (report.metadata?.vulnerabilities?.critical ?? 0) !== 0 ||
-  highOrCriticalAdvisories.length !== 2 ||
+  highOrCriticalAdvisories.length !== 1 ||
   authorizedNodeForgeAdvisories.length !== 1 ||
-  authorizedBracesAdvisories.length !== 1 ||
+  authorizedBracesAdvisories.length !== 0 ||
   JSON.stringify(highOrCriticalPackages) !==
     JSON.stringify(expectedAffectedPackages)
 ) {
@@ -280,7 +272,7 @@ if (
 
 console.warn(
   [
-    `Mobile production dependency audit: only ${nodeForgeException.advisory} and ${bracesException.advisory} are separately and temporarily approved.`,
+    `Mobile production dependency audit: only ${nodeForgeException.advisory} is currently present and temporarily approved; ${bracesException.advisory} is permitted only if separately revalidated.`,
     "Classification: BUILD/TOOLING ONLY; not reachable from the BASOUL Android runtime.",
     `Node-forge exception: expo@${nodeForgeException.versions.expo}, @expo/cli@${nodeForgeException.versions.cli},`,
     `@expo/code-signing-certificates@${nodeForgeException.versions.certificates}, node-forge@${nodeForgeException.versions.forge}.`,
