@@ -13,6 +13,26 @@ permissions:
   contents: read
 
 jobs:
+  scope:
+    name: Release scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      web: ${{ steps.scope.outputs.web }}
+      mobile: ${{ steps.scope.outputs.mobile }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+      - run: node --test tests/release-scope.test.mjs
+      - id: scope
+        run: node scripts/release-scope.mjs
+
+  # Web validation stays unconditional. Mobile's job always verifies scope;
+  # only its expensive steps are conditional, never the required check itself.
   web:
     name: Web quality
     runs-on: ubuntu-latest
@@ -39,19 +59,68 @@ jobs:
 
   mobile:
     name: Mobile quality
+    if: ${{ always() }}
+    needs: [scope]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
       run:
         working-directory: mobile
     steps:
+      - name: Verify Android scope evidence
+        working-directory: ${{ github.workspace }}
+        env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          MOBILE_AFFECTED: ${{ needs.scope.outputs.mobile }}
+        run: |
+          if [[ "$SCOPE_RESULT" != success || ( "$MOBILE_AFFECTED" != true && "$MOBILE_AFFECTED" != false ) ]]; then
+            echo 'Missing or invalid Android scope evidence'
+            exit 1
+          fi
+          echo "Android affected: $MOBILE_AFFECTED"
       - uses: actions/checkout@v4
+        if: ${{ needs.scope.outputs.mobile == 'true' }}
       - uses: actions/setup-node@v4
+        if: ${{ needs.scope.outputs.mobile == 'true' }}
         with:
           node-version: 22.13.1
           cache: npm
           cache-dependency-path: mobile/package-lock.json
       - run: npm ci
+        if: ${{ needs.scope.outputs.mobile == 'true' }}
       - run: npm run audit:production
+        if: ${{ needs.scope.outputs.mobile == 'true' }}
       - run: npm run typecheck
+        if: ${{ needs.scope.outputs.mobile == 'true' }}
       - run: npm run doctor
+        if: ${{ needs.scope.outputs.mobile == 'true' }}
+
+  web-release:
+    name: Web release gate
+    if: ${{ always() }}
+    needs: [scope, web]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+      - run: node scripts/release-scope.mjs gate web
+        env:
+          RELEASE_NEEDS: ${{ toJSON(needs) }}
+
+  android-release:
+    name: Android release gate
+    if: ${{ always() }}
+    needs: [scope, mobile]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+      - run: node scripts/release-scope.mjs gate mobile
+        env:
+          RELEASE_NEEDS: ${{ toJSON(needs) }}
