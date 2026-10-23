@@ -33,9 +33,9 @@ test('confirmation keeps microseconds and progress; missing, stale and unrelated
 function webHarness(response, enabled = true) {
   let calls = 0;
   const web = load('lib/data/task-transition-client.ts', name => name.endsWith('task-status-contract')
-    ? { ...contract, TASK_WORKFLOW_WRITES_ENABLED: enabled } : shared,
+    ? { ...contract, TASK_WORKFLOW_WRITES_ENABLED: enabled } : name.endsWith('organizations/request')?{organizationFetch:async()=>{calls++;return response();}}:shared,
   { fetch: async () => { calls++; return response(); } });
-  return { run: request => web.transitionWebTask({ access_token: 'synthetic' }, request ?? input), calls: () => calls };
+  return { run: request => web.transitionWebTask({ access_token: 'synthetic',user:{id:'user'} }, request ?? input), calls: () => calls };
 }
 test('Web confirms only the requested task and never retries ambiguous responses', async () => {
   for (const data of malformed) {
@@ -66,6 +66,7 @@ test('Web network or unreadable response leaves outcome unconfirmed without a re
 function mobileHarness(data, enabled = true, error = null) {
   let validations = 0, calls = 0;
   const mobile = load('mobile/src/services/task-transitions.ts', name => {
+    if(name.endsWith('/context'))return {mobileOrganizationClient:()=>({rpc:async()=>{calls++;return {data,error};}})};
     if (name.endsWith('/supabase')) return { supabase: { rpc: async () => { calls++; return { data, error }; } } };
     if (name.endsWith('/organizations')) return { validateOrganizationContext: async () => { validations++; } };
     return name.endsWith('task-status-contract') ? { ...contract, TASK_WORKFLOW_WRITES_ENABLED: enabled } : shared;

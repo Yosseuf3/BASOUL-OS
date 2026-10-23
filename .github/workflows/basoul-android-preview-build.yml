@@ -24,6 +24,8 @@ jobs:
           cache-dependency-path: mobile/package-lock.json
       - name: Install dependencies
         run: npm ci
+      - name: Enforce Android dependency security
+        run: npm run audit:production
       - name: Verify Expo authentication
         shell: bash
         run: |

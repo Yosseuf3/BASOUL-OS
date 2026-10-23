@@ -6,10 +6,14 @@ import { historicalMigrationPlan } from './task-historical-manifest.mjs';
 import { createHmac } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
+import {startProjectStorage,stopProjectStorage} from './project-storage-fixture.mjs';
 
 const network = 'basoul-pr173-auth-network';
 const database = 'basoul_pr173_auth_phase2_clean';
 const services = ['basoul-pr173-auth-db', 'basoul-pr173-http-client', 'basoul-pr173-auth-clean', 'basoul-pr173-postgrest'];
+const nativeTeam=process.argv.includes('--native-team');
+const projectOnly=nativeTeam||process.argv.includes('--projects');
+const organizationOnly=projectOnly||process.argv.includes('--organization');
 function docker(args, input) {
   const result = spawnSync('docker', args, { input, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
   // SQL and container environment can contain synthetic secrets: never echo them.
@@ -102,6 +106,7 @@ try {
     assert.match(user.id, /^[0-9a-f-]{36}$/);
     users.push(user.id);
   }
+  if(projectOnly)await startProjectStorage(sql,secret,password);
   if (sql("SELECT to_regclass('public.tasks') IS NULL;") === 't') {
     // Standard JWT claim reader, matching Supabase auth.uid semantics.
     sql(`CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
@@ -126,13 +131,34 @@ try {
   }
   if (sql("SELECT to_regclass('private.task_workflow_activation') IS NULL;") === 't') sql(read('docs/database/proposed-task-rollout-gate.sql'));
   // Exact synthetic organization only, never an externally supplied tenant.
-  sql("INSERT INTO private.task_workflow_activation VALUES('10000000-0000-0000-0000-000000000001',true) ON CONFLICT(organization_id) DO UPDATE SET enabled=true;");
+  if(organizationOnly)assert.equal(sql('SELECT count(*) FROM private.task_workflow_activation WHERE enabled;'),'0','Organization tests require workflow activation to remain off');
+  else sql("INSERT INTO private.task_workflow_activation VALUES('10000000-0000-0000-0000-000000000001',true) ON CONFLICT(organization_id) DO UPDATE SET enabled=true;");
   if (sql("SELECT to_regclass('private.task_notification_receipts') IS NULL;") === 't') sql(read('docs/database/proposed-task-notifications.sql'));
   if(sql("SELECT to_regprocedure('public.edit_task_fields(uuid,uuid,timestamp with time zone,jsonb)') IS NULL;")==='t') sql(read('docs/database/proposed-task-edit-cas.sql'));
+  if(projectOnly){
+    // Nonempty historical upgrade: do not invent links or content hashes.
+    sql(`INSERT INTO project_notes(id,user_id,organization_id,project_id,title,type,status,updated_at)
+      SELECT '50000000-0000-0000-0000-000000000009',id,'10000000-0000-0000-0000-000000000001','40000000-0000-0000-0000-000000000001','Historical done note','general','done','2025-01-01T00:00:00Z' FROM auth.users WHERE email='actor1@synthetic.invalid';`);
+    sql(read('docs/database/proposed-project-workflows.sql'));sql(read('docs/database/proposed-project-workflows.sql'));
+    sql(read('docs/database/proposed-team-collaboration.sql'));sql(read('docs/database/proposed-team-collaboration.sql'));
+    sql(`INSERT INTO drawing_assets(id,user_id,project_id,name,format,storage_path)
+     SELECT '70000000-0000-4000-8000-000000000001',id,'40000000-0000-0000-0000-000000000001','Historical drawing','pdf',id::text||'/40000000-0000-0000-0000-000000000001/historical.pdf' FROM auth.users WHERE email='actor1@synthetic.invalid';
+     INSERT INTO architectural_drawings(id,user_id,organization_id,project_id,name,format,storage_path,file_size,mime_type)
+     SELECT id,user_id,'10000000-0000-0000-0000-000000000001',project_id,name,format,storage_path,12,'application/pdf' FROM drawing_assets WHERE id='70000000-0000-4000-8000-000000000001';
+     INSERT INTO architectural_reviews(id,user_id,organization_id,project_id,drawing_id,status,engine_version,disclaimer)
+     SELECT '70000000-0000-4000-8000-000000000002',user_id,'10000000-0000-0000-0000-000000000001',project_id,id,'archived','historical-engine','Historical disclaimer' FROM drawing_assets WHERE id='70000000-0000-4000-8000-000000000001';
+     INSERT INTO architectural_findings(id,user_id,review_id,drawing_id,code,title,description,recommendation,category,severity,confidence,status,task_id)
+     SELECT '70000000-0000-4000-8000-000000000003',user_id,'70000000-0000-4000-8000-000000000002',id,'HISTORY','Historical converted finding','Preserve','Preserve','privacy','info',80,'converted_to_task','20000000-0000-0000-0000-000000000001' FROM drawing_assets WHERE id='70000000-0000-4000-8000-000000000001';`);
+    const preservedEngineering=sql("SELECT r.status||'|'||r.engine_version||'|'||r.disclaimer||'|'||f.task_id::text FROM architectural_reviews r JOIN architectural_findings f ON f.review_id=r.id WHERE f.id='70000000-0000-4000-8000-000000000003';");
+    sql(read('docs/database/proposed-batch3-completion.sql'));sql(read('docs/database/proposed-batch3-completion.sql'));
+    assert.equal(sql("SELECT r.status||'|'||r.engine_version||'|'||r.disclaimer||'|'||f.task_id::text FROM architectural_reviews r JOIN architectural_findings f ON f.review_id=r.id WHERE f.id='70000000-0000-4000-8000-000000000003';"),preservedEngineering);
+    assert.equal(sql("SELECT task_id IS NULL AND updated_at='2025-01-01T00:00:00Z'::timestamptz FROM project_notes WHERE id='50000000-0000-0000-0000-000000000009';"),'t');
+    console.log('PASS nonempty historical note upgrade preserves opaque version and has no invented task link; DDL reapplication passed');
+  }
   docker(['start', services[3]]);
   sql("NOTIFY pgrst, 'reload schema';");
-  const runner=process.argv.includes('--mobile')?'./validate-task-mobile-local.mjs':process.argv.includes('--browser')?'./validate-task-browser-local.mjs':'./validate-task-auth-http.mjs';
-  const result = spawnSync(process.execPath, [fileURLToPath(new URL(runner, import.meta.url))], { encoding: 'utf8',maxBuffer:8*1024*1024 });
+  const runner=nativeTeam?'./validate-task-mobile-local.mjs':organizationOnly?'./validate-organization-local.mjs':process.argv.includes('--mobile')?'./validate-task-mobile-local.mjs':process.argv.includes('--browser')?'./validate-task-browser-local.mjs':'./validate-task-auth-http.mjs';
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL(runner, import.meta.url))], { env:{...process.env,...(projectOnly?{BASOUL_PROJECT_FIXTURE:'1'}:{}),...(nativeTeam?{BASOUL_NATIVE_TEAM:'1',BASOUL_NATIVE_EXPO_GO:'1'}:{})},encoding: 'utf8',maxBuffer:8*1024*1024 });
   process.stdout.write(result.stdout ?? '');
   if (result.status !== 0) {
     let diagnostic = result.stderr ?? '';
@@ -144,6 +170,7 @@ try {
   }
   console.log('PASS restored synthetic Auth/PostgREST stack');
 } finally {
+  if(projectOnly)stopProjectStorage();
   // Stop only the four dedicated temporary services; retain containers/images/networks.
   docker(['stop', '--timeout', '10', ...services.toReversed()]);
   assert.ok(services.every(name => !inspect(name).State.Running));

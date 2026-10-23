@@ -8,6 +8,12 @@ const container='basoul-pr173-validation';
 function docker(args,input){const r=spawnSync('docker',args,{input,encoding:'utf8',maxBuffer:16*1024*1024});if(r.status!==0)throw new Error(r.stderr||'Local SQL failed');return r.stdout.trim();}
 const config=JSON.parse(docker(['inspect',container]))[0];
 assert.equal(config.HostConfig.NetworkMode,'none');assert.deepEqual(config.Mounts,[]);assert.ok(config.HostConfig.Tmpfs['/var/lib/postgresql/data']);
+let ready=false;
+for(let attempt=0;attempt<30;attempt++){
+ if(spawnSync('docker',['exec',container,'pg_isready','-h','127.0.0.1','-U','postgres']).status===0){ready=true;break;}
+ await new Promise(resolve=>setTimeout(resolve,1000));
+}
+assert.ok(ready,'Isolated historical PostgreSQL not ready');
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const plan=historicalMigrationPlan(readdirSync(new URL('../supabase/',import.meta.url)),readdirSync(new URL('../supabase/migrations/',import.meta.url)));
 const sql=(db,s)=>docker(['exec','-i',container,'psql','-X','-U','postgres','-d',db,'-v','ON_ERROR_STOP=1','-At'],s);
@@ -25,7 +31,10 @@ function fingerprint(db){
  ) s;`);
  return createHash('sha256').update(JSON.stringify({structure:JSON.parse(structure),rows})).digest('hex');
 }
-const candidates=['proposed-task-rollout-gate.sql','proposed-task-security-hardening.sql','proposed-task-transition-enforcement.sql','proposed-task-notifications.sql','proposed-task-edit-cas.sql'].map(p=>read('docs/database/'+p)).join('\n');
+// Candidate files may own a transaction. Strip only standalone wrappers so the
+// injected failure tests one atomic installation, rather than committing early.
+const candidateFiles=['proposed-task-rollout-gate.sql','proposed-task-security-hardening.sql','proposed-task-transition-enforcement.sql','proposed-task-notifications.sql','proposed-task-edit-cas.sql','proposed-project-workflows.sql','proposed-team-collaboration.sql','proposed-batch3-completion.sql'];
+const candidates=candidateFiles.map(p=>read('docs/database/'+p).replace(/^\s*(?:BEGIN|COMMIT);\s*$/gm,'')).join('\n');
 for(const mode of ['fresh','upgrade']){
  const db=`basoul_history_${mode}_${Date.now()}`;docker(['exec',container,'createdb','-U','postgres',db]);
  sql(db,read('tests/fixtures/historical-host-services.sql'));
@@ -44,6 +53,9 @@ for(const mode of ['fresh','upgrade']){
  assert.throws(()=>sql(db,'BEGIN;\n'+candidates+"\nDO $$ BEGIN RAISE EXCEPTION 'SYNTHETIC_INSTALL_FAILURE'; END $$; COMMIT;"),/SYNTHETIC_INSTALL_FAILURE/);
  assert.equal(fingerprint(db),before,'Failed candidate installation did not roll back completely');
  sql(db,'BEGIN;\n'+candidates+'\nCOMMIT;');assert.equal(sql(db,'SELECT count(*) FROM private.task_workflow_activation;'),'0','Rehearsal must not activate workflow');
+ const installed=fingerprint(db);sql(db,'BEGIN;\n'+candidates+'\nCOMMIT;');
+ assert.equal(fingerprint(db),installed,'Repeat candidate installation changed data/schema/security');
+ sql(db,read('docs/database/web-rc-preflight.sql'));
  sql(db,`SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
  SELECT (edit_task_fields(t.id,t.organization_id,t.updated_at,'{"description":"Historical CAS edit"}')).id FROM tasks t;
  SELECT (edit_task_fields(t.id,t.organization_id,t.updated_at,'{"archived":true}')).id FROM tasks t;`);
@@ -51,6 +63,6 @@ for(const mode of ['fresh','upgrade']){
  const expected=fingerprint(db),backup='/tmp/'+db+'.dump',recovered=db+'_restore';
  docker(['exec',container,'pg_dump','-U','postgres','-d',db,'-Fc','-f',backup]);docker(['exec',container,'createdb','-U','postgres',recovered]);
  docker(['exec',container,'pg_restore','-U','postgres','--exit-on-error','-d',recovered,backup]);assert.equal(fingerprint(recovered),expected,'Backup recovery changed data/schema/security');
- console.log(`PASS ${mode}: ${plan.length} ordered migrations, existing client preservation/idempotence, candidate atomic rollback, CAS archive, full local dump/restore fingerprint. No activation.`);
+ console.log(`PASS ${mode}: ${plan.length} ordered migrations, all ${candidateFiles.length} transactional candidates plus review enum, existing client preservation/idempotence, candidate atomic rollback/reapply, CAS archive, full local dump/restore fingerprint. No activation.`);
 }
 console.log('LIMIT: synthetic Auth/Storage catalog fixture, not a hosted service or production-data parity certification.');

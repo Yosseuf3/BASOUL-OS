@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import {organizationClient} from '../organizations/scoped-client';
 
 export const ARCHITECTURAL_DRAWINGS_BUCKET = "architectural-drawings";
 
@@ -23,6 +23,7 @@ const safeFileName = (name: string) =>
   name.normalize("NFKD").replace(/[^\w.\-]+/g, "-").replace(/-+/g, "-").toLowerCase();
 
 async function projectOrganizationId(projectId: string): Promise<string> {
+  const supabase=organizationClient();
   const { data, error } = await supabase
     .from("projects")
     .select("organization_id")
@@ -34,6 +35,7 @@ async function projectOrganizationId(projectId: string): Promise<string> {
 }
 
 export async function listProjectDrawings(projectId?: string): Promise<CloudDrawing[]> {
+  const supabase=organizationClient();
   let query = supabase.from("architectural_drawings").select("*").order("created_at", { ascending: false });
   if (projectId) query = query.eq("project_id", projectId);
   const { data, error } = await query;
@@ -47,6 +49,7 @@ export async function uploadProjectDrawing(input: {
   revision: string;
   pageCount: number | null;
 }): Promise<CloudDrawing> {
+  const supabase=organizationClient();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw userError ?? new Error("Authentication is required.");
 
@@ -81,13 +84,14 @@ export async function uploadProjectDrawing(input: {
 }
 
 export async function deleteProjectDrawing(drawing: CloudDrawing): Promise<void> {
-  const { error: storageError } = await supabase.storage.from(ARCHITECTURAL_DRAWINGS_BUCKET).remove([drawing.storage_path]);
-  if (storageError) throw storageError;
-  const { error } = await supabase.from("architectural_drawings").delete().eq("id", drawing.id);
-  if (error) throw error;
+  organizationClient(drawing.organization_id);
+  // Removing bytes first could destroy a source before a converted finding's
+  // history guard rejects the later metadata cascade. Retain both instead.
+  throw new Error('حُفظ المخطط ومراجعاته. الحذف النهائي يتطلب سياسة احتفاظ واسترداد معتمدة. / Drawing and reviews retained. Physical deletion requires an approved retention and recovery policy.');
 }
 
-export async function createDrawingPreviewUrl(drawing: Pick<CloudDrawing, "storage_path">): Promise<string> {
+export async function createDrawingPreviewUrl(drawing: Pick<CloudDrawing, "storage_path"|"organization_id">): Promise<string> {
+  const supabase=organizationClient(drawing.organization_id);
   const { data, error } = await supabase.storage
     .from(ARCHITECTURAL_DRAWINGS_BUCKET)
     .createSignedUrl(drawing.storage_path, 60 * 30);

@@ -1,3 +1,4 @@
+import {organizationClient} from './scoped-client';
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { OrganizationRole } from "./rbac";
@@ -13,17 +14,34 @@ export type OrganizationInvitation = {
 };
 
 async function invokeAdministration<T>(body: Record<string, unknown>) {
+  const supabase=organizationClient();
   const { data, error } = await supabase.functions.invoke("organization-admin", { body });
-  if (error) throw error;
+  if (error) {
+    const context=(error as {context?:unknown}).context;
+    let code:unknown;
+    if(context instanceof Response){try{code=(await context.clone().json()).code;}catch{/* Unconfirmed transport failure. */}}
+    if(code==='INVITATION_DELIVERY_UNCONFIRMED')throw new Error('لم يتأكد تسليم الدعوة. تحقق من رابط التحقق السابق قبل إعادة المحاولة. / Invitation delivery is unconfirmed. Verify the original link before retrying.');
+    if(code==='ADMIN_UPDATE_REQUIRED')throw new Error('يتطلب عرض الفريق تحديث الخادم. / Team administration requires a server update.');
+    throw error;
+  }
   if (data?.error) throw new Error(String(data.error));
   return data as T;
 }
 
 export async function acceptPendingInvitations() {
-  return invokeAdministration<{ accepted: number }>({ action: "accept" });
+  const {data:before,error:identityError}=await supabase.auth.getUser();
+  if(identityError||!before.user)throw new Error('تحقق من الجلسة قبل قبول الدعوة. / Verify your session before accepting.');
+  const {data,error}=await supabase.functions.invoke('organization-admin',{body:{action:'accept'}});
+  if(error||data?.error||!Number.isSafeInteger(data?.accepted)||data.accepted<0)
+    throw new Error('لم يتأكد قبول الدعوة. حدّث العضويات قبل إعادة المحاولة. / Acceptance unconfirmed. Refresh memberships before retrying.');
+  const {data:after,error:refreshError}=await supabase.auth.getUser();
+  if(refreshError||after.user?.id!==before.user.id)
+    throw new Error('تغيرت الجلسة. أعد التحقق من العضويات. / Session changed. Verify memberships again.');
+  return {accepted:data.accepted as number};
 }
 
 export async function loadAdministration(session: Session) {
+  const supabase=organizationClient(undefined,session.user.id);
   const { data: memberships, error } = await supabase.from("organization_memberships")
     .select("organization_id,user_id,role,status,created_at,updated_at,organizations(id,name,slug)")
     .eq("user_id", session.user.id).eq("status", "active");

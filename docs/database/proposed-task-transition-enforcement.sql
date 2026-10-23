@@ -85,6 +85,7 @@ $$;
 REVOKE ALL ON FUNCTION public.transition_task_status(uuid,uuid,public.task_status,timestamptz,public.task_status,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.transition_task_status(uuid,uuid,public.task_status,timestamptz,public.task_status,text) TO authenticated;
 REVOKE ALL ON FUNCTION private.validate_task_transition() FROM PUBLIC, anon;
+DROP TRIGGER IF EXISTS validate_task_status_transition ON public.tasks;
 CREATE TRIGGER validate_task_status_transition BEFORE UPDATE ON public.tasks
 FOR EACH ROW EXECUTE FUNCTION private.validate_task_transition();
 -- RLS remains unchanged. No SECURITY DEFINER, service-role route or blind retries.
@@ -113,6 +114,7 @@ BEGIN
 END;
 $$;
 REVOKE ALL ON FUNCTION private.audit_task_transition() FROM PUBLIC, anon;
+DROP TRIGGER IF EXISTS audit_task_status_transition ON public.tasks;
 CREATE TRIGGER audit_task_status_transition AFTER UPDATE ON public.tasks
 FOR EACH ROW EXECUTE FUNCTION private.audit_task_transition();
 -- Mandatory reason semantics require separate product approval. Optional reason

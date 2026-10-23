@@ -2,6 +2,8 @@ import type { ActivityEvent, Client, ContentItem, FinanceTransaction, KnowledgeI
 import { listRows } from "@/lib/data/os-repository";
 import { deliverTaskNotifications } from '../../packages/shared-types/src/task-notifications';
 import { supabase } from "@/lib/supabase";
+import {requireOrganizationLease} from '../organizations/active-context';
+import {assertOrganizationLease} from '../../packages/shared-types/src/organization-scope';
 
 export type WorkspaceData = {
   projects: Project[];
@@ -23,8 +25,10 @@ async function safeRows<T>(label: string, request: Promise<RowResult<T>>): Promi
 }
 
 export async function loadWorkspaceData(requestedOrganizationId?:string): Promise<WorkspaceLoadResult> {
+  const lease=requireOrganizationLease(requestedOrganizationId);
   // Tenant creation is an explicit Owner onboarding action. Workspace reads must never create tenants.
   const {data:identity,error:identityError}=await supabase.auth.getUser();
+  assertOrganizationLease(lease);
   if(identityError || !identity.user) throw new Error('AUTH_REQUIRED');
   const { data: memberships, error: membershipError } = await supabase.from("organization_memberships")
     .select("organization_id,role,status,organizations(name)")
@@ -32,10 +36,12 @@ export async function loadWorkspaceData(requestedOrganizationId?:string): Promis
     .eq("status", "active")
     .order("created_at", { ascending: true });
   if (membershipError) throw new Error(`organization: ${membershipError.message}`);
-  const membership=requestedOrganizationId ? memberships?.find(row=>row.organization_id===requestedOrganizationId) : memberships?.[0];
+  assertOrganizationLease(lease);
+  const membership=memberships?.find(row=>row.organization_id===lease.organizationId);
   if (!membership) throw new Error(requestedOrganizationId?'ORGANIZATION_ACCESS_REVOKED':'ORGANIZATION_ONBOARDING_REQUIRED');
 
   await deliverTaskNotifications(supabase,membership.organization_id);
+  assertOrganizationLease(lease);
   const [projects, tasks, clients, contentItems, knowledgeItems, financeItems, activityEvents, notifications] = await Promise.all([
     safeRows("projects", listRows<Project>("projects",membership.organization_id,identity.user.id)),
     safeRows("tasks", listRows<Task>("tasks",membership.organization_id,identity.user.id)),
@@ -48,6 +54,7 @@ export async function loadWorkspaceData(requestedOrganizationId?:string): Promis
   ]);
 
   const errors = [projects.error, tasks.error, clients.error, contentItems.error, knowledgeItems.error, financeItems.error, activityEvents.error, notifications.error].filter((value): value is string => Boolean(value));
+  assertOrganizationLease(lease);
   return {
     data: {
       projects: projects.data, tasks: tasks.data.filter(task=>!task.archived), clients: clients.data,

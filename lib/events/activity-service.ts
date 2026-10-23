@@ -1,6 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import {organizationClient} from '../organizations/scoped-client';
 import type { ActivityAction, ActivityModule, NotificationPriority } from "@/lib/types";
-import {selectedOrganization} from '@/lib/organizations/workspace-selection';
+import {requireOrganizationLease} from '../organizations/active-context';
 
 type ActivityInput = {
   userId: string; module: ActivityModule; action: ActivityAction; title: string;
@@ -19,8 +19,8 @@ function notificationRule(input: ActivityInput): RuleResult {
 }
 
 export async function recordActivity(input: ActivityInput): Promise<string | null> {
-  const organizationId=selectedOrganization(input.userId);
-  if(!organizationId) return 'Organization context required';
+  const supabase=organizationClient();
+  const organizationId=requireOrganizationLease().organizationId;
   const { data, error } = await supabase.from("activity_events").insert({
     user_id: input.userId, organization_id:organizationId, module: input.module, action: input.action,
     entity_id: input.entityId ?? null, title: input.title, description: input.description ?? null,

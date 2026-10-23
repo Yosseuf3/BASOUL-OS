@@ -6,8 +6,8 @@ import type { PriorityLevel, Project } from "../../types/domain";
 
 export type NewTaskInput = { title: string; project_id: string; priority: PriorityLevel; due_date: string | null };
 
-export function CreateTaskScreen({ projects, onCancel, onSubmit }: { projects: Project[]; onCancel: () => void; onSubmit: (input: NewTaskInput) => Promise<void> }) {
-  const [title, setTitle] = useState(""); const [projectId, setProjectId] = useState(projects[0]?.id || ""); const [priority, setPriority] = useState<PriorityLevel>("High"); const [dueDate, setDueDate] = useState(""); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null);
+export function CreateTaskScreen({ projects, initialProjectId, onCancel, onSubmit }: { projects: Project[]; initialProjectId?:string; onCancel: () => void; onSubmit: (input: NewTaskInput) => Promise<void> }) {
+  const [title, setTitle] = useState(""); const [projectId, setProjectId] = useState(initialProjectId || projects[0]?.id || ""); const [priority, setPriority] = useState<PriorityLevel>("High"); const [dueDate, setDueDate] = useState(""); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null);
   async function save() { if (!title.trim() || !projectId) { setError("أدخل عنوان المهمة واختر المشروع."); return; } setSaving(true); setError(null); try { await onSubmit({ title: title.trim(), project_id: projectId, priority, due_date: dueDate.trim() || null }); } catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر إنشاء المهمة."); } finally { setSaving(false); } }
   return <Screen>
     <View style={styles.header}><TouchableOpacity onPress={onCancel} style={styles.outline}><Text style={styles.outlineText}>إلغاء</Text></TouchableOpacity><Text style={styles.title}>مهمة جديدة</Text></View>

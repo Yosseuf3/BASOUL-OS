@@ -50,6 +50,7 @@ BEGIN
 END;
 $$;
 REVOKE ALL ON FUNCTION private.protect_task_transition_audit() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS protect_task_transition_audit ON public.activity_events;
 CREATE TRIGGER protect_task_transition_audit BEFORE INSERT OR UPDATE OR DELETE
 ON public.activity_events FOR EACH ROW EXECUTE FUNCTION private.protect_task_transition_audit();
 -- Privileged maintenance, backups and service-role behavior need separate gates.

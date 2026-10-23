@@ -1,6 +1,10 @@
 "use client";
+import {requireOrganizationLease} from '../lib/organizations/active-context';
+import {inOrganization} from '../packages/shared-types/src/organization-scope';
 import { TASK_STATUSES, taskStatusLabel, taskStatusClass, isTaskStatus, assertCompatibilityTaskWrite, TASK_WORKFLOW_WRITES_ENABLED, canTransitionTask } from "../packages/shared-types/src/task-status-contract";
 import { TaskReasonConfirmation } from '../features/tasks/task-reason-confirmation';
+import {useActiveOrganization} from '../components/organizations/organization-provider';
+import {organizationClient} from '../lib/organizations/scoped-client';
 import {rememberOrganization} from "../lib/organizations/workspace-selection";
 import { transitionWebTask } from '@/lib/data/task-transition-client';
 
@@ -21,7 +25,7 @@ import { GlobalSearch } from "@/features/global-search";
 import { ActivityView } from "@/features/activity/activity-view";
 import { NotificationsView } from "@/features/notifications/notifications-view";
 import { ArchitectureReviewView } from "@/features/architecture/architecture-review-view";
-import { deleteNotification, markAllNotificationsRead, markNotificationRead } from "@/lib/notifications/notification-service";
+import { openMembershipNotification, deleteNotification, markAllNotificationsRead, markNotificationRead } from "@/lib/notifications/notification-service";
 import { recordActivity } from "@/lib/events/activity-service";
 import { WorkspaceSwitcher } from "@/components/shell/workspace-switcher";
 import { AdministrationView } from "@/features/administration/administration-view";
@@ -33,9 +37,9 @@ import { APP_INFO } from "@/lib/config/app-info";
 import { foundationColorValues } from "@yosseuf/ui-tokens";
 import {
   createProjectFileDownloadUrl,
-  deleteProjectFile,
   listProjectFiles,
   uploadProjectFile,
+  pendingProjectFiles,
   type ProjectFile,
 } from "@/lib/projects/project-file-service";
 import {
@@ -58,7 +62,7 @@ type KnowledgeFilter = "All" | KnowledgeType;
 type TaskViewMode = "cards" | "list" | "kanban";
 type TaskSort = "updated" | "due" | "priority" | "progress";
 type ProjectModalState = { mode: "create"; project: null } | { mode: "edit"; project: Project } | null;
-type TaskModalState = { mode: "create"; task: null } | { mode: "edit"; task: Task } | null;
+type TaskModalState = { mode: "create"; task: null; projectId?:string } | { mode: "edit"; task: Task } | null;
 type ClientModalState = { mode: "create"; client: null } | { mode: "edit"; client: Client } | null;
 type ContentModalState = { mode: "create"; item: null } | { mode: "edit"; item: ContentItem } | null;
 type KnowledgeModalState = { mode: "create"; item: null } | { mode: "edit"; item: KnowledgeItem } | null;
@@ -124,16 +128,17 @@ export default function Home() {
   const [workspace, setWorkspace] = useState<WorkspaceId>(DEFAULT_WORKSPACE);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
 
-  const [organizationId,setOrganizationId]=useState<string|undefined>();
+  const {organizationId: selectedOrganizationId,select: selectOrganization,choices: organizationChoices}=useActiveOrganization();
+  const organizationId=selectedOrganizationId??undefined;
   const [activeRole,setActiveRole]=useState("viewer");
-  const [organizations,setOrganizations]=useState<{id:string;name:string}[]>([]);
+  const organizations=organizationChoices;
   const loadRevision=useRef(0);
   const authUserRef=useRef<string|null>(null);
   const activeOrganizationRef=useRef<string|null>(null);
   const archiveInFlight=useRef(false);
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthLoading(false); });
-    const { data } = supabase.auth.onAuthStateChange((_event, current) => { if(authUserRef.current!==(current?.user.id??null)){loadRevision.current++;activeOrganizationRef.current=null;setOrganizationId(undefined);setOrganizations([]);setTasks([]);setProjects([]);setNotifications([]);setTaskModal(null);setDeleteTaskTarget(null);}authUserRef.current=current?.user.id??null;setSession(current); setAuthLoading(false); });
+    const { data } = supabase.auth.onAuthStateChange((_event, current) => { if(authUserRef.current!==(current?.user.id??null)){loadRevision.current++;activeOrganizationRef.current=null;setTasks([]);setProjects([]);setNotifications([]);setTaskModal(null);setDeleteTaskTarget(null);}authUserRef.current=current?.user.id??null;setSession(current); setAuthLoading(false); });
     return () => data.subscription.unsubscribe();
   }, []);
 
@@ -151,7 +156,7 @@ export default function Home() {
       if(revision!==loadRevision.current)return;
       rememberOrganization(session.user.id,result.organizationId);
       activeOrganizationRef.current=result.organizationId;
-      setOrganizations(result.organizations);
+
       setActiveRole(result.role);
       setProjects(result.data.projects);
       setTasks(result.data.tasks);
@@ -175,6 +180,17 @@ export default function Home() {
   }, [session, showToast, organizationId]);
 
   useEffect(() => { if (session) void loadData(); }, [session, loadData]);
+  const openedTarget=useRef(false);
+  useEffect(()=>{
+    if(loading||!session||!lastSyncedAt||openedTarget.current)return;
+    openedTarget.current=true;const target=new URLSearchParams(window.location.search),projectId=target.get('projectId'),taskId=target.get('taskId');
+    const membershipId=target.get('membershipNotificationId'); if(membershipId){const lease=requireOrganizationLease();void openMembershipNotification(membershipId).then(()=>{if(lease.isCurrent())setView('administration');}).catch(()=>{if(lease.isCurrent())showToast('الرابط غير متاح أو سُحبت الصلاحية. / Link unavailable or access revoked.','error');});return;}
+    if(!projectId&&!taskId)return;
+    const project=projects.find(p=>p.id===projectId),task=tasks.find(t=>t.id===taskId);
+    if(project){setView('projects');setProjectDetail(project);}
+    if(task&&(!projectId||task.project_id===projectId))setTaskModal({mode:'edit',task});
+    else if(taskId||(!project&&projectId))showToast('السجل غير متاح في المؤسسة الحالية. / Record unavailable in the active organization.','error');
+  },[loading,session,lastSyncedAt,projects,tasks,showToast]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -225,15 +241,27 @@ export default function Home() {
     if (error) console.warn("Activity log failed:", error);
   }
 
-  async function saveProject(input: ProjectInput, current?: Project) {
-    if (!session) return false;
-    const error = await authorizedWorkspaceWrite("projects", session, input, current?.id);
-    if (error) { showToast(`لم يتم حفظ المشروع: ${error}`, "error"); return false; }
-    await logActivity("projects", current ? "updated" : "created", current ? `تم تحديث المشروع: ${input.name}` : `تم إنشاء مشروع جديد: ${input.name}`, current?.id, input.status);
-    showToast(current ? "تم تحديث المشروع." : "تم إنشاء المشروع.", "success"); await loadData(); return true;
+  async function openProjectTask(id:string) {
+    try {const client=organizationClient();const {data,error}=await client.from("tasks").select("*").eq("id",id).single();if(error||!data)throw error;setTaskModal({mode:"edit",task:data as Task});await loadData();}
+    catch {showToast("المهمة غير متاحة؛ حدّث المشروع. / Task unavailable; refresh the project.","error");}
   }
+  async function saveProject(input: ProjectInput, current?: Project) {
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
+    if (!session) return false;
+    const error = await inOrganization(lease,()=>(authorizedWorkspaceWrite("projects", session, input, current?.id)));
+    if (error) { showToast(`لم يتم حفظ المشروع: ${error}`, "error"); return false; }
+    await inOrganization(lease,()=>(logActivity("projects", current ? "updated" : "created", current ? `تم تحديث المشروع: ${input.name}` : `تم إنشاء مشروع جديد: ${input.name}`, current?.id, input.status)));
+    showToast(current ? "تم تحديث المشروع." : "تم إنشاء المشروع.", "success"); await inOrganization(lease,()=>(loadData())); return true;
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
 
   async function saveTask(input: TaskInput, current?: Task, reason?: string) {
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
     if (!session) return false;
     const actor=session.user.id,tenant=activeOrganizationRef.current;
     const stillCurrent=()=>actor===authUserRef.current && tenant===activeOrganizationRef.current;
@@ -243,120 +271,197 @@ export default function Home() {
       if (Object.entries(input).some(([key,value])=>key!=='status' && value!==current[key as keyof Task])) {
         showToast('احفظ تعديل البيانات منفصلاً عن انتقال الحالة.','error'); return false;
       }
-      const result=await transitionWebTask(session,{taskId:current.id,organizationId:current.organization_id,
-        expectedStatus:current.status,expectedUpdatedAt:current.updated_at,targetStatus:input.status,reason});
+      const result=await inOrganization(lease,()=>(transitionWebTask(session,{taskId:current.id,organizationId:current.organization_id,
+        expectedStatus:current.status,expectedUpdatedAt:current.updated_at,targetStatus:input.status,reason})));
       if(!stillCurrent())return false;
       if (!result.ok) {
-        if (result.code==='TASK_TRANSITION_CONFLICT') await loadData();
+        if (result.code==='TASK_TRANSITION_CONFLICT') await inOrganization(lease,()=>(loadData()));
         showToast(result.message,'error'); return false;
       }
       // Audit is transactional in PostgreSQL; do not duplicate recordActivity.
-      showToast('تم تحديث حالة المهمة.','success'); await loadData(); return true;
+      showToast('تم تحديث حالة المهمة.','success'); await inOrganization(lease,()=>(loadData())); return true;
     }
     try { assertCompatibilityTaskWrite(input.status, current?.status); } catch { showToast("هذه الحالة غير متاحة للكتابة قبل تفعيل عقد المهام.", "error"); return false; }
     let taskAuditRecorded = false;
-    const error = await authorizedWorkspaceWrite("tasks", session, input, current?.id, current ? {updatedAt:current.updated_at,organizationId:current.organization_id,onAuditRecorded:()=>{taskAuditRecorded=true;}} : undefined);
+    const error = await inOrganization(lease,()=>(authorizedWorkspaceWrite("tasks", session, input, current?.id, current ? {updatedAt:current.updated_at,organizationId:current.organization_id,onAuditRecorded:()=>{taskAuditRecorded=true;}} : undefined)));
     if(!stillCurrent())return false;
     if (error) { showToast(`لم يتم حفظ المهمة: ${error}`, "error"); return false; }
-    if (!taskAuditRecorded) await logActivity("tasks", input.status === "Done" && current?.status !== "Done" ? "completed" : current ? "updated" : "created", input.status === "Done" && current?.status !== "Done" ? `اكتملت المهمة: ${input.title}` : current ? `تم تحديث المهمة: ${input.title}` : `تم إنشاء مهمة جديدة: ${input.title}`, current?.id, input.status);
-    showToast(current ? "تم تحديث المهمة." : "تم إنشاء المهمة.", "success"); await loadData(); return true;
-  }
+    if (!taskAuditRecorded) await inOrganization(lease,()=>(logActivity("tasks", input.status === "Done" && current?.status !== "Done" ? "completed" : current ? "updated" : "created", input.status === "Done" && current?.status !== "Done" ? `اكتملت المهمة: ${input.title}` : current ? `تم تحديث المهمة: ${input.title}` : `تم إنشاء مهمة جديدة: ${input.title}`, current?.id, input.status)));
+    showToast(current ? "تم تحديث المهمة." : "تم إنشاء المهمة.", "success"); await inOrganization(lease,()=>(loadData())); return true;
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
 
 
   async function saveClient(input: ClientInput, current?: Client) {
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
     if (!session) return false;
-    const error = await authorizedWorkspaceWrite("clients", session, input, current?.id);
+    const error = await inOrganization(lease,()=>(authorizedWorkspaceWrite("clients", session, input, current?.id)));
     if (error) { showToast(`لم يتم حفظ العميل: ${error}`, "error"); return false; }
-    await logActivity("clients", current ? "updated" : "created", current ? `تم تحديث العميل: ${input.name}` : `تمت إضافة عميل جديد: ${input.name}`, current?.id, input.company);
-    showToast(current ? "تم تحديث بيانات العميل." : "تم إنشاء العميل.", "success"); await loadData(); return true;
-  }
+    await inOrganization(lease,()=>(logActivity("clients", current ? "updated" : "created", current ? `تم تحديث العميل: ${input.name}` : `تمت إضافة عميل جديد: ${input.name}`, current?.id, input.company)));
+    showToast(current ? "تم تحديث بيانات العميل." : "تم إنشاء العميل.", "success"); await inOrganization(lease,()=>(loadData())); return true;
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
 
   async function saveContent(input: ContentInput, current?: ContentItem) {
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
     if (!session) return false;
-    const error = await authorizedWorkspaceWrite("content_items", session, input, current?.id);
+    const error = await inOrganization(lease,()=>(authorizedWorkspaceWrite("content_items", session, input, current?.id)));
     if (error) { showToast(`لم يتم حفظ المحتوى: ${error}`, "error"); return false; }
-    await logActivity("content", input.status === "Published" && current?.status !== "Published" ? "published" : current ? "updated" : "created", input.status === "Published" && current?.status !== "Published" ? `تم نشر المحتوى: ${input.title}` : current ? `تم تحديث المحتوى: ${input.title}` : `تم إنشاء محتوى جديد: ${input.title}`, current?.id, input.platform);
-    showToast(current ? "تم تحديث المحتوى." : "تم إنشاء المحتوى.", "success"); await loadData(); return true;
-  }
+    await inOrganization(lease,()=>(logActivity("content", input.status === "Published" && current?.status !== "Published" ? "published" : current ? "updated" : "created", input.status === "Published" && current?.status !== "Published" ? `تم نشر المحتوى: ${input.title}` : current ? `تم تحديث المحتوى: ${input.title}` : `تم إنشاء محتوى جديد: ${input.title}`, current?.id, input.platform)));
+    showToast(current ? "تم تحديث المحتوى." : "تم إنشاء المحتوى.", "success"); await inOrganization(lease,()=>(loadData())); return true;
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
 
   async function deleteContent(item: ContentItem) {
-    const { error } = await supabase.from("content_items").delete().eq("id", item.id);
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
+    const supabase=organizationClient();
+    const { error } = await inOrganization(lease,()=>(supabase.from("content_items").delete().eq("id", item.id)));
     if (error) showToast(`تعذر حذف المحتوى: ${error.message}`, "error");
-    else { await logActivity("content", "deleted", `تم حذف المحتوى: ${item.title}`, item.id); setDeleteContentTarget(null); showToast("تم حذف المحتوى.", "success"); await loadData(); }
-  }
+    else { await inOrganization(lease,()=>(logActivity("content", "deleted", `تم حذف المحتوى: ${item.title}`, item.id))); setDeleteContentTarget(null); showToast("تم حذف المحتوى.", "success"); await inOrganization(lease,()=>(loadData())); }
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
 
 
   async function saveKnowledge(input: KnowledgeInput, current?: KnowledgeItem) {
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
     if (!session) return false;
-    const error = await authorizedWorkspaceWrite("knowledge_items", session, input, current?.id);
+    const error = await inOrganization(lease,()=>(authorizedWorkspaceWrite("knowledge_items", session, input, current?.id)));
     if (error) { showToast(`لم يتم حفظ العنصر: ${error}`, "error"); return false; }
-    await logActivity("knowledge", current ? "updated" : "created", current ? `تم تحديث المعرفة: ${input.title}` : `تمت إضافة عنصر معرفة: ${input.title}`, current?.id, input.type);
-    showToast(current ? "تم تحديث عنصر المعرفة." : "تم إنشاء عنصر المعرفة.", "success"); await loadData(); return true;
-  }
+    await inOrganization(lease,()=>(logActivity("knowledge", current ? "updated" : "created", current ? `تم تحديث المعرفة: ${input.title}` : `تمت إضافة عنصر معرفة: ${input.title}`, current?.id, input.type)));
+    showToast(current ? "تم تحديث عنصر المعرفة." : "تم إنشاء عنصر المعرفة.", "success"); await inOrganization(lease,()=>(loadData())); return true;
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
 
   async function deleteKnowledge(item: KnowledgeItem) {
-    const { error } = await supabase.from("knowledge_items").delete().eq("id", item.id);
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
+    const supabase=organizationClient();
+    const { error } = await inOrganization(lease,()=>(supabase.from("knowledge_items").delete().eq("id", item.id)));
     if (error) showToast(`تعذر حذف العنصر: ${error.message}`, "error");
-    else { await logActivity("knowledge", "deleted", `تم حذف عنصر المعرفة: ${item.title}`, item.id); setDeleteKnowledgeTarget(null); showToast("تم حذف عنصر المعرفة.", "success"); await loadData(); }
-  }
+    else { await inOrganization(lease,()=>(logActivity("knowledge", "deleted", `تم حذف عنصر المعرفة: ${item.title}`, item.id))); setDeleteKnowledgeTarget(null); showToast("تم حذف عنصر المعرفة.", "success"); await inOrganization(lease,()=>(loadData())); }
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
 
   async function deleteProject(project: Project) {
-    const { error } = await supabase.from("projects").delete().eq("id", project.id);
-    if (error) showToast(`تعذر حذف المشروع: ${error.message}`, "error");
-    else { await logActivity("projects", "deleted", `تم حذف المشروع: ${project.name}`, project.id); setDeleteProjectTarget(null); showToast("تم حذف المشروع ومهامه.", "success"); await loadData(); }
-  }
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
+    if(!session)return false;
+    const error = await inOrganization(lease,()=>authorizedWorkspaceDelete("projects",session,project.id));
+    if (error) showToast(`تعذر حذف المشروع: ${error}`, "error");
+    else { await inOrganization(lease,()=>(logActivity("projects", "deleted", `تم حذف المشروع: ${project.name}`, project.id))); setDeleteProjectTarget(null); showToast("تم حذف المشروع الفارغ. / Empty project deleted.", "success"); await inOrganization(lease,()=>(loadData())); }
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
   async function deleteTask(task: Task) {
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
     if(!session || archiveInFlight.current || task.organization_id!==activeOrganizationRef.current) return;
     archiveInFlight.current=true;
     const actor=session.user.id,tenant=activeOrganizationRef.current;
     try {
-      const error=await authorizedWorkspaceWrite('tasks',session,{archived:true},task.id,{updatedAt:task.updated_at,organizationId:task.organization_id});
+      const error=await inOrganization(lease,()=>(authorizedWorkspaceWrite('tasks',session,{archived:true},task.id,{updatedAt:task.updated_at,organizationId:task.organization_id})));
       if(actor!==authUserRef.current || tenant!==activeOrganizationRef.current) return;
       if(error) showToast(error,'error');
-      else {setDeleteTaskTarget(null);showToast('تمت الأرشفة وحفظ السجل. / Archived; history preserved.','success');await loadData();}
+      else {setDeleteTaskTarget(null);showToast('تمت الأرشفة وحفظ السجل. / Archived; history preserved.','success');await inOrganization(lease,()=>(loadData()));}
     } finally {archiveInFlight.current=false;}
-  }
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
 
 
   async function deleteClient(client: Client) {
-    const { error } = await supabase.from("clients").delete().eq("id", client.id);
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
+    const supabase=organizationClient();
+    const { error } = await inOrganization(lease,()=>(supabase.from("clients").delete().eq("id", client.id)));
     if (error) showToast(`تعذر حذف العميل: ${error.message}`, "error");
-    else { await logActivity("clients", "deleted", `تم حذف العميل: ${client.name}`, client.id); setDeleteClientTarget(null); showToast("تم حذف العميل.", "success"); await loadData(); }
-  }
+    else { await inOrganization(lease,()=>(logActivity("clients", "deleted", `تم حذف العميل: ${client.name}`, client.id))); setDeleteClientTarget(null); showToast("تم حذف العميل.", "success"); await inOrganization(lease,()=>(loadData())); }
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
 
   async function saveFinance(input: FinanceTransactionInput, current?: FinanceTransaction) {
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
     if (!session) return false;
-    const error = await authorizedWorkspaceWrite("finance_transactions", session, input, current?.id);
+    const error = await inOrganization(lease,()=>(authorizedWorkspaceWrite("finance_transactions", session, input, current?.id)));
     if (error) { showToast(`لم يتم حفظ المعاملة: ${error}`, "error"); return false; }
-    await logActivity("finance", input.status === "Paid" && current?.status !== "Paid" ? "paid" : current ? "updated" : "created", input.status === "Paid" && current?.status !== "Paid" ? `تم تسجيل دفعة: ${input.description}` : current ? `تم تحديث المعاملة: ${input.description}` : `تم إنشاء معاملة مالية: ${input.description}`, current?.id, `${input.type} · ${input.amount} ${input.currency}`);
-    showToast(current ? "تم تحديث المعاملة المالية." : "تم إنشاء المعاملة المالية.", "success"); await loadData(); return true;
-  }
+    await inOrganization(lease,()=>(logActivity("finance", input.status === "Paid" && current?.status !== "Paid" ? "paid" : current ? "updated" : "created", input.status === "Paid" && current?.status !== "Paid" ? `تم تسجيل دفعة: ${input.description}` : current ? `تم تحديث المعاملة: ${input.description}` : `تم إنشاء معاملة مالية: ${input.description}`, current?.id, `${input.type} · ${input.amount} ${input.currency}`)));
+    showToast(current ? "تم تحديث المعاملة المالية." : "تم إنشاء المعاملة المالية.", "success"); await inOrganization(lease,()=>(loadData())); return true;
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
   async function deleteFinance(item: FinanceTransaction) {
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
     if (!session) return;
-    const error = await authorizedWorkspaceDelete("finance_transactions", session, item.id);
+    const error = await inOrganization(lease,()=>(authorizedWorkspaceDelete("finance_transactions", session, item.id)));
     if (error) showToast(`تعذر حذف المعاملة: ${error}`, "error");
-    else { await logActivity("finance", "deleted", `تم حذف المعاملة: ${item.description}`, item.id); setDeleteFinanceTarget(null); showToast("تم حذف المعاملة المالية.", "success"); await loadData(); }
-  }
+    else { await inOrganization(lease,()=>(logActivity("finance", "deleted", `تم حذف المعاملة: ${item.description}`, item.id))); setDeleteFinanceTarget(null); showToast("تم حذف المعاملة المالية.", "success"); await inOrganization(lease,()=>(loadData())); }
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
 
   async function clearActivity() {
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
+    const supabase=organizationClient();
     if (!session || !activityEvents.length) return;
-    const { error } = await supabase.from("activity_events").delete().eq("user_id", session.user.id);
+    const { error } = await inOrganization(lease,()=>(supabase.from("activity_events").delete().eq("user_id", session.user.id)));
     if (error) showToast(`تعذر مسح سجل النشاط: ${error.message}`, "error");
     else { setActivityEvents([]); showToast("تم مسح سجل النشاط.", "success"); }
-  }
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
 
   async function toggleNotificationRead(notification: Notification) {
-    const error = await markNotificationRead(notification.id, !notification.is_read);
-    if (error) showToast(`تعذر تحديث الإشعار: ${error}`, "error"); else await loadData();
-  }
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
+    const error = await inOrganization(lease,()=>(markNotificationRead(notification.id, !notification.is_read)));
+    if (error) showToast(`تعذر تحديث الإشعار: ${error}`, "error"); else await inOrganization(lease,()=>(loadData()));
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
   async function markAllRead() {
-    if (!session) return; const error = await markAllNotificationsRead(session.user.id);
-    if (error) showToast(`تعذر تحديث الإشعارات: ${error}`, "error"); else { showToast("تم تعليم جميع الإشعارات كمقروءة.", "success"); await loadData(); }
-  }
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
+    if (!session) return; const error = await inOrganization(lease,()=>(markAllNotificationsRead(session.user.id)));
+    if (error) showToast(`تعذر تحديث الإشعارات: ${error}`, "error"); else { showToast("تم تعليم جميع الإشعارات كمقروءة.", "success"); await inOrganization(lease,()=>(loadData())); }
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
   async function removeNotification(notification: Notification) {
-    const error = await deleteNotification(notification.id);
-    if (error) showToast(`تعذر حذف الإشعار: ${error}`, "error"); else await loadData();
-  }
+    let lease:ReturnType<typeof requireOrganizationLease>|undefined;
+    try { lease=requireOrganizationLease();
+
+    const error = await inOrganization(lease,()=>(deleteNotification(notification.id)));
+    if (error) showToast(`تعذر حذف الإشعار: ${error}`, "error"); else await inOrganization(lease,()=>(loadData()));
+
+    } catch { if(lease?.isCurrent())showToast("تعذر إكمال العملية في المؤسسة الحالية. تحقق من البيانات قبل المحاولة. / Operation could not be confirmed in the current organization. Refresh before retrying.","error"); return false; }
+}
 
   if (authLoading) return <LoadingScreen />;
   if (!session) return <Auth />;
@@ -405,11 +510,11 @@ export default function Home() {
     </aside>
 
     <main className="main">
-      <header className="topbar"><div><span className="eyebrow">BASOUL · {workspace === "executive" ? "EXECUTIVE" : workspace === "operations" ? "OPERATIONS" : workspace === "knowledge" ? "KNOWLEDGE" : "ENGINEERING"}</span><h1>{view === "dashboard" ? "لوحة القيادة" : view === "projects" ? "إدارة المشاريع" : view === "tasks" ? "محرك المهام" : view === "clients" ? "إدارة العملاء" : view === "content" ? "استوديو المحتوى" : view === "knowledge" ? "قاعدة المعرفة" : view === "finance" ? "الإدارة المالية" : view === "activity" ? "سجل النشاط" : "مركز الإشعارات"}</h1><p>{view === "tasks" ? "أنشئ المهام واربطها بمشاريعك وتابع التنفيذ." : view === "clients" ? "نظّم بيانات العملاء واربطهم بأعمالك." : view === "content" ? "حوّل الأفكار إلى محتوى منشور عبر دورة إنتاج واضحة." : view === "knowledge" ? "احفظ أفكارك وملاحظاتك وقوالبك ومراجعك في مكان واحد." : view === "finance" ? "سجّل الدخل والمصروفات وتابع صافي التدفق المالي." : view === "activity" ? "تابع كل ما يحدث داخل وحدات النظام في خط زمني واحد." : view === "notifications" ? "راجع التنبيهات المهمة وانتقل مباشرة إلى مصدرها." : "تابع أعمالك من مكان واحد."}</p></div><div className="topbar-actions">{organizations.length>1&&<select aria-label="المؤسسة / Organization" value={organizationId??organizations[0]?.id} onChange={event=>{loadRevision.current++;activeOrganizationRef.current=null;setTasks([]);setProjects([]);setNotifications([]);setTaskModal(null);setDeleteTaskTarget(null);setOrganizationId(event.target.value);}}>{organizations.map(org=><option key={org.id} value={org.id}>{org.name}</option>)}</select>}<div className={`sync-state ${loadErrors.length ? "warning" : "ok"}`}><span>{loading ? "جارٍ التحديث…" : loadErrors.length ? "مزامنة جزئية" : "البيانات محدثة"}</span><small>{lastSyncedAt ? new Intl.DateTimeFormat("ar-SA",{hour:"numeric",minute:"2-digit"}).format(new Date(lastSyncedAt)) : "—"}</small>{loadErrors.length > 0 && <button onClick={() => void loadData()} aria-label="إعادة المزامنة">إعادة المحاولة</button>}</div><GlobalSearch projects={projects} tasks={tasks} clients={clients} contentItems={contentItems} knowledgeItems={knowledgeItems} financeItems={financeItems} onNavigate={navigate} /><button className="primary universal-create-button" onClick={() => setQuickCreateOpen(true)}><Plus size={18}/> إنشاء <kbd>N</kbd></button></div></header>
+      <header className="topbar"><div><span className="eyebrow">BASOUL · {workspace === "executive" ? "EXECUTIVE" : workspace === "operations" ? "OPERATIONS" : workspace === "knowledge" ? "KNOWLEDGE" : "ENGINEERING"}</span><h1>{view === "dashboard" ? "لوحة القيادة" : view === "projects" ? "إدارة المشاريع" : view === "tasks" ? "محرك المهام" : view === "clients" ? "إدارة العملاء" : view === "content" ? "استوديو المحتوى" : view === "knowledge" ? "قاعدة المعرفة" : view === "finance" ? "الإدارة المالية" : view === "activity" ? "سجل النشاط" : "مركز الإشعارات"}</h1><p>{view === "tasks" ? "أنشئ المهام واربطها بمشاريعك وتابع التنفيذ." : view === "clients" ? "نظّم بيانات العملاء واربطهم بأعمالك." : view === "content" ? "حوّل الأفكار إلى محتوى منشور عبر دورة إنتاج واضحة." : view === "knowledge" ? "احفظ أفكارك وملاحظاتك وقوالبك ومراجعك في مكان واحد." : view === "finance" ? "سجّل الدخل والمصروفات وتابع صافي التدفق المالي." : view === "activity" ? "تابع كل ما يحدث داخل وحدات النظام في خط زمني واحد." : view === "notifications" ? "راجع التنبيهات المهمة وانتقل مباشرة إلى مصدرها." : "تابع أعمالك من مكان واحد."}</p></div><div className="topbar-actions">{organizations.length>1&&<select aria-label="المؤسسة / Organization" value={organizationId??organizations[0]?.id} onChange={event=>{loadRevision.current++;activeOrganizationRef.current=null;setTasks([]);setProjects([]);setNotifications([]);setTaskModal(null);setDeleteTaskTarget(null);selectOrganization(event.target.value);}}>{organizations.map(org=><option key={org.id} value={org.id}>{org.name}</option>)}</select>}<div className={`sync-state ${loadErrors.length ? "warning" : "ok"}`}><span>{loading ? "جارٍ التحديث…" : loadErrors.length ? "مزامنة جزئية" : "البيانات محدثة"}</span><small>{lastSyncedAt ? new Intl.DateTimeFormat("ar-SA",{hour:"numeric",minute:"2-digit"}).format(new Date(lastSyncedAt)) : "—"}</small>{loadErrors.length > 0 && <button onClick={() => void loadData()} aria-label="إعادة المزامنة">إعادة المحاولة</button>}</div><GlobalSearch projects={projects} tasks={tasks} clients={clients} contentItems={contentItems} knowledgeItems={knowledgeItems} financeItems={financeItems} onNavigate={navigate} /><button className="primary universal-create-button" onClick={() => setQuickCreateOpen(true)}><Plus size={18}/> إنشاء <kbd>N</kbd></button></div></header>
       {loading && <div className="loading-bar"><i /></div>}
       {view === "dashboard" && loading && !lastSyncedAt ? <DashboardSkeleton /> : view === "dashboard" && <DashboardView projects={projects} tasks={tasks} clients={clients} financeItems={financeItems} activityEvents={activityEvents} notifications={notifications} userName="Yosseuf" onNavigate={navigate} onQuickAction={(action) => action === "project" ? setProjectModal({ mode: "create", project: null }) : action === "task" ? requestCreateTask() : action === "client" ? setClientModal({ mode: "create", client: null }) : action === "finance" ? setFinanceModal("create") : action === "knowledge" ? setKnowledgeModal({ mode: "create", item: null }) : setContentModal({ mode: "create", item: null })} />}
       {view === "activity" && <ActivityView events={activityEvents} onNavigate={navigate} onClear={() => void clearActivity()} />}
-      {view === "notifications" && <NotificationsView onOpenTask={id=>{const task=tasks.find(item=>item.id===id);if(task)setTaskModal({mode:"edit",task});else showToast("المهمة غير متاحة / Task unavailable","error");}} notifications={notifications} onNavigate={navigate} onToggleRead={(n)=>void toggleNotificationRead(n)} onMarkAll={()=>void markAllRead()} onDelete={(n)=>void removeNotification(n)} />}
+      {view === "notifications" && <NotificationsView onOpenMembership={id=>{const lease=requireOrganizationLease();window.history.replaceState(null,"","?membershipNotificationId="+encodeURIComponent(id));void openMembershipNotification(id).then(()=>{if(lease.isCurrent())setView("administration");}).catch(()=>{if(lease.isCurrent())showToast("الرابط غير متاح أو سُحبت الصلاحية. / Link unavailable or access revoked.","error");});}} onOpenTask={id=>{const task=tasks.find(item=>item.id===id);if(task)setTaskModal({mode:"edit",task});else showToast("المهمة غير متاحة / Task unavailable","error");}} notifications={notifications} onNavigate={navigate} onToggleRead={(n)=>void toggleNotificationRead(n)} onMarkAll={()=>void markAllRead()} onDelete={(n)=>void removeNotification(n)} />}
       {view === "architecture" && <ArchitectureReviewView projects={projects} />}
       {view === "administration" && <AdministrationView session={session} />}
       {view === "projects" && <ProjectsView projects={filteredProjects} totalCount={projects.length} query={projectQuery} filter={projectFilter} onQuery={setProjectQuery} onFilter={setProjectFilter} onCreate={() => setProjectModal({ mode: "create", project: null })} onOpen={setProjectDetail} onEdit={(project) => setProjectModal({ mode: "edit", project })} onDelete={setDeleteProjectTarget} />}
@@ -420,7 +525,7 @@ export default function Home() {
       {view === "content" && <ContentView items={filteredContent} allItems={contentItems} projects={projects} clients={clients} query={contentQuery} filter={contentFilter} platformFilter={platformFilter} onQuery={setContentQuery} onFilter={setContentFilter} onPlatformFilter={setPlatformFilter} onCreate={() => setContentModal({ mode: "create", item: null })} onEdit={(item) => setContentModal({ mode: "edit", item })} onDelete={setDeleteContentTarget} />}
     </main>
 
-    {projectDetail && <ProjectWorkspace project={projectDetail} tasks={tasks.filter(t=>t.project_id===projectDetail.id)} financeItems={financeItems.filter(i=>i.project_id===projectDetail.id)} activityEvents={activityEvents.filter(e=>e.entity_id===projectDetail.id || (e.module==="tasks" && tasks.some(t=>t.project_id===projectDetail.id && t.id===e.entity_id)))} client={clients.find(c=>c.id===projectDetail.client_id)} onClose={()=>setProjectDetail(null)} onEdit={()=>{setProjectDetail(null);setProjectModal({mode:"edit",project:projectDetail});}} onCreateTask={()=>{setProjectDetail(null);setTaskModal({mode:"create",task:null});}} />}
+    {projectDetail && <ProjectWorkspace project={projectDetail} tasks={tasks.filter(t=>t.project_id===projectDetail.id)} financeItems={financeItems.filter(i=>i.project_id===projectDetail.id)} activityEvents={activityEvents.filter(e=>e.entity_id===projectDetail.id || (e.module==="tasks" && tasks.some(t=>t.project_id===projectDetail.id && t.id===e.entity_id)))} client={clients.find(c=>c.id===projectDetail.client_id)} onClose={()=>setProjectDetail(null)} onEdit={()=>{setProjectDetail(null);setProjectModal({mode:"edit",project:projectDetail});}} onOpenTask={id=>void openProjectTask(id)} onCreateTask={()=>{setTaskModal({mode:"create",task:null,projectId:projectDetail.id});}} />}
     {financeModal && <FinanceModal item={financeModal === "create" ? null : financeModal} projects={projects} clients={clients} onClose={() => setFinanceModal(null)} onSave={async (input, item) => { const ok = await saveFinance(input, item); if (ok) setFinanceModal(null); return ok; }} />}
     {projectModal && <ProjectModal state={projectModal} clients={clients} onClose={() => setProjectModal(null)} onSave={async (input, project) => { const ok = await saveProject(input, project); if (ok) setProjectModal(null); return ok; }} />}
     {knowledgeModal && <KnowledgeModal state={knowledgeModal} onClose={() => setKnowledgeModal(null)} onSave={async (input, item) => { const ok = await saveKnowledge(input, item); if (ok) setKnowledgeModal(null); return ok; }} />}
@@ -428,7 +533,7 @@ export default function Home() {
     {clientModal && <ClientModal state={clientModal} onClose={() => setClientModal(null)} onSave={async (input, client) => { const ok = await saveClient(input, client); if (ok) setClientModal(null); return ok; }} />}
     {taskModal && <TaskModal state={taskModal} projects={projects} onClose={() => setTaskModal(null)} onSave={async (input, task, reason) => { const ok = await saveTask(input, task, reason); if (ok) setTaskModal(null); return ok; }} />}
     {deleteFinanceTarget && <ConfirmDelete title="حذف المعاملة؟" text={`سيتم حذف «${deleteFinanceTarget.description}» نهائيًا.`} onCancel={() => setDeleteFinanceTarget(null)} onConfirm={() => void deleteFinance(deleteFinanceTarget)} />}
-    {deleteProjectTarget && <ConfirmDelete title="حذف المشروع؟" text={`سيتم حذف «${deleteProjectTarget.name}» وجميع مهامه نهائيًا.`} onCancel={() => setDeleteProjectTarget(null)} onConfirm={() => void deleteProject(deleteProjectTarget)} />}
+    {deleteProjectTarget && <ConfirmDelete title="حذف المشروع؟" text={`حذف «${deleteProjectTarget.name}» مسموح فقط دون سجلات أو تاريخ مرتبط. / Projects with history are retained.`} onCancel={() => setDeleteProjectTarget(null)} onConfirm={() => void deleteProject(deleteProjectTarget)} />}
     {deleteClientTarget && <ConfirmDelete title="حذف العميل؟" text={`سيتم حذف «${deleteClientTarget.name}». ستبقى المشاريع المرتبطة دون عميل.`} onCancel={() => setDeleteClientTarget(null)} onConfirm={() => void deleteClient(deleteClientTarget)} />}
     {deleteKnowledgeTarget && <ConfirmDelete title="حذف عنصر المعرفة؟" text={`سيتم حذف «${deleteKnowledgeTarget.title}» نهائيًا.`} onCancel={() => setDeleteKnowledgeTarget(null)} onConfirm={() => void deleteKnowledge(deleteKnowledgeTarget)} />}
     {deleteContentTarget && <ConfirmDelete title="حذف المحتوى؟" text={`سيتم حذف «${deleteContentTarget.title}» نهائيًا.`} onCancel={() => setDeleteContentTarget(null)} onConfirm={() => void deleteContent(deleteContentTarget)} />}
@@ -596,7 +701,7 @@ function ProjectModal({ state, clients, onClose, onSave }: { state:Exclude<Proje
   </Modal>;
 }
 
-function ProjectWorkspace({project,tasks,financeItems,activityEvents,client,onClose,onEdit,onCreateTask}:{project:Project;tasks:Task[];financeItems:FinanceTransaction[];activityEvents:ActivityEvent[];client?:Client;onClose:()=>void;onEdit:()=>void;onCreateTask:()=>void}){
+function ProjectWorkspace({project,tasks,financeItems,activityEvents,client,onClose,onEdit,onCreateTask,onOpenTask}:{project:Project;tasks:Task[];financeItems:FinanceTransaction[];activityEvents:ActivityEvent[];client?:Client;onClose:()=>void;onEdit:()=>void;onCreateTask:()=>void;onOpenTask:(id:string)=>void}){
   type WorkspaceTab="overview"|"tasks"|"files"|"notes"|"timeline"|"finance"|"activity";
   const [tab,setTab]=useState<WorkspaceTab>("overview");
   const completed=tasks.filter(t=>t.status==="Done").length;
@@ -636,7 +741,7 @@ function ProjectWorkspace({project,tasks,financeItems,activityEvents,client,onCl
       <article className="project-overview-card workspace-recent-card"><span className="section-kicker">NEXT ACTIONS</span><h3>الخطوات التالية</h3>{tasks.filter(t=>t.status!=="Done").length?<div className="workspace-task-list">{tasks.filter(t=>t.status!=="Done").sort((a,b)=>(a.due_date||"9999").localeCompare(b.due_date||"9999")).slice(0,5).map(t=><div key={t.id}><span className={`status-dot ${taskStatusClass(t.status)}`}/><div><b>{t.title}</b><small>{taskStatusLabel(t.status)} · {formatDate(t.due_date)}</small></div><strong>{priorityLabels[t.priority]}</strong></div>)}</div>:<EmptyState compact text="لا توجد خطوات مفتوحة." onCreate={onCreateTask}/>}</article>
     </div>}
 
-    {tab==="tasks"&&<section className="workspace-tab-panel"><div className="workspace-panel-head"><div><span className="section-kicker">TASK BOARD</span><h3>لوحة تنفيذ المشروع</h3></div><button className="primary compact" onClick={onCreateTask}><Plus size={16}/> مهمة جديدة</button></div><div className="project-kanban">{taskColumns.map(status=><div className="project-kanban-column" key={status}><header><span>{taskStatusLabel(status)}</span><em>{tasks.filter(t=>status==="Unknown" ? !isTaskStatus(t.status) : t.status===status).length}</em></header>{tasks.filter(t=>status==="Unknown" ? !isTaskStatus(t.status) : t.status===status).map(t=><article key={t.id}><div className="kanban-priority"><span className={`priority-badge ${t.priority.toLowerCase()}`}>{priorityLabels[t.priority]}</span><b>{t.progress}%</b></div><h4>{t.title}</h4>{t.description&&<p>{t.description}</p>}<footer><span><CalendarDays size={14}/>{formatDate(t.due_date)}</span><div className="mini-progress"><i style={{width:`${t.progress}%`}}/></div></footer></article>)}{tasks.filter(t=>status==="Unknown" ? !isTaskStatus(t.status) : t.status===status).length===0&&<div className="kanban-empty">لا توجد مهام</div>}</div>)}</div></section>}
+    {tab==="tasks"&&<section className="workspace-tab-panel"><div className="workspace-panel-head"><div><span className="section-kicker">TASK BOARD</span><h3>لوحة تنفيذ المشروع</h3></div><button className="primary compact" onClick={onCreateTask}><Plus size={16}/> مهمة جديدة</button></div><div className="project-kanban">{taskColumns.map(status=><div className="project-kanban-column" key={status}><header><span>{taskStatusLabel(status)}</span><em>{tasks.filter(t=>status==="Unknown" ? !isTaskStatus(t.status) : t.status===status).length}</em></header>{tasks.filter(t=>status==="Unknown" ? !isTaskStatus(t.status) : t.status===status).map(t=><article key={t.id}><div className="kanban-priority"><span className={`priority-badge ${t.priority.toLowerCase()}`}>{priorityLabels[t.priority]}</span><b>{t.progress}%</b></div><h4><button onClick={()=>onOpenTask(t.id)}>{t.title}</button></h4>{t.description&&<p>{t.description}</p>}<footer><span><CalendarDays size={14}/>{formatDate(t.due_date)}</span><div className="mini-progress"><i style={{width:`${t.progress}%`}}/></div></footer></article>)}{tasks.filter(t=>status==="Unknown" ? !isTaskStatus(t.status) : t.status===status).length===0&&<div className="kanban-empty">لا توجد مهام</div>}</div>)}</div></section>}
 
     {tab==="timeline"&&<section className="workspace-tab-panel"><div className="workspace-panel-head"><div><span className="section-kicker">PROJECT TIMELINE</span><h3>المحطات الرئيسية</h3></div></div><div className="workspace-timeline"><div className="done"><i><CheckCircle2 size={18}/></i><div><b>إنشاء المشروع</b><small>{formatDate(project.created_at)}</small></div></div>{phases.map((phase,index)=><div key={phase} className={index<currentPhase?"done":index===currentPhase?"current":""}><i>{index<currentPhase?<CheckCircle2 size={18}/>:<span/>}</i><div><b>{phaseLabels[phase]}</b><small>{index<currentPhase?"مرحلة مكتملة":index===currentPhase?"قيد التنفيذ":"بانتظار البدء"}</small></div></div>)}<div className={project.status==="Completed"?"done":""}><i>{project.status==="Completed"?<CheckCircle2 size={18}/>:<span/>}</i><div><b>التسليم النهائي</b><small>{formatDate(project.due_date)}</small></div></div></div></section>}
 
@@ -645,23 +750,25 @@ function ProjectWorkspace({project,tasks,financeItems,activityEvents,client,onCl
     {tab==="activity"&&<section className="workspace-tab-panel"><div className="workspace-panel-head"><div><span className="section-kicker">ACTIVITY STREAM</span><h3>آخر نشاطات المشروع</h3></div></div>{activityEvents.length?<div className="workspace-activity-list">{activityEvents.slice(0,20).map(event=><div key={event.id}><i><Activity size={16}/></i><div><b>{event.title}</b><small>{event.description||event.module} · {new Intl.DateTimeFormat("ar-SA",{dateStyle:"medium",timeStyle:"short"}).format(new Date(event.created_at))}</small></div></div>)}</div>:<EmptyState text="لا يوجد نشاط مسجل للمشروع بعد."/>}</section>}
 
     {tab==="files"&&<ProjectFilesPanel projectId={project.id}/>}
-    {tab==="notes"&&<ProjectNotesPanel projectId={project.id}/>}
+    {tab==="notes"&&<ProjectNotesPanel projectId={project.id} onOpenTask={onOpenTask}/>}
   </section></div>;
 }
 
-function ProjectNotesPanel({projectId}:{projectId:string}) {
+function ProjectNotesPanel({projectId,onOpenTask}:{projectId:string;onOpenTask:(id:string)=>void}) {
+  const draftId=useRef<string>(crypto.randomUUID());
   const [notes,setNotes]=useState<ProjectNote[]>([]);
   const [files,setFiles]=useState<ProjectFile[]>([]);
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [creating,setCreating]=useState(false);
   const [message,setMessage]=useState("");
+  const [downloadUrl,setDownloadUrl]=useState("");
   const refresh=useCallback(async()=>{
-    setLoading(true);
+    setLoading(true);setDownloadUrl("");
     try {
       const [noteRows,fileRows]=await Promise.all([listProjectNotes(projectId),listProjectFiles(projectId)]);
       setNotes(noteRows);setFiles(fileRows);setMessage("");
-    } catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر تحميل سجل المشروع."); }
+    } catch { setMessage("تعذر تحميل السجل. تحقق من المؤسسة وأعد المحاولة. / Cannot load records. Verify organization and retry."); }
     finally { setLoading(false); }
   },[projectId]);
   useEffect(()=>{void refresh();},[refresh]);
@@ -678,23 +785,23 @@ function ProjectNotesPanel({projectId}:{projectId:string}) {
         content:String(form.get("content")||"").trim()||null,
         assigned_to:String(form.get("assigned_to")||"").trim()||null,
         follow_up_date:String(form.get("follow_up_date")||"")||null,
-      });
-      setCreating(false);await refresh();
-    } catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر حفظ الملاحظة."); }
+      },draftId.current);
+      draftId.current=crypto.randomUUID();setCreating(false);await refresh();
+    } catch { setMessage("لم يتأكد حفظ الملاحظة؛ أعد نفس المسودة. قد يلزم تحديث قاعدة البيانات. / Note save unconfirmed; retry the same draft. The reviewed database update may be required."); }
     finally { setSaving(false); }
   }
   async function changeStatus(note:ProjectNote,status:"open"|"done"|"archived") {
     try { await setProjectNoteStatus(note,status);await refresh(); }
-    catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر تحديث الحالة."); }
+    catch { setMessage("لم يتأكد تحديث الحالة. حدّث السجل. / Status update unconfirmed. Refresh records."); }
   }
   async function convert(note:ProjectNote) {
-    try { await convertProjectNoteToTask(note);await refresh(); }
-    catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر تحويل الملاحظة إلى مهمة."); }
+    try { const id=await convertProjectNoteToTask(note);await refresh();onOpenTask(id); }
+    catch { setMessage("لم يتأكد التحويل. حدّث المصدر وأعد نفس العملية؛ قد يلزم تحديث قاعدة البيانات. / Conversion unconfirmed. Refresh and retry the same source; the reviewed database update may be required."); }
   }
   async function remove(note:ProjectNote) {
     if(!window.confirm(`حذف «${note.title}»؟`))return;
     try { await deleteProjectNote(note);await refresh(); }
-    catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر حذف الملاحظة."); }
+    catch { setMessage("لم يتأكد الحذف. حدّث السجل؛ لا يمكن حذف مصدر مرتبط بمهمة. / Deletion unconfirmed. Refresh records; linked task sources cannot be deleted."); }
   }
   const typeLabels:Record<ProjectNoteType,string>={decision:"قرار",meeting:"اجتماع",review:"مراجعة",general:"ملاحظة"};
   const fileName=(id:string|null)=>files.find(file=>file.id===id)?.name;
@@ -712,15 +819,17 @@ function ProjectNotesPanel({projectId}:{projectId:string}) {
       <label className="note-content"><span>التفاصيل</span><textarea name="content" rows={4}/></label>
       <div className="form-actions note-actions"><button type="button" onClick={()=>setCreating(false)}>إلغاء</button><button className="primary" disabled={saving}>{saving?"جارٍ الحفظ…":"حفظ السجل"}</button></div>
     </form>}
-    {message&&<div className="project-files-message">{message}</div>}
+    {message&&<div role="status" className="project-files-message">{message}</div>}
+    {downloadUrl&&<a href={downloadUrl} target="_blank" rel="noopener noreferrer">فتح التنزيل الآمن / Open secure download</a>}
     {loading?<div className="project-files-loading">جارٍ تحميل السجل…</div>:notes.length===0
       ?<div className="project-files-empty"><BookOpen size={34}/><h4>لا توجد ملاحظات أو قرارات</h4><p>أضف أول قرار أو اجتماع أو مراجعة للمشروع.</p></div>
       :<div className="project-note-list">{notes.map(note=><article key={note.id} className={`note-${note.status}`}>
         <header><span className={`note-type ${note.type}`}>{typeLabels[note.type]}</span><em>{note.status==="open"?"مفتوح":note.status==="done"?"منفذ":"مؤرشف"}</em></header>
         <h4>{note.title}</h4>{note.content&&<p>{note.content}</p>}
-        <footer><span>{note.assigned_to||"دون مسؤول"}</span><span>{note.follow_up_date?formatDate(note.follow_up_date):"دون موعد"}</span>{fileName(note.project_file_id)&&<span>📎 {fileName(note.project_file_id)}</span>}</footer>
+        <footer><span>{note.assigned_to||"دون مسؤول"}</span><span>{note.follow_up_date?formatDate(note.follow_up_date):"دون موعد"}</span>{fileName(note.project_file_id)&&<button onClick={()=>{const file=files.find(f=>f.id===note.project_file_id);if(file)void createProjectFileDownloadUrl(file).then(setDownloadUrl).catch(()=>setMessage("الملف غير متاح. / File unavailable."));}}>📎 {fileName(note.project_file_id)}</button>}</footer>
         <div className="project-note-buttons">
-          {note.status==="open"&&<><button onClick={()=>void convert(note)}>تحويل إلى مهمة</button><button onClick={()=>void changeStatus(note,"done")}>تعليم كمنفذ</button></>}
+          {note.task_id&&<button onClick={()=>onOpenTask(note.task_id!)}>فتح المهمة / Open task</button>}
+          {note.status==="open"&&!note.task_id&&<><button onClick={()=>void convert(note)}>تحويل إلى مهمة</button><button onClick={()=>void changeStatus(note,"done")}>تعليم كمنفذ</button></>}
           {note.status==="done"&&<button onClick={()=>void changeStatus(note,"open")}>إعادة فتح</button>}
           <button onClick={()=>void changeStatus(note,"archived")}>أرشفة</button>
           <button className="delete" aria-label={`حذف ${note.title}`} onClick={()=>void remove(note)}><Trash2 size={15}/></button>
@@ -734,11 +843,12 @@ function ProjectFilesPanel({projectId}:{projectId:string}) {
   const [loading,setLoading]=useState(true);
   const [uploading,setUploading]=useState(false);
   const [message,setMessage]=useState("");
+  const [downloadUrl,setDownloadUrl]=useState("");
 
   const refreshFiles=useCallback(async()=>{
     setLoading(true);
     try { setFiles(await listProjectFiles(projectId)); setMessage(""); }
-    catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر تحميل ملفات المشروع."); }
+    catch { setMessage("تعذر تحميل الملفات. تحقق من المؤسسة وأعد المحاولة. / Cannot load files. Verify organization and retry."); }
     finally { setLoading(false); }
   },[projectId]);
 
@@ -750,17 +860,12 @@ function ProjectFilesPanel({projectId}:{projectId:string}) {
     if(!selected)return;
     setUploading(true);setMessage("");
     try { await uploadProjectFile(projectId,selected); await refreshFiles(); }
-    catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر رفع الملف."); }
+    catch { setMessage("لم يتأكد الرفع. احتفظ بنفس الملف وحدّث السجل. / Upload unconfirmed. Recovery reference retained when available; select the same file to retry. The reviewed database update may be required."); }
     finally { setUploading(false); }
   }
   async function onDownload(file:ProjectFile) {
-    try { window.location.assign(await createProjectFileDownloadUrl(file)); }
-    catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر تنزيل الملف."); }
-  }
-  async function onDelete(file:ProjectFile) {
-    if(!window.confirm(`حذف الملف «${file.name}» نهائيًا؟`))return;
-    try { await deleteProjectFile(file); await refreshFiles(); }
-    catch(cause) { setMessage(cause instanceof Error?cause.message:"تعذر حذف الملف."); }
+    try { setDownloadUrl("");const url=await createProjectFileDownloadUrl(file);setDownloadUrl(url); }
+    catch { setMessage("الملف غير متاح أو الرفع غير مكتمل. اختر نفس الملف للاسترداد؛ لا تحذف المرجع. / File unavailable or upload incomplete. Select the same file to recover; retain its reference."); }
   }
   const categoryLabels:Record<ProjectFile["category"],string>={
     drawing:"مخطط",document:"مستند",image:"صورة",model:"نموذج",other:"ملف",
@@ -775,19 +880,21 @@ function ProjectFilesPanel({projectId}:{projectId:string}) {
         <input type="file" disabled={uploading} onChange={(event)=>void onUpload(event)} accept=".pdf,.dwg,.dxf,.ifc,.rvt,.nwd,.nwc,.doc,.docx,.xls,.xlsx,.ppt,.pptx,image/*"/>
       </label>
     </div>
+    {pendingProjectFiles(projectId).length>0&&<p role="status">رفع غير مكتمل؛ اختر نفس الملف للاسترداد دون تكرار. / Upload incomplete; select the same file to recover without duplicates.</p>}
     <div className="project-files-meta"><span>PDF · DWG · IFC · Office · Images</span><em>الحد الأقصى 100 MB للملف</em></div>
-    {message&&<div className="project-files-message">{message}</div>}
+    {message&&<div role="status" className="project-files-message">{message}</div>}
+    {downloadUrl&&<a href={downloadUrl} target="_blank" rel="noopener noreferrer">فتح التنزيل الآمن / Open secure download</a>}
     {loading?<div className="project-files-loading">جارٍ تحميل الملفات…</div>:files.length===0
       ?<div className="project-files-empty"><FileText size={34}/><h4>لا توجد ملفات في المشروع</h4><p>استخدم زر «رفع ملف» لإضافة أول مستند.</p></div>
       :<div className="project-files-list">{files.map(file=><article key={file.id}>
         <span className="project-file-icon"><FileText size={20}/></span>
         <div><strong>{file.name}</strong><small>{categoryLabels[file.category]} · {formatSize(file.file_size)} · {new Intl.DateTimeFormat("ar-SA",{dateStyle:"medium"}).format(new Date(file.created_at))}</small></div>
         <button onClick={()=>void onDownload(file)}>تنزيل</button>
-        <button className="delete" aria-label={`حذف ${file.name}`} onClick={()=>void onDelete(file)}><Trash2 size={16}/></button>
+        <small>محفوظ / Retained</small>
       </article>)}</div>}
   </section>;
 }
-function TaskModal({ state, projects, onClose, onSave }: { state:Exclude<TaskModalState,null>; projects:Project[]; onClose:()=>void; onSave:(i:TaskInput,t?:Task,reason?:string)=>Promise<boolean> }) { const t=state.task; const submitting=useRef(false); const [saveError,setSaveError]=useState(""); const [pending,setPending]=useState<TaskInput|null>(null); const [saving,setSaving]=useState(false); async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();if(submitting.current)return;submitting.current=true;setSaving(true);setSaveError("");const f=new FormData(e.currentTarget);const status=String(f.get("status")) as TaskStatus;const input:TaskInput={project_id:String(f.get("project_id")),title:String(f.get("title")||"").trim(),description:nullableText(f.get("description")),status,priority:String(f.get("priority")) as PriorityLevel,progress:clamp(Number(f.get("progress")||0)),due_date:dateValue(f.get("due_date"))};if(TASK_WORKFLOW_WRITES_ENABLED && t && input.status!==t.status){setPending(input);submitting.current=false;setSaving(false);return;}try{if(!await onSave(input,t??undefined))setSaveError("لم يتأكد الحفظ. حدّث البيانات قبل المحاولة. / Save unconfirmed. Refresh before retrying.");}catch{setSaveError("تعذر الحفظ. حدّث البيانات. / Save failed. Refresh.");}finally{submitting.current=false;setSaving(false);}} if(pending && t) return <Modal title="تأكيد انتقال المهمة / Confirm task transition" kicker="TASK ENGINE" onClose={onClose}><TaskReasonConfirmation from={t.status} to={pending.status} onCancel={()=>setPending(null)} onConfirm={reason=>onSave(pending,t,reason)}/></Modal>; return <Modal title={state.mode==="create"?"إنشاء مهمة جديدة":"تعديل المهمة"} kicker="TASK ENGINE" onClose={onClose}><form className="project-form" onSubmit={submit}><label className="full"><span>المشروع *</span><select name="project_id" defaultValue={t?.project_id||projects[0]?.id} required>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><Field name="title" label="عنوان المهمة *" defaultValue={t?.title} required full maxLength={160}/><label><span>الحالة</span><select name="status" defaultValue={t?.status||"To Do"}>{TASK_STATUSES.map(status=><option key={status} value={status} disabled={TASK_WORKFLOW_WRITES_ENABLED ? t ? status!==t.status && !canTransitionTask(t.status,status) : status!=="To Do" : status==="Review" || (status==="Waiting" && t?.status!=="Waiting")}>{taskStatusLabel(status)}</option>)}</select></label><Select name="priority" label="الأولوية" defaultValue={t?.priority||"Medium"} options={priorityLabels}/><Field name="progress" label="نسبة التقدم" type="number" defaultValue={t?.progress??0} min={0} max={100}/><Field name="due_date" label="موعد الاستحقاق" type="date" defaultValue={t?.due_date}/><label className="full"><span>الوصف</span><textarea name="description" rows={5} defaultValue={t?.description??""}/></label><p role="alert" className="full">{saveError}</p><Actions saving={saving} onClose={onClose}/></form></Modal>; }
+function TaskModal({ state, projects, onClose, onSave }: { state:Exclude<TaskModalState,null>; projects:Project[]; onClose:()=>void; onSave:(i:TaskInput,t?:Task,reason?:string)=>Promise<boolean> }) { const t=state.task; const submitting=useRef(false); const [saveError,setSaveError]=useState(""); const [pending,setPending]=useState<TaskInput|null>(null); const [saving,setSaving]=useState(false); async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();if(submitting.current)return;submitting.current=true;setSaving(true);setSaveError("");const f=new FormData(e.currentTarget);const status=String(f.get("status")) as TaskStatus;const input:TaskInput={project_id:String(f.get("project_id")),title:String(f.get("title")||"").trim(),description:nullableText(f.get("description")),status,priority:String(f.get("priority")) as PriorityLevel,progress:clamp(Number(f.get("progress")||0)),due_date:dateValue(f.get("due_date"))};if(TASK_WORKFLOW_WRITES_ENABLED && t && input.status!==t.status){setPending(input);submitting.current=false;setSaving(false);return;}try{if(!await onSave(input,t??undefined))setSaveError("لم يتأكد الحفظ. حدّث البيانات قبل المحاولة. / Save unconfirmed. Refresh before retrying.");}catch{setSaveError("تعذر الحفظ. حدّث البيانات. / Save failed. Refresh.");}finally{submitting.current=false;setSaving(false);}} if(t?.archived)return <Modal title={t.title} kicker="TASK HISTORY" onClose={onClose}><p>مهمة مؤرشفة للقراءة فقط / Archived task, read only</p><p>{t.description}</p><p>{taskStatusLabel(t.status)}</p></Modal>; if(pending && t) return <Modal title="تأكيد انتقال المهمة / Confirm task transition" kicker="TASK ENGINE" onClose={onClose}><TaskReasonConfirmation from={t.status} to={pending.status} onCancel={()=>setPending(null)} onConfirm={reason=>onSave(pending,t,reason)}/></Modal>; return <Modal title={state.mode==="create"?"إنشاء مهمة جديدة":"تعديل المهمة"} kicker="TASK ENGINE" onClose={onClose}><form className="project-form" onSubmit={submit}><label className="full"><span>المشروع *</span><select name="project_id" defaultValue={t?.project_id||(state.mode==="create"?state.projectId:undefined)||projects[0]?.id} required>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><Field name="title" label="عنوان المهمة *" defaultValue={t?.title} required full maxLength={160}/><label><span>الحالة</span><select name="status" defaultValue={t?.status||"To Do"}>{TASK_STATUSES.map(status=><option key={status} value={status} disabled={TASK_WORKFLOW_WRITES_ENABLED ? t ? status!==t.status && !canTransitionTask(t.status,status) : status!=="To Do" : status==="Review" || (status==="Waiting" && t?.status!=="Waiting")}>{taskStatusLabel(status)}</option>)}</select></label><Select name="priority" label="الأولوية" defaultValue={t?.priority||"Medium"} options={priorityLabels}/><Field name="progress" label="نسبة التقدم" type="number" defaultValue={t?.progress??0} min={0} max={100}/><Field name="due_date" label="موعد الاستحقاق" type="date" defaultValue={t?.due_date}/><label className="full"><span>الوصف</span><textarea name="description" rows={5} defaultValue={t?.description??""}/></label><p role="alert" className="full">{saveError}</p><Actions saving={saving} onClose={onClose}/></form></Modal>; }
 
 function Modal({ title, kicker, onClose, children }: { title:string; kicker:string; onClose:()=>void; children:ReactNode }) { return <div className="modal-backdrop" onMouseDown={onClose}><div className="modal" onMouseDown={(e)=>e.stopPropagation()}><div className="modal-head"><div><span className="section-kicker">{kicker}</span><h2>{title}</h2></div><button className="icon-button" onClick={onClose}><X size={20}/></button></div>{children}</div></div>; }
 function Field({ name,label,defaultValue,type="text",required,full,min,max,maxLength }: { name:string;label:string;defaultValue?:string|number|null;type?:string;required?:boolean;full?:boolean;min?:number;max?:number;maxLength?:number }) { return <label className={full?"full":""}><span>{label}</span><input name={name} type={type} defaultValue={defaultValue??""} required={required} min={min} max={max} maxLength={maxLength}/></label>; }

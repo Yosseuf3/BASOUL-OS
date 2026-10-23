@@ -10,7 +10,7 @@ const confirmed={id:'task',organization_id:'org',status:'To Do',updated_at:'new'
 function harness({error=null,data=confirmed,enabled=false,permissionError=false}={}) {
  let validations=0,rpcs=0,updates=0;const filters=[];
  const database={rpc:async()=>{rpcs++;return {error,data};},from:()=>{const q={update:()=>{updates++;return q;},eq:(key,value)=>{filters.push([key,value]);return q;},select:()=>q,single:async()=>({data,error:null})};return q;}};
- const service=load('mobile/src/services/task-edits.ts',name=>name.endsWith('/supabase')?{supabase:database}:name.endsWith('/organizations')?{validateOrganizationContext:async()=>{validations++;if(permissionError)throw {code:'42501'};}}:{TASK_WORKFLOW_WRITES_ENABLED:enabled});
+ const service=load('mobile/src/services/task-edits.ts',name=>name.endsWith('/context')?{mobileOrganizationClient:()=>database}:name.endsWith('/supabase')?{supabase:database}:name.endsWith('/organizations')?{validateOrganizationContext:async()=>{validations++;if(permissionError)throw {code:'42501'};}}:{TASK_WORKFLOW_WRITES_ENABLED:enabled});
  return {run:value=>service.editMobileTask({userId:'user',organizationId:'org'},task,value??input),archive:()=>service.archiveMobileTask({userId:'user',organizationId:'org'},task),counts:()=>({validations,rpcs,updates}),filters};
 }
 test('Mobile generic edits validate permission and confirm exact task fields',async()=>{

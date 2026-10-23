@@ -9,6 +9,17 @@ function bearer(request: NextRequest) {
   return value.startsWith("Bearer ") ? value.slice(7).trim() : "";
 }
 
+async function validReferences(database: Awaited<ReturnType<typeof authenticatedDatabase>>,body:Record<string,unknown>) {
+  if(!database)return false;
+  for(const [field,table] of Object.entries({project_id:'projects',client_id:'clients'})) {
+    const id=body[field];if(id===undefined||id===null||id==='')continue;
+    if(typeof id!=='string')return false;
+    const result=await database.database.from(table).select('id').eq('id',id).eq('organization_id',database.organizationId).single();
+    if(result.error||!result.data)return false;
+  }
+  return true;
+}
+
 async function context(request: NextRequest, resource: string) {
   if (!isAuthorizedResource(resource)) return { ok: false as const, response: NextResponse.json({ error: "Unknown resource" }, { status: 404 }) };
   const auth = await authenticatedDatabase(bearer(request), requestedOrganization(request.headers));
@@ -31,6 +42,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const resolved = await context(request, resource);
   if (!resolved.ok) return resolved.response;
   const body = await request.json() as Record<string, unknown>;
+  if(resource==='tasks'&&request.headers.get('x-basoul-task-create-contract')!=='atomic-source-v1')
+    return NextResponse.json({code:'TASK_UPDATE_REQUIRED',error:'حدّث التطبيق لإنشاء المهام بأمان. / Upgrade required for safe task creation.'},{status:409});
+  if(!await validReferences(resolved.auth,body))return NextResponse.json({error:'السجل المرتبط غير متاح في المؤسسة. / Linked record is unavailable in this organization.'},{status:403});
   const payload: Record<string,unknown> = trustedIdentityPayload(body, resolved.auth.user.id, resolved.auth.organizationId);
   delete payload.expectedUpdatedAt;
   delete payload.updated_at;
@@ -54,6 +68,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!resolved.ok) return resolved.response;
   const body = await request.json() as Record<string, unknown>;
   if (typeof body.id !== "string") return NextResponse.json({ error: "Missing row id" }, { status: 400 });
+  if(!await validReferences(resolved.auth,body))return NextResponse.json({error:'السجل المرتبط غير متاح في المؤسسة. / Linked record is unavailable in this organization.'},{status:403});
   const payload: Record<string,unknown> = trustedIdentityPayload(body, resolved.auth.user.id, resolved.auth.organizationId);
   delete payload.expectedUpdatedAt;
   delete payload.updated_at;
@@ -88,6 +103,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const result = await query.select("*").maybeSingle();
   if (resource === 'tasks' && !result.error && !result.data) return NextResponse.json(TASK_EDIT_CONFLICT,{status:409});
   if(resource==='tasks' && result.error) return NextResponse.json({error:'تعذر تعديل المهمة. / Task edit rejected.'},{status:403});
+  if(!result.error&&!result.data)return NextResponse.json({code:'ORGANIZATION_RECORD_UNAVAILABLE',error:'السجل غير متاح في المؤسسة الحالية. / Record unavailable in the current organization.'},{status:404});
   return NextResponse.json(result.error ? { error: result.error.message } : { data: result.data }, { status: result.error ? 403 : 200 });
 }
 
@@ -98,8 +114,16 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   if (!resolved.ok) return resolved.response;
   const id = new URL(request.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing row id" }, { status: 400 });
+  if(resource==='projects') {
+    for(const table of ['tasks','project_files','project_notes','architectural_drawings','finance_transactions','activity_events']) {
+      const column=table==='activity_events'?'entity_id':'project_id';
+      const related=await resolved.auth.database.from(table).select('id').eq('organization_id',resolved.auth.organizationId).eq(column,id).limit(1);
+      if(related.error||related.data?.length)return NextResponse.json({code:'PROJECT_HISTORY_PRESERVED',error:'المشروع محفوظ لوجود سجلات مرتبطة. / Project retained because related records exist.'},{status:409});
+    }
+  }
   let query=resolved.auth.database.from(resolved.resource).delete().eq("id", id).eq("organization_id", resolved.auth.organizationId);
   if(resource==='notifications') query=query.eq('user_id',resolved.auth.user.id);
-  const result = await query;
+  const result = await query.select('id');
+  if(!result.error&&!result.data?.length)return NextResponse.json({code:'ORGANIZATION_RECORD_UNAVAILABLE',error:'السجل غير متاح في المؤسسة الحالية. / Record unavailable in the current organization.'},{status:404});
   return NextResponse.json(result.error ? { error: result.error.message } : { data: null }, { status: result.error ? 403 : 200 });
 }

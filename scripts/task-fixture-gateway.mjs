@@ -12,16 +12,16 @@ const uri=new URL(containers[1].Config.Env.find(value=>value.startsWith('GOTRUE_
 assert.equal(uri.hostname,'basoul-pr173-auth-db');assert.equal(uri.pathname,'/basoul_pr173_auth_phase2_clean');
 const password=decodeURIComponent(uri.password);
 const gateway=createServer(async(req,res)=>{
- res.setHeader('Access-Control-Allow-Origin','http://127.0.0.1:3107');res.setHeader('Access-Control-Allow-Headers','*');res.setHeader('Access-Control-Allow-Methods','GET,POST,PATCH,DELETE,OPTIONS');
+ res.setHeader('Access-Control-Allow-Origin','http://127.0.0.1:3107');res.setHeader('Access-Control-Allow-Headers','*');res.setHeader('Access-Control-Allow-Methods','GET,POST,PUT,PATCH,DELETE,OPTIONS');
  if(req.method==='OPTIONS'){res.writeHead(204);res.end();return;}
- const prefix=req.url.startsWith('/auth/v1/')?'/auth/v1':req.url.startsWith('/rest/v1/')?'/rest/v1':null;
+ const prefix=req.url.startsWith('/auth/v1/')?'/auth/v1':req.url.startsWith('/rest/v1/')?'/rest/v1':process.env.BASOUL_PROJECT_FIXTURE==='1'&&req.url.startsWith('/storage/v1/')?'/storage/v1':null;
  if(!prefix){res.writeHead(404);res.end();return;}
- const target=prefix==='/auth/v1'?'http://basoul-pr173-auth-clean:9999':'http://basoul-pr173-postgrest:3000';
- let body='';for await(const chunk of req){body+=chunk;if(body.length>1024*1024){res.writeHead(413);res.end();return;}}
+ const target=prefix==='/auth/v1'?'http://basoul-pr173-auth-clean:9999':prefix==='/storage/v1'?'http://basoul-batch2-storage:5000':'http://basoul-pr173-postgrest:3000';
+ let length=0;const chunks=[];for await(const chunk of req){length+=chunk.length;if(length>1024*1024){res.writeHead(413);res.end();return;}chunks.push(chunk);}const body=Buffer.concat(chunks).toString('base64');
  const options={method:req.method,headers:Object.fromEntries(Object.entries(req.headers).filter(([key])=>!['host','connection','content-length'].includes(key))),...(body?{body}:{})};
- const code="let s='';process.stdin.on('data',v=>s+=v);process.stdin.on('end',async()=>{try{const q=JSON.parse(s),r=await fetch(q.url,{...q.options,signal:AbortSignal.timeout(10000)});process.stdout.write(JSON.stringify({status:r.status,headers:Object.fromEntries(r.headers),body:await r.text()}));}catch{process.exitCode=1;}})";
+ const code="let s='';process.stdin.on('data',v=>s+=v);process.stdin.on('end',async()=>{try{const q=JSON.parse(s);if(q.options.body)q.options.body=Buffer.from(q.options.body,'base64');const r=await fetch(q.url,{...q.options,signal:AbortSignal.timeout(10000)});process.stdout.write(JSON.stringify({status:r.status,headers:Object.fromEntries(r.headers),body:Buffer.from(await r.arrayBuffer()).toString('base64')}));}catch{process.exitCode=1;}})";
  const child=spawn('docker',['exec','-i','basoul-pr173-http-client','node','-e',code]);let output='';child.stdout.on('data',chunk=>output+=chunk);child.on('error',()=>{res.writeHead(502);res.end();});
- child.on('close',status=>{if(res.writableEnded)return;try{if(status)throw new Error();const reply=JSON.parse(output);for(const key of ['content-type','content-range','preference-applied'])if(reply.headers[key])res.setHeader(key,reply.headers[key]);res.writeHead(reply.status);res.end(reply.body);}catch{res.writeHead(502);res.end();}});
+ child.on('close',status=>{if(res.writableEnded)return;try{if(status)throw new Error();const reply=JSON.parse(output);for(const key of ['content-type','content-range','content-disposition','preference-applied'])if(reply.headers[key])res.setHeader(key,reply.headers[key]);res.writeHead(reply.status);res.end(Buffer.from(reply.body,'base64'));}catch{res.writeHead(502);res.end();}});
  child.stdin.end(JSON.stringify({url:target+req.url.slice(prefix.length),options}));
 });
 await new Promise(resolve=>gateway.listen(35439,'127.0.0.1',resolve));

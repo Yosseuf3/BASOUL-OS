@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticatedDatabase } from "@/lib/auth/authorized-workspace";
+import { authenticatedAccountDatabase } from "@/lib/auth/authorized-workspace";
 
 function bearer(request: NextRequest) {
   const value = request.headers.get("authorization") ?? "";
@@ -7,7 +7,7 @@ function bearer(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await authenticatedDatabase(bearer(request));
+  const auth = await authenticatedAccountDatabase(bearer(request));
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const memberships = await auth.database.from("organization_memberships")
     .select("organization_id,role,status,organizations(id,name,slug)").eq("user_id", auth.user.id).eq("status", "active");
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await authenticatedDatabase(bearer(request));
+  const auth = await authenticatedAccountDatabase(bearer(request));
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await request.json() as { name?: string; slug?: string };
   if (!body.name || !body.slug) return NextResponse.json({ error: "Name and slug are required" }, { status: 400 });

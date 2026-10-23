@@ -486,7 +486,9 @@ Deno.serve(async (req: Request) => {
 
     const { data: review, error: reviewError } = await supabase.from("architectural_reviews").insert({
       user_id: userData.user.id, drawing_id: drawing.id, project_id: drawing.project_id, status: "ready", plan_health: qualityScore,
-    }).select("id,drawing_id,project_id,user_id,status,plan_health,generated_at,created_at").single();
+        engine_version:'hybrid-autocad-pdf-v3',
+        disclaimer:'AI-assisted review; licensed project team validation required.',
+      }).select("id,drawing_id,project_id,user_id,status,plan_health,generated_at,created_at").single();
     if (reviewError) throw reviewError;
 
     const { data: savedFindings, error: findingsError } = await supabase.from("architectural_review_findings").insert(

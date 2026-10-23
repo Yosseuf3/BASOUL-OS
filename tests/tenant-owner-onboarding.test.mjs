@@ -12,8 +12,9 @@ test("workspace loading never creates a tenant implicitly", async () => {
 
 test("server authorization resolves an existing active membership without provisioning", async () => {
   const source = await readFile(new URL("../lib/auth/authorized-workspace.ts", import.meta.url), "utf8");
-  assert.match(source, /select\("organization_id,role"\)/);
-  assert.match(source, /eq\("status", "active"\)/);
+  assert.match(source, /select\("role,status"\)/);
+  assert.match(source, /eq\("organization_id",\s*requestedOrganizationId\)/);
+  assert.match(source, /eq\("status",\s*"active"\)/);
   assert.match(source, /maybeSingle\(\)/);
 });
 

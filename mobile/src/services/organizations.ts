@@ -2,6 +2,7 @@ import { supabase } from "../config/supabase";
 import { hasMobilePermission, type MobilePermission, type MobileOrganizationRole } from "../permissions/organization";
 import type { OrganizationContext } from "../organizations/context";
 import { OrganizationAccessError } from "../organizations/operation";
+import {assertCurrentOrganization} from '../organizations/context';
 
 export async function loadMobileOrganizations(userId: string): Promise<OrganizationContext[]> {
   if (!supabase) throw new Error("Supabase is not configured.");
@@ -20,8 +21,10 @@ export async function loadMobileOrganizations(userId: string): Promise<Organizat
 }
 
 export async function validateOrganizationContext(context: OrganizationContext, permission: MobilePermission = "read") {
+  assertCurrentOrganization(context);
   if (!context?.userId || !context.organizationId) throw new Error("Active organization required");
   const memberships = await loadMobileOrganizations(context.userId);
+  assertCurrentOrganization(context);
   const active = memberships.find((membership) => membership.organizationId === context.organizationId);
   if (!active) throw new OrganizationAccessError("revoked", "Organization access denied");
   if (!hasMobilePermission(active.role, permission)) throw new OrganizationAccessError("permission", "Organization access denied");
@@ -29,10 +32,12 @@ export async function validateOrganizationContext(context: OrganizationContext, 
 }
 
 export async function requireOrganizationRecord(context: OrganizationContext, table: string, id: string, userOwned = false) {
+  assertCurrentOrganization(context);
   if (!supabase) throw new Error("Supabase is not configured.");
   let query = supabase.from(table).select("id").eq("id", id).eq("organization_id", context.organizationId);
   if (userOwned) query = query.eq("user_id", context.userId);
   const { data, error } = await query.single();
+  assertCurrentOrganization(context);
   if (error) throw error;
   if (!data) throw new Error("Record does not belong to the active organization");
 }

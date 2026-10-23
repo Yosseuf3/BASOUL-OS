@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase';
+import {mobileOrganizationClient} from '../organizations/context';
 import type { Task } from '../types/domain';
 import type { OrganizationContext } from '../organizations/context';
 import { validateOrganizationContext } from './organizations';
@@ -7,6 +7,8 @@ import { confirmedTaskTransition, taskTransitionRpcArgs, type TaskTransitionRequ
 
 export async function transitionMobileTask(context: OrganizationContext, task: Task, target: CanonicalTaskStatus, reason?: string) {
   if (!TASK_WORKFLOW_WRITES_ENABLED) throw {code:'TASK_UPDATE_REQUIRED'};
+  const supabase=mobileOrganizationClient(context);
+  if((task.organization_id&&task.organization_id!==context.organizationId)||(task.user_id&&task.user_id!==context.userId))throw {code:'42501'};
   if (!supabase) throw new Error('Supabase is not configured.');
   await validateOrganizationContext(context,'update');
   const input: TaskTransitionRequest = {

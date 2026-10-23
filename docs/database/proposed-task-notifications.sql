@@ -29,8 +29,10 @@ ALTER TABLE private.task_notification_receipts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE private.task_notification_receipts FORCE ROW LEVEL SECURITY;
 REVOKE ALL ON private.task_notification_receipts FROM PUBLIC,anon,authenticated;
 GRANT SELECT,INSERT ON private.task_notification_receipts TO authenticated;
+DROP POLICY IF EXISTS task_receipt_own_read ON private.task_notification_receipts;
 CREATE POLICY task_receipt_own_read ON private.task_notification_receipts FOR SELECT TO authenticated
   USING (user_id=auth.uid() AND private.has_permission(organization_id,'read'));
+DROP POLICY IF EXISTS task_receipt_own_insert ON private.task_notification_receipts;
 CREATE POLICY task_receipt_own_insert ON private.task_notification_receipts FOR INSERT TO authenticated
   WITH CHECK (user_id=auth.uid() AND private.has_permission(organization_id,'read') AND EXISTS (
     SELECT 1 FROM public.activity_events e JOIN public.tasks t ON t.id=e.entity_id

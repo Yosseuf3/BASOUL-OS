@@ -19,6 +19,8 @@ export function accountChanged(previous: string | null, next: string | null): bo
 export function safeOperationError(cause: unknown): { message: string; code?: string } {
   const original = cause instanceof OrganizationAccessError ? cause.original ?? cause : cause;
   const fields = original && typeof original === "object" ? original as { code?: unknown; message?: unknown } : {};
+  if(fields.code==='MEMBERSHIP_LINK_UNAVAILABLE')return {code:'MEMBERSHIP_LINK_UNAVAILABLE',message:'الرابط غير متاح أو سُحبت الصلاحية. / Link unavailable or access revoked.'};
+  if(fields.code==='ORGANIZATION_CHANGED')return {code:'ORGANIZATION_CHANGED',message:'تغيرت المؤسسة أو الجلسة. أعد فتح العملية. / Organization or session changed. Reopen the operation.'};
   // Never render backend details/hints, arbitrary messages, identities or payloads.
   const code = typeof fields.code === "string" && /^(?:[0-9A-Z]{5}|PGRST\d{3}|AUTH_[A-Z_]{1,40}|TASK_TRANSITION_UNCONFIRMED|TASK_UPDATE_REQUIRED)$/.test(fields.code) ? fields.code : undefined;
   let message = "تعذر إكمال العملية. تحقق من البيانات قبل المحاولة مجدداً.";

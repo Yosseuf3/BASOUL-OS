@@ -1,6 +1,8 @@
 'use client'
 
 import { supabase } from '@/lib/supabase'
+import {requireOrganizationLease} from '../../lib/organizations/active-context'
+import {organizationFetch} from '../../lib/organizations/request'
 import type { ArchitectureScene } from '../../packages/architecture-engine/src/index'
 
 export type ArchitectureProject = {
@@ -27,6 +29,7 @@ type ApiEnvelope<T> = {
 }
 
 async function authenticatedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const lease=requireOrganizationLease();
   const { data, error } = await supabase.auth.getSession()
   if (error) throw error
   const token = data.session?.access_token
@@ -36,7 +39,7 @@ async function authenticatedFetch(input: RequestInfo | URL, init?: RequestInit):
   headers.set('Authorization', `Bearer ${token}`)
   if (init?.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
 
-  return fetch(input, { ...init, headers, cache: 'no-store' })
+  return organizationFetch(input, { ...init, headers, cache: 'no-store' },lease.organizationId,data.session!.user.id,lease)
 }
 
 async function readEnvelope<T>(response: Response): Promise<T> {

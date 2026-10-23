@@ -6,8 +6,9 @@ test("organization APIs resolve tenant context from a verified membership", asyn
   const auth = await readFile(new URL("../lib/auth/authorized-workspace.ts", import.meta.url), "utf8");
   const route = await readFile(new URL("../app/api/workspace/[resource]/route.ts", import.meta.url), "utf8");
   assert.match(auth, /organization_memberships/);
-  assert.match(auth, /eq\("user_id", data\.user\.id\)/);
-  assert.match(auth, /eq\("status", "active"\)/);
+  assert.match(auth, /eq\("user_id",\s*user\.id\)/);
+  assert.match(auth, /eq\("organization_id",\s*requestedOrganizationId\)/);
+  assert.match(auth, /eq\("status",\s*"active"\)/);
   assert.match(route, /requestedOrganization\(request\.headers\)/);
 });
 

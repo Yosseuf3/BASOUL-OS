@@ -10,6 +10,7 @@ import "./basoul-product-surfaces.css";
 import "./basoul-i18n.css";
 import { LanguageProvider } from "@/components/i18n/language-provider";
 import { LanguageToggle } from "@/components/i18n/language-toggle";
+import { OrganizationProvider } from '@/components/organizations/organization-provider';
 
 export const metadata: Metadata = {
   title: "BASOUL",
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
-      <body><LanguageProvider><LanguageToggle />{children}</LanguageProvider></body>
+      <body><LanguageProvider><LanguageToggle /><OrganizationProvider>{children}</OrganizationProvider></LanguageProvider></body>
     </html>
   );
 }

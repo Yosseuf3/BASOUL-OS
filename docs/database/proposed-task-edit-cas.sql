@@ -5,6 +5,7 @@ ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS archived boolean NOT NULL DEFA
 CREATE OR REPLACE FUNCTION private.preserve_task_history()
 RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
 BEGIN RAISE EXCEPTION 'TASK_HISTORY_PRESERVED_USE_ARCHIVE' USING ERRCODE='42501'; END $$;
+DROP TRIGGER IF EXISTS preserve_task_history ON public.tasks;
 CREATE TRIGGER preserve_task_history BEFORE DELETE ON public.tasks
 FOR EACH ROW EXECUTE FUNCTION private.preserve_task_history();
 REVOKE ALL ON FUNCTION private.preserve_task_history() FROM PUBLIC,anon,authenticated;
@@ -19,6 +20,7 @@ BEGIN
  IF NEW.status::text<>'To Do' OR NEW.archived THEN RAISE EXCEPTION 'TASK_INITIAL_STATUS_REJECTED' USING ERRCODE='22023'; END IF;
  RETURN NEW;
 END $$;
+DROP TRIGGER IF EXISTS validate_task_creation ON public.tasks;
 CREATE TRIGGER validate_task_creation BEFORE INSERT ON public.tasks FOR EACH ROW EXECUTE FUNCTION private.validate_task_creation();
 REVOKE ALL ON FUNCTION private.validate_task_creation() FROM PUBLIC,anon,authenticated;
 CREATE OR REPLACE FUNCTION private.require_task_edit_cas()
@@ -37,6 +39,7 @@ BEGIN
  END IF;
  RETURN NEW;
 END $$;
+DROP TRIGGER IF EXISTS zz_require_task_edit_cas ON public.tasks;
 CREATE TRIGGER zz_require_task_edit_cas BEFORE UPDATE ON public.tasks
 FOR EACH ROW EXECUTE FUNCTION private.require_task_edit_cas();
 REVOKE ALL ON FUNCTION private.require_task_edit_cas() FROM PUBLIC,anon,authenticated;
@@ -85,6 +88,7 @@ BEGIN
  END IF;
  RETURN NEW;
 END $$;
+DROP TRIGGER IF EXISTS audit_task_field_edit ON public.tasks;
 CREATE TRIGGER audit_task_field_edit AFTER UPDATE ON public.tasks FOR EACH ROW EXECUTE FUNCTION private.audit_task_edit();
 REVOKE ALL ON FUNCTION private.audit_task_edit() FROM PUBLIC,anon,authenticated;
 CREATE OR REPLACE FUNCTION private.protect_task_edit_audit()
@@ -104,6 +108,7 @@ BEGIN
  IF TG_OP='DELETE' THEN RETURN OLD; END IF;
  RETURN NEW;
 END $$;
+DROP TRIGGER IF EXISTS protect_task_edit_audit ON public.activity_events;
 CREATE TRIGGER protect_task_edit_audit BEFORE INSERT OR UPDATE OR DELETE ON public.activity_events
 FOR EACH ROW EXECUTE FUNCTION private.protect_task_edit_audit();
 REVOKE ALL ON FUNCTION private.protect_task_edit_audit() FROM PUBLIC,anon,authenticated;

@@ -71,6 +71,7 @@ export type ActivityEvent = {
 
 export type NotificationPriority = "info" | "medium" | "high";
 export type Notification = {
+  source_kind?: string | null;
   id: string; user_id: string; activity_event_id: string | null; module: ActivityModule;
   priority: NotificationPriority; title: string; message: string | null; entity_id: string | null;
   is_read: boolean; read_at: string | null; created_at: string;

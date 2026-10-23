@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type User } from "npm:@supabase/supabase-js@2.111.0";
+import { canAdministerMembership } from "./authorization.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,7 +10,6 @@ const respond = (body: unknown, status = 200) => new Response(JSON.stringify(bod
   status,
   headers: { ...corsHeaders, "Content-Type": "application/json" },
 });
-const roleRank = { viewer: 10, member: 20, admin: 30, owner: 40 } as const;
 type ManagedRole = "viewer" | "member" | "admin";
 
 function isUuid(value: unknown): value is string {
@@ -83,19 +83,16 @@ Deno.serve(async (request: Request) => {
   if (!isUuid(organizationId)) return respond({ error: "A valid organization is required." }, 400);
   const { data: membership, error: membershipError } = await userClient.from("organization_memberships")
     .select("role,status").eq("organization_id", organizationId).eq("user_id", identity.user.id).eq("status", "active").maybeSingle();
-  if (membershipError || !membership || roleRank[membership.role as keyof typeof roleRank] < roleRank.admin) {
+  if (membershipError || !canAdministerMembership(membership)) {
     return respond({ error: "Administrative membership is required." }, 403);
   }
 
   if (action === "list") {
-    const [{ data: invitations, error: invitationsError }, { data: members, error: membersError }] = await Promise.all([
-      admin.from("organization_invitations").select("id,email,target_user_id,role,status,expires_at,created_at,updated_at")
-        .eq("organization_id", organizationId).order("created_at", { ascending: false }).limit(100),
-      admin.from("organization_memberships").select("organization_id,user_id,role,status,created_at,updated_at")
-        .eq("organization_id", organizationId).order("created_at"),
-    ]);
-    if (invitationsError || membersError) return respond({ error: "Unable to load administration state." }, 500);
-    return respond({ invitations: invitations ?? [], members: members ?? [] });
+    const {data,error}=await userClient.rpc("organization_administration_state",{target_organization:organizationId});
+    if(error?.code==='PGRST202')return respond({error:'يتطلب عرض الفريق تحديث الخادم. / Team administration requires a server update.',code:'ADMIN_UPDATE_REQUIRED'},503);
+    if(error)return respond({error:publicError(error,'Unable to load administration state.')},403);
+    if(!data||!Array.isArray(data.invitations)||!Array.isArray(data.members))return respond({error:'Administration state is unconfirmed.'},502);
+    return respond(data);
   }
 
   if (action === "invite") {
@@ -107,6 +104,9 @@ Deno.serve(async (request: Request) => {
     });
     if (invitationError || !invitation) return respond({ error: publicError(invitationError, "Unable to create invitation.") }, 403);
     let target = await findUserByEmail(admin, email);
+    // An existing unverified Auth identity is not proof that its earlier mail
+    // arrived. Do not report delivery or attach authorization on that basis.
+    if(target && !target.email_confirmed_at)return respond({code:'INVITATION_DELIVERY_UNCONFIRMED',error:'لم يتأكد تسليم الدعوة. تحقق من رابط التحقق السابق قبل إعادة المحاولة. / Invitation delivery is unconfirmed. Verify the original link before retrying.'},409);
     let delivery: "existing_user" | "email_sent" = "existing_user";
     if (!target) {
       const redirectTo = invitationRedirectTo();

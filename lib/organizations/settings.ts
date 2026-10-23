@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import {organizationClient} from './scoped-client';
 
 export type OrganizationProfileSettings = {
   organizationId: string;
@@ -15,6 +15,7 @@ export type OrganizationProfileSettings = {
 };
 
 export async function loadOrganizationProfileSettings(): Promise<OrganizationProfileSettings | null> {
+  const supabase=organizationClient();
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   if (sessionError) throw sessionError;
   const session = sessionData.session;
@@ -62,6 +63,7 @@ export async function loadOrganizationProfileSettings(): Promise<OrganizationPro
 }
 
 export async function updateOrganizationProfileSettings(input: Omit<OrganizationProfileSettings, "organizationName" | "organizationSlug">) {
+  const supabase=organizationClient();
   const { error } = await supabase
     .from("organization_profiles")
     .update({

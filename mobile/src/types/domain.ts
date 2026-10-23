@@ -31,6 +31,7 @@ export type Task = {
 };
 
 export type Notification = {
+  source_kind?: string | null;
   id: string;
   title: string;
   message: string | null;
@@ -53,6 +54,7 @@ export type ArchitecturalDrawing = {
 };
 
 export type ArchitecturalFinding = {
+  updated_at: string;
   id: string;
   review_id: string;
   drawing_id: string;
@@ -72,7 +74,7 @@ export type ArchitecturalReview = {
   id: string;
   drawing_id: string;
   project_id: string;
-  status: "draft" | "ready" | "completed";
+  status: "draft" | "ready" | "completed" | "processing" | "failed" | "archived";
   plan_health: number;
   created_at: string;
   architectural_review_findings: ArchitecturalFinding[];

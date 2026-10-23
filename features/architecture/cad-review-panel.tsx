@@ -3,6 +3,9 @@
 import { Box, CheckCircle2, FileUp, Network, ShieldAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import {requireOrganizationLease} from '../../lib/organizations/active-context'
+import {organizationFetch} from '../../lib/organizations/request'
+import {assertOrganizationLease} from '../../packages/shared-types/src/organization-scope'
 import {
   buildCadFloorGraph,
   summarizeCadDocument,
@@ -80,6 +83,7 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
   }
 
   async function uploadCad(file: File) {
+    const lease=requireOrganizationLease();
     if (!projectId) return
     setStage('uploaded')
     setMessage(text('تم استلام الملف محليًا.', 'File received locally.'))
@@ -99,17 +103,18 @@ export function CadReviewPanel({ projectId, text, onSceneReady }: Props) {
         const form = new FormData()
         form.set('projectId', projectId)
         form.set('file', file)
-        const response = await fetch('/api/architecture/cad/ingest', {
+        const response = await organizationFetch('/api/architecture/cad/ingest', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: form,
           cache: 'no-store',
-        })
+        },lease.organizationId,data.session!.user.id,lease)
         const body = await response.json() as { data?: NormalizedCadDocument; error?: string }
         if (!response.ok || !body.data) throw new Error(body.error || `architecture.cad.ingest_failed.${response.status}`)
         parsed = body.data
       }
 
+      assertOrganizationLease(lease)
       setDocument(parsed)
       setStage('classified')
       const nextGraph = buildCadFloorGraph(parsed)

@@ -10,6 +10,7 @@ export function ArchitectureReviewScreen({
   data,
   onBack,
   onConvertFinding,
+  onOpenTask,
   convertingFindingId,
   onDecideFinding,
   decidingFindingId,
@@ -24,6 +25,7 @@ export function ArchitectureReviewScreen({
 }: {
   data: MobileWorkspaceData;
   onBack: () => void;
+  onOpenTask:(id:string,projectId:string)=>void;
   onConvertFinding: (finding: ArchitecturalFinding, projectId: string) => void;
   convertingFindingId: string;
   onDecideFinding: (finding: ArchitecturalFinding, status: MobileFindingDecision) => void;
@@ -312,11 +314,11 @@ export function ArchitectureReviewScreen({
                 </View> : null}
                 <TouchableOpacity
                   style={[styles.taskButton, finding.status === "converted_to_task" && styles.taskButtonDone]}
-                  disabled={finding.status !== "accepted" || convertingFindingId === finding.id}
-                  onPress={() => onConvertFinding(finding, review.project_id)}
+                  disabled={(finding.status !== "accepted"&&!finding.task_id) || convertingFindingId === finding.id}
+                  onPress={() => finding.task_id?onOpenTask(finding.task_id,review.project_id):onConvertFinding(finding, review.project_id)}
                 >
                   <Text style={styles.taskButtonText}>
-                    {finding.status === "converted_to_task" ? "تم إنشاء مهمة" : convertingFindingId === finding.id ? "جارٍ الإنشاء" : "تحويل إلى مهمة"}
+                    {finding.status === "converted_to_task" ? "فتح المهمة / Open task" : convertingFindingId === finding.id ? "جارٍ الإنشاء" : "تحويل إلى مهمة"}
                   </Text>
                 </TouchableOpacity>
               </View>

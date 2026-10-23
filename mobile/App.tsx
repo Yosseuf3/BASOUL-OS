@@ -1,3 +1,4 @@
+import {openMobileMembershipNotification} from "./src/services/workspace";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, AppState, Linking, Platform, SafeAreaView, StatusBar as NativeStatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { Session } from "@supabase/supabase-js";
@@ -50,6 +51,7 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [booting, setBooting] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [selectedProjectId,setSelectedProjectId]=useState<string|null>(null);
   const [selectedTask,setSelectedTask]=useState<Task|null>(null);
   const [screen, setScreen] = useState<ScreenName>("dashboard");
   const [data, setData] = useState<MobileWorkspaceData>(emptyData);
@@ -73,7 +75,7 @@ export default function App() {
     const sessionVersion = sessionRevision.current;
     // Retain the last identity for presentation, but revision guards block writes
     // and tenant data while membership is being revalidated.
-    if(requestedOrganizationId){setSelectedTask(null);setScreen("dashboard");}
+    if(requestedOrganizationId){setSelectedProjectId(null);setSelectedTask(null);setScreen("dashboard");}
     setData(emptyData);
     setConvertingFindingId(""); setDecidingFindingId(""); setUpdatingPlanElementId(""); setUpdatingReviewCommentId(""); setUploadingDrawing(false); setRetryingDrawingId("");
     setLoading(true); setError(null);
@@ -111,7 +113,7 @@ export default function App() {
       if (changed) organizationStore.current.clear();
       authenticatedUser.current = nextSession?.user.id ?? null;
       setSession(nextSession); setSignOutError(null);
-      if (changed) { setSelectedTask(null); setScreen("dashboard"); setOrganization(null); setData(emptyData); setError(null); setLoading(false); }
+      if (changed) { setSelectedProjectId(null); setSelectedTask(null); setScreen("dashboard"); setOrganization(null); setData(emptyData); setError(null); setLoading(false); }
     });
     return () => { active = false; urlListener.remove(); authListener.subscription.unsubscribe(); };
   }, []);
@@ -150,7 +152,7 @@ export default function App() {
       });
   }
   async function readNotification(id: string) { try { await operate((context) => markMobileNotificationRead(context, id)); } catch { /* Error displayed only for the current context. */ } }
-  async function createTask(input: NewTaskInput) { await operate((context) => createMobileTask(context, input), () => setScreen("tasks")); }
+  async function createTask(input: NewTaskInput) { await operate((context) => createMobileTask(context, input), () => setScreen(selectedProjectId?"projects":"tasks")); }
   async function advanceTask(task: Task) { try { await operate((context) => advanceMobileTask(context, task)); } catch { /* Error displayed by operate. */ } }
   async function transitionTask(task: Task, target: CanonicalTaskStatus, reason?: string) {
     const snapshot=activeOrganization();
@@ -248,14 +250,14 @@ export default function App() {
     <OrganizationBar snapshot={organization?.userId === session.user.id ? organization : null} busy={loading} onRefresh={() => void refresh()} onSelect={(id) => { setScreen("dashboard"); void refresh(id); }} />
     {error ? <View style={styles.errorBar}><Text style={styles.errorText}>{error}</Text><TouchableOpacity onPress={() => setError(null)}><Text style={styles.dismiss}>?</Text></TouchableOpacity></View> : null}
     {organizationReady ? <>
-    {screen === "dashboard" ? <DashboardScreen data={data} onNavigate={setScreen} onRefresh={() => void refresh()} refreshing={loading} /> : null}
-    {screen === "taskDetails" && selectedTask ? <TaskDetailsScreen readOnly={selectedTask.user_id!==session.user.id || !hasMobilePermission(organization!.selected!.role,"update")} key={`${selectedTask.id}:${selectedTask.updated_at}`} task={selectedTask} onArchive={async()=>{await operate(context=>archiveMobileTask(context,selectedTask),()=>{setSelectedTask(null);setScreen("tasks");});}} onBack={()=>{setSelectedTask(null);setScreen("tasks");}} onSave={async input=>{await operate(context=>editMobileTask(context,selectedTask,input),()=>{setSelectedTask(null);setScreen("tasks");});}}/> : null}
-    {screen === "projects" ? <ProjectsScreen projects={data.projects} onBack={() => setScreen("dashboard")} /> : null}
-    {screen === "tasks" ? <TasksScreen canUpdateTask={task=>task.user_id===session.user.id && hasMobilePermission(organization!.selected!.role,"update")} onOpenTask={task=>{setSelectedTask(task);setScreen("taskDetails");}} tasks={data.tasks} projects={data.projects} onBack={() => setScreen("dashboard")} onCreate={() => setScreen("createTask")} onAdvance={(task) => void advanceTask(task)} onTransition={(task,target,reason)=>transitionTask(task,target,reason)} /> : null}
-    {screen === "notifications" ? <NotificationsScreen onOpenTask={id=>{const task=data.tasks.find(task=>task.id===id);if(task){setSelectedTask(task);setScreen("taskDetails");}else setError("المهمة غير متاحة / Task unavailable");}} notifications={data.notifications} onBack={() => setScreen("dashboard")} onRead={readNotification} /> : null}
+    {screen === "dashboard" ? <DashboardScreen data={data} onNavigate={next=>{setSelectedProjectId(null);setScreen(next);}} onRefresh={() => void refresh()} refreshing={loading} /> : null}
+    {screen === "taskDetails" && selectedTask ? <TaskDetailsScreen readOnly={selectedTask.user_id!==session.user.id || !hasMobilePermission(organization!.selected!.role,"update")} key={`${selectedTask.id}:${selectedTask.updated_at}`} task={selectedTask} onArchive={async()=>{await operate(context=>archiveMobileTask(context,selectedTask),()=>{setSelectedTask(null);setScreen(selectedProjectId?"projects":"tasks");});}} onBack={()=>{setSelectedTask(null);setScreen("tasks");}} onSave={async input=>{await operate(context=>editMobileTask(context,selectedTask,input),()=>{setSelectedTask(null);setScreen("tasks");});}}/> : null}
+    {screen === "projects" ? <ProjectsScreen selectedId={selectedProjectId} onSelect={setSelectedProjectId} tasks={data.tasks} onTask={task=>{setSelectedTask(task);setScreen("taskDetails");}} onCreate={()=>setScreen("createTask")} projects={data.projects} onBack={() => {setSelectedProjectId(null);setScreen("dashboard");}} /> : null}
+    {screen === "tasks" ? <TasksScreen canUpdateTask={task=>task.user_id===session.user.id && hasMobilePermission(organization!.selected!.role,"update")} onOpenTask={task=>{setSelectedProjectId(null);setSelectedTask(task);setScreen("taskDetails");}} tasks={data.tasks} projects={data.projects} onBack={() => setScreen("dashboard")} onCreate={() => setScreen("createTask")} onAdvance={(task) => void advanceTask(task)} onTransition={(task,target,reason)=>transitionTask(task,target,reason)} /> : null}
+    {screen === "notifications" ? <NotificationsScreen onOpenMembership={id=>{void operate(context=>openMobileMembershipNotification(context,id),()=>setScreen("administration")).catch(()=>{});}} onOpenTask={id=>{const task=data.tasks.find(task=>task.id===id);if(task){setSelectedProjectId(null);setSelectedTask(task);setScreen("taskDetails");}else setError("المهمة غير متاحة / Task unavailable");}} notifications={data.notifications} onBack={() => setScreen("dashboard")} onRead={readNotification} /> : null}
     {screen === "intelligence" ? <CommandCenterScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
-    {screen === "architecture" ? <ArchitectureReviewScreen data={data} onBack={() => setScreen("dashboard")} onConvertFinding={(finding, projectId) => void convertFinding(finding, projectId)} convertingFindingId={convertingFindingId} onDecideFinding={(finding, status) => void decideFinding(finding, status)} decidingFindingId={decidingFindingId} onDecidePlanElement={(elementId, status) => void decidePlanElement(elementId, status)} updatingPlanElementId={updatingPlanElementId} onUpdateReviewComment={(comment, status) => void decideReviewComment(comment, status)} updatingReviewCommentId={updatingReviewCommentId} onUploadDrawing={uploadDrawing} uploadingDrawing={uploadingDrawing} onRetryDrawing={retryDrawing} retryingDrawingId={retryingDrawingId} /> : null}
-    {screen === "createTask" ? <CreateTaskScreen projects={data.projects} onCancel={() => setScreen("dashboard")} onSubmit={createTask} /> : null}
+    {screen === "architecture" ? <ArchitectureReviewScreen onOpenTask={(id,projectId)=>{const task=data.tasks.find(t=>t.id===id&&t.project_id===projectId);if(task){setSelectedProjectId(projectId);setSelectedTask(task);setScreen("taskDetails");}else setError("المهمة غير متاحة / Task unavailable");}} data={data} onBack={() => setScreen("dashboard")} onConvertFinding={(finding, projectId) => void convertFinding(finding, projectId)} convertingFindingId={convertingFindingId} onDecideFinding={(finding, status) => void decideFinding(finding, status)} decidingFindingId={decidingFindingId} onDecidePlanElement={(elementId, status) => void decidePlanElement(elementId, status)} updatingPlanElementId={updatingPlanElementId} onUpdateReviewComment={(comment, status) => void decideReviewComment(comment, status)} updatingReviewCommentId={updatingReviewCommentId} onUploadDrawing={uploadDrawing} uploadingDrawing={uploadingDrawing} onRetryDrawing={retryDrawing} retryingDrawingId={retryingDrawingId} /> : null}
+    {screen === "createTask" ? <CreateTaskScreen initialProjectId={selectedProjectId??undefined} projects={data.projects} onCancel={() => setScreen(selectedProjectId?"projects":"dashboard")} onSubmit={createTask} /> : null}
     {screen === "timeline" ? <TimelineScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "search" ? <GlobalSearchScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "administration" ? <AdministrationScreen role={organization!.selected!.role} onBack={() => setScreen("dashboard")} /> : null}

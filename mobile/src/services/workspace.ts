@@ -1,5 +1,7 @@
+import {requireFindingDecisionVersion,findingDecisionConflict} from "../../../packages/shared-types/src/finding-decision";
+import {conversionArguments,confirmedConversion,conversionFailure} from '../../../packages/shared-types/src/project-conversion';
+import {mobileOrganizationClient} from '../organizations/context';
 import { fetch } from "expo/fetch";
-import { supabase } from "../config/supabase";
 import type { ArchitecturalDrawing, ArchitecturalFinding, ArchitecturalPlanElement, ArchitecturalReview, ArchitecturalReviewComment, MobileWorkspaceData, Notification, Project, Task } from "../types/domain";
 import type { OrganizationContext } from "../organizations/context";
 import { requireOrganizationRecord, validateOrganizationContext } from "./organizations";
@@ -32,27 +34,8 @@ export type MobileFindingDecision = Extract<
 const safeFileName = (name: string) =>
   name.normalize("NFKD").replace(/[^\w.\-]+/g, "-").replace(/-+/g, "-").toLowerCase();
 
-async function syncMobileReviewCompletion(reviewId: string, context: OrganizationContext): Promise<void> {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  await validateOrganizationContext(context, "update");
-  const { data: remaining, error: remainingError } = await supabase
-    .from("architectural_review_findings")
-    .select("id")
-    .eq("review_id", reviewId)
-    .eq("organization_id", context.organizationId)
-    .in("status", ["open", "accepted"])
-    .limit(1);
-  if (remainingError) throw remainingError;
-
-  const { error: reviewError } = await supabase
-    .from("architectural_reviews")
-    .update({ status: remaining?.length ? "ready" : "completed" })
-    .eq("id", reviewId)
-    .eq("organization_id", context.organizationId).eq("user_id", context.userId);
-  if (reviewError) throw reviewError;
-}
-
 export async function loadMobileWorkspace(context: OrganizationContext): Promise<MobileWorkspaceData> {
+  const supabase=mobileOrganizationClient(context);
   if (!supabase) throw new Error("Supabase is not configured.");
   await validateOrganizationContext(context);
 
@@ -70,7 +53,7 @@ export async function loadMobileWorkspace(context: OrganizationContext): Promise
       .order("due_date", { ascending: true, nullsFirst: false }),
     supabase
       .from("notifications")
-      .select("id,title,message,priority,is_read,created_at,module,entity_id")
+      .select("id,title,message,priority,is_read,created_at,module,entity_id,source_kind")
       .eq("organization_id", context.organizationId).eq("user_id", context.userId)
       .order("created_at", { ascending: false })
       .limit(30),
@@ -82,7 +65,7 @@ export async function loadMobileWorkspace(context: OrganizationContext): Promise
       .limit(30),
     supabase
       .from("architectural_reviews")
-      .select("id,drawing_id,project_id,status,plan_health,created_at,architectural_review_findings(id,review_id,drawing_id,analysis_run_id,code,title,description,recommendation,severity,status,confidence_score,evidence,task_id)")
+      .select("id,drawing_id,project_id,status,plan_health,created_at,architectural_review_findings(id,review_id,drawing_id,analysis_run_id,code,title,description,recommendation,severity,status,confidence_score,evidence,task_id,updated_at)")
       .eq("organization_id", context.organizationId)
       .eq("architectural_review_findings.organization_id", context.organizationId)
       .order("created_at", { ascending: false })
@@ -120,6 +103,7 @@ export async function updateMobileReviewCommentStatus(
   commentId: string,
   status: ArchitecturalReviewComment["status"],
 ): Promise<void> {
+  const supabase=mobileOrganizationClient(context);
   if (!supabase) throw new Error("Supabase is not configured.");
   await validateOrganizationContext(context, "update");
   const resolvedAt = status === "resolved" ? new Date().toISOString() : null;
@@ -139,6 +123,7 @@ export async function updateMobilePlanElementStatus(
   elementId: string,
   status: "confirmed" | "rejected",
 ): Promise<void> {
+  const supabase=mobileOrganizationClient(context);
   if (!supabase) throw new Error("Supabase is not configured.");
   await validateOrganizationContext(context, "update");
   const { error } = await supabase
@@ -149,55 +134,39 @@ export async function updateMobilePlanElementStatus(
   if (error) throw error;
 }
 
-export async function convertMobileFindingToTask(
-  context: OrganizationContext,
-  projectId: string,
-  finding: ArchitecturalFinding,
-): Promise<void> {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  await validateOrganizationContext(context, "create");
-  await requireOrganizationRecord(context, "projects", projectId);
-  await requireOrganizationRecord(context, "architectural_review_findings", finding.id, true);
-  const priority =
-    finding.severity === "critical" ? "Critical" :
-    finding.severity === "warning" ? "High" : "Medium";
-  const { data: task, error } = await supabase.from("tasks").insert({
-    user_id: context.userId,
-    organization_id: context.organizationId,
-    project_id: projectId,
-    title: finding.title,
-    description: `${finding.description}\n\nالتوصية: ${finding.recommendation}`,
-    priority,
-    status: "To Do",
-    progress: 0,
-  }).select("id").single();
-  if (error) throw error;
-  const { error: findingError } = await supabase
-    .from("architectural_review_findings")
-    .update({ status: "converted_to_task", task_id: task.id })
-    .eq("id", finding.id).eq("organization_id", context.organizationId).eq("user_id", context.userId).select("id").single();
-  if (findingError) throw findingError;
-  await syncMobileReviewCompletion(finding.review_id, context);
+export async function convertMobileFindingToTask(context:OrganizationContext,projectId:string,finding:ArchitecturalFinding):Promise<string> {
+  const supabase=mobileOrganizationClient(context);
+  await validateOrganizationContext(context,'create');
+  await requireOrganizationRecord(context,'projects',projectId);
+  const input={userId:context.userId,organizationId:context.organizationId,projectId,sourceKind:'finding' as const,sourceId:finding.id,updatedAt:finding.updated_at};
+  const {data,error}=await supabase.rpc('convert_project_source_to_task',conversionArguments(input));
+  if(error)throw conversionFailure(error);return confirmedConversion(data,input);
 }
 
 export async function updateMobileFindingDecision(
   context: OrganizationContext,
-  finding: Pick<ArchitecturalFinding, "id" | "review_id">,
+  finding: Pick<ArchitecturalFinding, "id" | "review_id"> & Partial<Pick<ArchitecturalFinding, "updated_at">>,
   status: MobileFindingDecision,
 ): Promise<void> {
+  const supabase=mobileOrganizationClient(context);
   if (!supabase) throw new Error("Supabase is not configured.");
   await validateOrganizationContext(context, "update");
+  requireFindingDecisionVersion(finding.updated_at,status);
   const { data: updatedFinding, error } = await supabase
     .from("architectural_review_findings")
     .update({ status })
+    .eq("updated_at", finding.updated_at)
+    .eq("review_id", finding.review_id)
+    .in("status", ["open", "accepted", "rejected", "resolved"])
     .eq("id", finding.id)
     .eq("organization_id", context.organizationId).eq("user_id", context.userId)
     .select("id")
     .single();
+  if (error?.code === "PGRST116") throw findingDecisionConflict();
   if (error) throw error;
-  if (!updatedFinding) throw new Error("تعذر تحديث الملاحظة.");
+  if (!updatedFinding) throw findingDecisionConflict();
 
-  await syncMobileReviewCompletion(finding.review_id, context);
+  // Preserve analysis status; finding decisions must not fabricate completion.
 }
 
 export async function uploadMobileDrawing(
@@ -206,6 +175,7 @@ export async function uploadMobileDrawing(
   revision: string,
   file: MobileDrawingFile,
 ): Promise<MobileDrawingAnalysisResult> {
+  const supabase=mobileOrganizationClient(context);
   if (!supabase) throw new Error("Supabase is not configured.");
   await validateOrganizationContext(context, "create");
   await requireOrganizationRecord(context, "projects", projectId);
@@ -269,6 +239,7 @@ export async function uploadMobileDrawing(
 }
 
 export async function retryMobileDrawingAnalysis(context: OrganizationContext, drawingId: string): Promise<MobileDrawingAnalysisResult> {
+  const supabase=mobileOrganizationClient(context);
   if (!supabase) throw new Error("Supabase is not configured.");
   await validateOrganizationContext(context, "create");
   await requireOrganizationRecord(context, "architectural_drawings", drawingId);
@@ -287,6 +258,7 @@ export async function retryMobileDrawingAnalysis(context: OrganizationContext, d
 }
 
 export async function markMobileNotificationRead(context: OrganizationContext, notificationId: string): Promise<void> {
+  const supabase=mobileOrganizationClient(context);
   if (!supabase) throw new Error("Supabase is not configured.");
   await validateOrganizationContext(context, "update");
   const { error } = await supabase
@@ -297,6 +269,7 @@ export async function markMobileNotificationRead(context: OrganizationContext, n
 }
 
 export async function createMobileTask(context: OrganizationContext, input: { title: string; project_id: string; priority: string; due_date: string | null }): Promise<void> {
+  const supabase=mobileOrganizationClient(context);
   if (!supabase) throw new Error("Supabase is not configured.");
   await validateOrganizationContext(context, "create");
   if (input.project_id) await requireOrganizationRecord(context, "projects", input.project_id);
@@ -317,3 +290,5 @@ export async function advanceMobileTask(context: OrganizationContext, task: Task
   if (!TASK_WORKFLOW_WRITES_ENABLED) throw Object.assign(new Error('TASK_UPDATE_REQUIRED'),{code:'TASK_UPDATE_REQUIRED'});
   await transitionMobileTask(context,task,'In Progress');
 }
+
+export async function openMobileMembershipNotification(context:OrganizationContext,id:string):Promise<void>{await validateOrganizationContext(context);const client=mobileOrganizationClient(context);if(!client)throw new Error('Not configured');const {data,error}=await client.rpc('membership_notification_target',{p_organization_id:context.organizationId,p_notification_id:id});if(error||data?.view!=='administration'||data.organization_id!==context.organizationId||typeof data.member_id!=='string')throw Object.assign(new Error('Membership link unavailable'),{code:'MEMBERSHIP_LINK_UNAVAILABLE'});}
