@@ -4,16 +4,16 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 // Temporary BUILD/TOOLING-ONLY exception for GHSA-86w9-cpqp-85rv.
-// Revalidated 2026-10-08: expo@57.0.27 -> @expo/cli@57.0.28 -> node-forge@1.4.0,
+// Revalidated 2026-10-08: expo@57.0.31 -> @expo/cli@57.0.32 -> node-forge@1.4.0,
 // including @expo/code-signing-certificates@0.0.6 -> node-forge@1.4.0.
 // node-forge is not reachable from the BASOUL Android runtime graph. Upstream
-// has no patched release as of approval. This exception expires 2026-10-16.
+// has no patched release as of approval. This exception expires 2026-10-30.
 const nodeForgeException = {
   advisory: "GHSA-86w9-cpqp-85rv",
-  expiresAt: "2026-10-16T00:00:00Z",
+  expiresAt: "2026-10-30T00:00:00Z",
   versions: {
-    expo: "57.0.27",
-    cli: "57.0.28",
+    expo: "57.0.31",
+    cli: "57.0.32",
     certificates: "0.0.6",
     forge: "1.4.0",
   },
@@ -24,10 +24,10 @@ const nodeForgeException = {
 // micromatch@4.0.8, whose only parent is metro-file-map@0.84.5.
 // Revalidated 2026-10-08: @expo/metro-file-map@57.0.4 no longer uses micromatch.
 // Metro file watching runs on the build host and is not
-// reachable from the BASOUL Android runtime. This exception expires 2026-10-16.
+// reachable from the BASOUL Android runtime. This exception expires 2026-10-30.
 const bracesException = {
   advisory: "GHSA-vfj7-8cjw-p6xm",
-  expiresAt: "2026-10-16T00:00:00Z",
+  expiresAt: "2026-10-30T00:00:00Z",
   versions: {
     braces: "3.0.3",
     micromatch: "4.0.8",
@@ -47,10 +47,10 @@ const fail = (message, details) => {
 };
 
 if (Date.now() >= new Date(nodeForgeException.expiresAt).getTime()) {
-  fail("Mobile node-forge audit exception expired on 2026-10-16.");
+  fail("Mobile node-forge audit exception expired on 2026-10-30.");
 }
 if (Date.now() >= new Date(bracesException.expiresAt).getTime()) {
-  fail("Mobile braces audit exception expired on 2026-10-16.");
+  fail("Mobile braces audit exception expired on 2026-10-30.");
 }
 
 const manifest = loadJson(join(mobileRoot, "package.json"));
@@ -72,12 +72,12 @@ const certificates = packageAt(
 const forge = packageAt("node_modules/node-forge", nodeForgeException.versions.forge);
 
 if (
-  manifest.dependencies?.expo !== "57.0.27" ||
+  manifest.dependencies?.expo !== "57.0.31" ||
   !expo ||
   !cli ||
   !certificates ||
   !forge ||
-  expo.dependencies?.["@expo/cli"] !== "^57.0.28" ||
+  expo.dependencies?.["@expo/cli"] !== "^57.0.32" ||
   cli.dependencies?.["node-forge"] !== "^1.3.3" ||
   cli.dependencies?.["@expo/code-signing-certificates"] !== "^0.0.6" ||
   certificates.dependencies?.["node-forge"] !== "^1.3.3"
@@ -227,22 +227,14 @@ const highOrCriticalPackages = Object.entries(report.vulnerabilities ?? {})
   )
   .map(([name]) => name)
   .sort();
+// npm audit now reports only the forge advisory: do not require an already
+// resolved braces advisory to remain present. Keep both dependency topology
+// and exception-expiry checks above unchanged.
 const expectedAffectedPackages = [
   "@expo/cli",
   "@expo/code-signing-certificates",
-  "@expo/metro",
-  "@expo/metro-config",
-  "@react-native/community-cli-plugin",
-  "@react-native/virtualized-lists",
-  "braces",
   "expo",
-  "metro",
-  "metro-config",
-  "metro-file-map",
-  "metro-transform-worker",
-  "micromatch",
   "node-forge",
-  "react-native",
 ].sort();
 const highOrCriticalAdvisories = Object.values(report.vulnerabilities ?? {})
   .flatMap((vulnerability) => vulnerability.via ?? [])
@@ -266,9 +258,9 @@ const authorizedBracesAdvisories = highOrCriticalAdvisories.filter(
 
 if (
   (report.metadata?.vulnerabilities?.critical ?? 0) !== 0 ||
-  highOrCriticalAdvisories.length !== 2 ||
+  highOrCriticalAdvisories.length !== 1 ||
   authorizedNodeForgeAdvisories.length !== 1 ||
-  authorizedBracesAdvisories.length !== 1 ||
+  authorizedBracesAdvisories.length !== 0 ||
   JSON.stringify(highOrCriticalPackages) !==
     JSON.stringify(expectedAffectedPackages)
 ) {
@@ -280,13 +272,13 @@ if (
 
 console.warn(
   [
-    `Mobile production dependency audit: only ${nodeForgeException.advisory} and ${bracesException.advisory} are separately and temporarily approved.`,
+    `Mobile production dependency audit: only ${nodeForgeException.advisory} is currently present and temporarily approved; ${bracesException.advisory} is permitted only if separately revalidated.`,
     "Classification: BUILD/TOOLING ONLY; not reachable from the BASOUL Android runtime.",
     `Node-forge exception: expo@${nodeForgeException.versions.expo}, @expo/cli@${nodeForgeException.versions.cli},`,
     `@expo/code-signing-certificates@${nodeForgeException.versions.certificates}, node-forge@${nodeForgeException.versions.forge}.`,
     `Braces exception: braces@${bracesException.versions.braces}, micromatch@${bracesException.versions.micromatch},`,
     `@expo/metro-file-map@${bracesException.versions.expoMetroFileMap}, metro-file-map@${bracesException.versions.metroFileMap}.`,
-    "Exception expires: 2026-10-16.",
+    "Exception expires: 2026-10-30.",
     "Any topology/version change or other high/critical advisory fails this gate.",
   ].join(" "),
 );
