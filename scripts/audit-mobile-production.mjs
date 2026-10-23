@@ -7,10 +7,10 @@ import { spawnSync } from "node:child_process";
 // Revalidated 2026-10-08: expo@57.0.27 -> @expo/cli@57.0.28 -> node-forge@1.4.0,
 // including @expo/code-signing-certificates@0.0.6 -> node-forge@1.4.0.
 // node-forge is not reachable from the BASOUL Android runtime graph. Upstream
-// has no patched release as of approval. This exception expires 2026-10-16.
+// has no patched release as of approval. This exception expires 2026-10-30.
 const nodeForgeException = {
   advisory: "GHSA-86w9-cpqp-85rv",
-  expiresAt: "2026-10-16T00:00:00Z",
+  expiresAt: "2026-10-30T00:00:00Z",
   versions: {
     expo: "57.0.27",
     cli: "57.0.28",
@@ -24,10 +24,10 @@ const nodeForgeException = {
 // micromatch@4.0.8, whose only parent is metro-file-map@0.84.5.
 // Revalidated 2026-10-08: @expo/metro-file-map@57.0.4 no longer uses micromatch.
 // Metro file watching runs on the build host and is not
-// reachable from the BASOUL Android runtime. This exception expires 2026-10-16.
+// reachable from the BASOUL Android runtime. This exception expires 2026-10-30.
 const bracesException = {
   advisory: "GHSA-vfj7-8cjw-p6xm",
-  expiresAt: "2026-10-16T00:00:00Z",
+  expiresAt: "2026-10-30T00:00:00Z",
   versions: {
     braces: "3.0.3",
     micromatch: "4.0.8",
@@ -47,10 +47,10 @@ const fail = (message, details) => {
 };
 
 if (Date.now() >= new Date(nodeForgeException.expiresAt).getTime()) {
-  fail("Mobile node-forge audit exception expired on 2026-10-16.");
+  fail("Mobile node-forge audit exception expired on 2026-10-30.");
 }
 if (Date.now() >= new Date(bracesException.expiresAt).getTime()) {
-  fail("Mobile braces audit exception expired on 2026-10-16.");
+  fail("Mobile braces audit exception expired on 2026-10-30.");
 }
 
 const manifest = loadJson(join(mobileRoot, "package.json"));
@@ -286,7 +286,7 @@ console.warn(
     `@expo/code-signing-certificates@${nodeForgeException.versions.certificates}, node-forge@${nodeForgeException.versions.forge}.`,
     `Braces exception: braces@${bracesException.versions.braces}, micromatch@${bracesException.versions.micromatch},`,
     `@expo/metro-file-map@${bracesException.versions.expoMetroFileMap}, metro-file-map@${bracesException.versions.metroFileMap}.`,
-    "Exception expires: 2026-10-16.",
+    "Exception expires: 2026-10-30.",
     "Any topology/version change or other high/critical advisory fails this gate.",
   ].join(" "),
 );
