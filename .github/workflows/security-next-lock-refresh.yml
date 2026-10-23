@@ -24,10 +24,7 @@ jobs:
       - name: Upgrade Next.js and Expo SDK patch dependencies
         run: |
           set -euo pipefail
-          npm install --save-exact next@16.4.3
           npm --prefix mobile install --save-exact expo@57.0.31 expo-dev-client@57.0.20
-          npm ci
-          npm --prefix mobile ci
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json mobile/package.json mobile/package-lock.json
