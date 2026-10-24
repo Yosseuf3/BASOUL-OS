@@ -27,6 +27,8 @@ export function safeOperationError(cause: unknown): { message: string; code?: st
       : cause.reason === "account_changed" ? "تغير الحساب. أعد التحقق من الجلسة."
       : cause.reason === "revoked" ? "لم تعد عضوية المؤسسة نشطة."
       : "لا يملك دورك الحالي صلاحية هذه العملية.";
+  } else if (code === "PT409" || code === "40001") {
+    message = "تغيرت المهمة. حدّث البيانات وراجع الحالة قبل المحاولة مجدداً؛ لم تُعد الكتابة تلقائياً.";
   } else if (code?.startsWith("22") || code === "23514") {
     message = "رفضت المنصة قيمة غير مدعومة. لم تُعد المحاولة تلقائياً.";
   } else if (code === "42501") {

@@ -237,3 +237,17 @@ test("App delegates guarded operations and only clears auth state on account cha
   assert.match(app, /if \(losesOrganizationAccess\(cause\)\)/);
   assert.ok(!app.includes("organizationStore.current.invalidate(); setOrganization(null)"));
 });
+
+test("Mobile start action preserves stored execution percentage", async () => {
+  const f = clientFixture(); f.tables.tasks[0].progress = 0;
+  await f.services.advanceMobileTask(org("a"), { id: "ta", status: "To Do", progress: 0 });
+  assert.equal(f.tables.tasks[0].status, "In Progress"); assert.equal(f.tables.tasks[0].progress, 0);
+});
+
+test("Mobile new workflow and unknown states are rejected before any database query", async () => {
+  for (const status of ["In Progress", "Waiting", "Review", "Done", "unexpected"]) {
+    const f = clientFixture();
+    await assert.rejects(f.services.advanceMobileTask(org("a"), { id: "ta", status, progress: 15 }), /TASK_/);
+    assert.equal(f.calls.length, 0); assert.equal(f.tables.tasks[0].status, "To Do");
+  }
+});

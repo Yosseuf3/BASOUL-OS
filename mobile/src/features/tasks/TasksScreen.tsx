@@ -3,12 +3,12 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Screen } from "../../components/Screen";
 import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import type { Project, Task } from "../../types/domain";
+import { taskStatusLabel, TASK_WORKFLOW_WRITES_ENABLED, TASK_TRANSITIONS, isTaskStatus, type CanonicalTaskStatus } from "../../../../packages/shared-types/src/task-status-contract";
 
 type Filter = "Open" | "Overdue" | "All";
-const statusLabels: Record<Task["status"], string> = { "To Do": "للعمل", "In Progress": "قيد التنفيذ", Review: "مراجعة", Done: "مكتملة" };
 const priorityLabels: Record<Task["priority"], string> = { Low: "منخفضة", Medium: "متوسطة", High: "عالية", Critical: "حرجة" };
 
-export function TasksScreen({ tasks, projects, onBack, onCreate, onAdvance }: { tasks: Task[]; projects: Project[]; onBack: () => void; onCreate: () => void; onAdvance: (task: Task) => void }) {
+export function TasksScreen({ tasks, projects, onBack, onCreate, onAdvance, onTransition }: { tasks: Task[]; projects: Project[]; onBack: () => void; onCreate: () => void; onAdvance: (task: Task) => void; onTransition?: (task:Task,target:CanonicalTaskStatus)=>void }) {
   const [filter, setFilter] = useState<Filter>("Open");
   const today = new Date().toISOString().slice(0, 10);
   const filtered = useMemo(() => tasks.filter((task) => filter === "All" || (filter === "Open" ? task.status !== "Done" : task.status !== "Done" && Boolean(task.due_date && task.due_date < today))).sort((a, b) => (a.due_date || "9999").localeCompare(b.due_date || "9999")), [tasks, filter, today]);
@@ -21,12 +21,12 @@ export function TasksScreen({ tasks, projects, onBack, onCreate, onAdvance }: { 
     {filtered.length === 0 ? <Text style={styles.empty}>لا توجد مهام ضمن هذا التصنيف.</Text> : filtered.map((task) => {
       const overdue = task.status !== "Done" && Boolean(task.due_date && task.due_date < today);
       return <View key={task.id} style={[styles.card, overdue && styles.cardDanger]}>
-        <View style={styles.cardTop}><Text style={[styles.priority, task.priority === "Critical" && styles.critical]}>{priorityLabels[task.priority]}</Text><Text style={styles.status}>{statusLabels[task.status]}</Text></View>
+        <View style={styles.cardTop}><Text style={[styles.priority, task.priority === "Critical" && styles.critical]}>{priorityLabels[task.priority]}</Text><Text style={styles.status}>{taskStatusLabel(task.status)}</Text></View>
         <Text style={styles.name}>{task.title}</Text>
         <Text style={styles.project}>{projectName(task.project_id)}</Text>
         <View style={styles.metaRow}><Text style={[styles.date, overdue && styles.danger]}>{task.due_date ? (overdue ? `متأخرة · ${task.due_date}` : `الموعد · ${task.due_date}`) : "بدون موعد"}</Text><Text style={styles.progress}>{task.progress}%</Text></View>
         <View style={styles.track}><View style={[styles.fill, { width: `${Math.max(0, Math.min(100, task.progress))}%` }]} /></View>
-        {task.status !== "Done" ? <TouchableOpacity style={styles.advance} onPress={() => onAdvance(task)}><Text style={styles.advanceText}>تحديث للمرحلة التالية</Text></TouchableOpacity> : null}
+        {TASK_WORKFLOW_WRITES_ENABLED && onTransition && isTaskStatus(task.status) ? TASK_TRANSITIONS[task.status].map(target=><TouchableOpacity key={target} style={styles.advance} onPress={()=>onTransition(task,target)}><Text style={styles.advanceText}>{taskStatusLabel(target)}</Text></TouchableOpacity>) : task.status === "To Do" ? <TouchableOpacity style={styles.advance} onPress={() => onAdvance(task)}><Text style={styles.advanceText}>بدء التنفيذ</Text></TouchableOpacity> : null}
       </View>;
     })}
   </Screen>;
