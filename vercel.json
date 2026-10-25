@@ -23,7 +23,7 @@
       "root": "tools/cad-ingestion",
       "runtime": "container",
       "entrypoint": "Dockerfile.vercel",
-      "ignoreCommand": "node ../../scripts/vercel-ignore-build.mjs"
+      "ignoreCommand": "node ../../scripts/vercel-ignore-cad-build.mjs"
     }
   },
   "rewrites": [
