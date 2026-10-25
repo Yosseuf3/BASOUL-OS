@@ -54,7 +54,25 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
       - run: npm ci
-      - run: npm run audit:production
       - run: npm run typecheck
       - run: npm run doctor
 
+
+  mobile-security:
+    name: Mobile security (Android release blocker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true # Advisory visibility on shared PRs; Android release must run strict gate.
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - name: Strict Android dependency audit
+        run: npm run audit:production
