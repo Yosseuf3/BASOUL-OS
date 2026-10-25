@@ -6,6 +6,8 @@ const WEB_ONLY_ROOTS = [
   "public/", "design-system/", "brand/", "supabase/", "database/",
   "mobile/", "docs/", "tests/", ".github/workflows/",
 ];
+// The container context is tools/cad-ingestion; its Dockerfile consumes no root npm inputs.
+const WEB_ONLY_FILES = new Set(['package.json', 'package-lock.json', 'tsconfig.json', 'next-env.d.ts', 'next.config.mjs', 'eslint.config.mjs']);
 
 export function classifyCadChanges(files) {
   if (!Array.isArray(files) || files.length === 0) return { skip: false, reason: "empty or ambiguous change set" };
@@ -18,7 +20,7 @@ export function classifyCadChanges(files) {
         path === "scripts/vercel-ignore-build.mjs" || path === "scripts/vercel-ignore-cad-build.mjs") {
       return { skip: false, reason: `CAD deployment input changed: ${path}` };
     }
-    const webOnly = WEB_ONLY_ROOTS.some((root) => path.startsWith(root)) ||
+    const webOnly = WEB_ONLY_FILES.has(path) || WEB_ONLY_ROOTS.some((root) => path.startsWith(root)) ||
       (path.startsWith("scripts/") && path.endsWith(".mjs")) ||
       (!path.includes("/") && /^(README|CHANGELOG|LICENSE)(\..+)?$/i.test(path));
     if (!webOnly) return { skip: false, reason: `unclassified file: ${path}` };
