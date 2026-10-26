@@ -29,7 +29,15 @@ function isNormalizedCadDocument(value: unknown): value is NormalizedCadDocument
 }
 
 export async function POST(request: NextRequest) {
-  const form = await request.formData()
+  const token = bearer(request)
+  const organizationId = requestedOrganization(request.headers)
+  if (!token || !organizationId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  let form: FormData
+  try {
+    form = await request.formData()
+  } catch {
+    return NextResponse.json({ error: 'architecture.cad.invalid_request' }, { status: 400 })
+  }
   const projectId = typeof form.get('projectId') === 'string' ? String(form.get('projectId')) : null
   const upload = form.get('file')
 
@@ -38,7 +46,7 @@ export async function POST(request: NextRequest) {
   if (!allowedExtensions.has(extension(upload.name))) return NextResponse.json({ error: 'architecture.cad.unsupported_format' }, { status: 415 })
   if (upload.size <= 0 || upload.size > MAX_CAD_BYTES) return NextResponse.json({ error: 'architecture.cad.file_size_invalid' }, { status: 413 })
 
-  const auth = await authenticatedDatabase(bearer(request), requestedOrganization(request.headers))
+  const auth = await authenticatedDatabase(token, organizationId)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const project = await auth.database
