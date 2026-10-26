@@ -25,6 +25,12 @@ const nodeForgeException = {
 // Revalidated 2026-10-08: @expo/metro-file-map@57.0.4 no longer uses micromatch.
 // Metro file watching runs on the build host and is not
 // reachable from the BASOUL Android runtime. This exception expires 2026-10-30.
+const zodException = {
+  advisory: "GHSA-mrhx-c7xc-m3w5",
+  expiresAt: "2026-10-30T00:00:00Z",
+  version: "3.25.76",
+};
+
 const bracesException = {
   advisory: "GHSA-vfj7-8cjw-p6xm",
   expiresAt: "2026-10-30T00:00:00Z",
@@ -51,6 +57,10 @@ if (Date.now() >= new Date(nodeForgeException.expiresAt).getTime()) {
 }
 if (Date.now() >= new Date(bracesException.expiresAt).getTime()) {
   fail("Mobile braces audit exception expired on 2026-10-30.");
+}
+
+if (Date.now() >= new Date(zodException.expiresAt).getTime()) {
+  fail("Mobile Zod tooling-only audit exception expired on 2026-10-30.");
 }
 
 const manifest = loadJson(join(mobileRoot, "package.json"));
@@ -83,6 +93,18 @@ if (
   certificates.dependencies?.["node-forge"] !== "^1.3.3"
 ) {
   fail("Mobile audit exception topology or pinned versions changed.");
+}
+
+const zod = packageAt("node_modules/zod", zodException.version);
+const zodParents = Object.entries(packages)
+  .filter(([, metadata]) => metadata.dependencies?.zod)
+  .map(([path]) => path)
+  .sort();
+const zodInstallations = Object.keys(packages).filter((path) => path.endsWith("node_modules/zod"));
+if (!zod || cli.dependencies?.zod !== "^3.25.76" ||
+    JSON.stringify(zodParents) !== JSON.stringify(["node_modules/expo/node_modules/@expo/cli"]) ||
+    JSON.stringify(zodInstallations) !== JSON.stringify(["node_modules/zod"])) {
+  fail("Mobile Zod exception dependency topology or pinned version changed.");
 }
 
 const forgeParents = Object.entries(packages)
@@ -173,6 +195,7 @@ const collectRuntimeFiles = (directory) => {
 collectRuntimeFiles(join(mobileRoot, "src"));
 const forbiddenRuntimeImports = [
   "node-forge",
+  "zod",
   "@expo/cli",
   "@expo/code-signing-certificates",
   "braces",
@@ -235,6 +258,7 @@ const expectedAffectedPackages = [
   "@expo/code-signing-certificates",
   "expo",
   "node-forge",
+  "zod",
 ].sort();
 const highOrCriticalAdvisories = Object.values(report.vulnerabilities ?? {})
   .flatMap((vulnerability) => vulnerability.via ?? [])
@@ -250,6 +274,9 @@ const authorizedNodeForgeAdvisories = highOrCriticalAdvisories.filter(
     advisory.name === "node-forge" &&
     getGhsaId(advisory) === nodeForgeException.advisory,
 );
+const authorizedZodAdvisories = highOrCriticalAdvisories.filter(
+  (advisory) => advisory.name === "zod" && getGhsaId(advisory) === zodException.advisory,
+);
 const authorizedBracesAdvisories = highOrCriticalAdvisories.filter(
   (advisory) =>
     advisory.name === "braces" &&
@@ -258,8 +285,9 @@ const authorizedBracesAdvisories = highOrCriticalAdvisories.filter(
 
 if (
   (report.metadata?.vulnerabilities?.critical ?? 0) !== 0 ||
-  highOrCriticalAdvisories.length !== 1 ||
+  highOrCriticalAdvisories.length !== 2 ||
   authorizedNodeForgeAdvisories.length !== 1 ||
+  authorizedZodAdvisories.length !== 1 ||
   authorizedBracesAdvisories.length !== 0 ||
   JSON.stringify(highOrCriticalPackages) !==
     JSON.stringify(expectedAffectedPackages)
@@ -272,8 +300,9 @@ if (
 
 console.warn(
   [
-    `Mobile production dependency audit: only ${nodeForgeException.advisory} is currently present and temporarily approved; ${bracesException.advisory} is permitted only if separately revalidated.`,
+    `Mobile production dependency audit: ${nodeForgeException.advisory} and ${zodException.advisory} are temporarily approved only for exact build-tooling paths; ${bracesException.advisory} is permitted only if separately revalidated.`,
     "Classification: BUILD/TOOLING ONLY; not reachable from the BASOUL Android runtime.",
+    `Zod exception: @expo/cli@${nodeForgeException.versions.cli} -> zod@${zodException.version}, expires 2026-10-30.`,
     `Node-forge exception: expo@${nodeForgeException.versions.expo}, @expo/cli@${nodeForgeException.versions.cli},`,
     `@expo/code-signing-certificates@${nodeForgeException.versions.certificates}, node-forge@${nodeForgeException.versions.forge}.`,
     `Braces exception: braces@${bracesException.versions.braces}, micromatch@${bracesException.versions.micromatch},`,
