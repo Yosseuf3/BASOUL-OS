@@ -176,3 +176,75 @@ slots, so inventory/reference checks are required before later builds.
 Preserved logs, local settings, credentials, backups, AGENTS.md and CLAUDE.md.
 `error.log` SHA-256 remains
 `48493ae1a7d1c90a1a0114ac00a7686102cb4bc320301b7d4277c28284e51786`.
+
+## Follow-up execution — 2026-10-26
+
+The earlier access and hosted-CAD holds above describe the checkpoint at that
+time. The connector recovered; the existing staging project was resumed to
+ACTIVE_HEALTHY, not recreated. Its historical core schema and function/policy
+prerequisites were inspected before changes. Both reviewed P0 SQL files applied
+to staging successfully (history versions 20261026093515 and 20261026093521).
+RLS remained enabled, function ACLs were preserved, and a transactional reapply /
+rollback rehearsal retained all four corrected policies. This is targeted
+historical-schema coverage, not permission to bulk-push every repository migration.
+
+Created two explicitly disposable staging identities (owner and viewer), two
+test organizations and two test projects. API credentials/passwords/sessions
+were consumed in memory, never printed or committed. No email was sent and no
+customer records or existing customer identities were used. App requests used
+normal Auth sessions and RLS, not service-role authorization; administrative
+credentials were used only to provision the synthetic identities.
+
+Staging authenticated HTTP **14/14 PASS**: password sign-in/sign-out, authorized
+membership, same-tenant file CRUD, viewer read/DELETE denial, anonymous denial,
+cross-tenant project suppression and cross-organization project/file INSERT
+and UPDATE denial even for the dual-tenant test owner.
+
+| Fixture | Non-secret identifier |
+| --- | --- |
+| Test organization A | 36fe90a8-a0bd-49c3-a938-6e7159f7b09b |
+| Test organization B | 598c91c2-f874-44df-8060-713e99810421 |
+| Test project A | c750dca8-2687-4bda-b493-8d0930d49dd2 |
+| Test project B | 0fd41fa4-8e10-48c4-b715-254d2836f7c5 |
+
+Added two public Supabase configuration variables for **Preview on this PR branch
+only**, targeting staging; Production and other branch scopes were not changed.
+Redeployment `dpl_3XW4ZqZ6E5pvxTJ6tMn7atjATHCH`, source 9f1f3a7..., reached READY:
+`https://yosseuf-ifd9k77j4-yosseuf-os.vercel.app`.
+
+Actual hosted authenticated Web → private CAD health PASS. DWG ingestion HTTP200
+with 67 entities and DXF HTTP200 with 68 entities PASS. Invalid format HTTP415,
+cross-organization project HTTP404 and nonmember organization HTTP401 PASS.
+Organization/workspace resolution and projects/tasks reads PASS. The service
+remains private, accessed through the intended Web binding; no public CAD route
+or application-authentication bypass was added.
+
+This execution discovered a real shared-reader defect: notifications returned
+403 because `notifications.updated_at` does not exist. Metadata confirms both
+notifications and activity_events have only created_at in staging **and**
+Production. The reader now orders those two append-only resources by created_at;
+other resources retain updated_at ordering, the same tenant predicate and auth.
+Nine focused actual-route tests cover all eight resources plus denial. Full
+local tests **268/268 PASS**. New-head CI/hosted verification is required before
+calling this correction complete.
+
+An additional image `image_8Mm1tWCxMxcIQoRpze9toSexlIU7`, digest
+`sha256:3efa34834912d64b28992e87418deac7ab27626bc2cb620c840f88a44f49cb29`,
+tag ac9d15953f07, created 2026-09-01T23:34:20.961Z, was deleted only after
+rechecking all 72 terminal retained deployments and current image references.
+Receipt confirmed deleted:true. This allowed the staging validation build while
+preserving headroom; no protected deployment/image reference was removed.
+
+Read-only production preflight confirms both P0 migrations still unapplied,
+the four original tautological policy expressions still present, expected
+invitation signatures present and **zero** mismatched file/project organizations.
+Production backup metadata: walg_enabled=true, pitr_enabled=false, backups=[],
+physical_backup_data={}. No physical backup is listed; an independently verified
+recoverable backup is still required before exact production migration approval.
+Do not infer that no external backup exists, or treat this metadata as a restore
+rehearsal. No production policy/data/deployment/domain/signing change occurred.
+
+Android audit remains FAIL on 2026-10-26: five HIGH entries, latest forge1.4.0
+still unpatched. EAS authentication works, but the successful historical APK
+status references commit78f9e1c..., not this candidate. No new APK/device PASS
+is claimed. Existing exception expiration remains 2026-10-30T00:00:00Z.

@@ -18,7 +18,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const { resource } = await params;
   const resolved = await context(request, resource);
   if (!resolved.ok) return resolved.response;
-  const result = await resolved.auth.database.from(resolved.resource).select("*").eq("organization_id", resolved.auth.organizationId).order("updated_at", { ascending: false });
+  // Notifications and audit events are append-only and have no updated_at column.
+  const orderColumn = resolved.resource === "notifications" || resolved.resource === "activity_events" ? "created_at" : "updated_at";
+  const result = await resolved.auth.database.from(resolved.resource).select("*").eq("organization_id", resolved.auth.organizationId).order(orderColumn, { ascending: false });
   return NextResponse.json(result.error ? { error: result.error.message } : { data: result.data }, { status: result.error ? 403 : 200 });
 }
 
