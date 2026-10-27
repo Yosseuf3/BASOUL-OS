@@ -243,12 +243,7 @@ const highOrCriticalPackages = Object.entries(report.vulnerabilities ?? {})
 // npm audit now reports only the forge advisory: do not require an already
 // resolved braces advisory to remain present. Keep both dependency topology
 // and exception-expiry checks above unchanged.
-const expectedAffectedPackages = [
-  "@expo/cli",
-  "@expo/code-signing-certificates",
-  "expo",
-  "node-forge",
-].sort();
+const expectedAffectedPackages = ["node-forge"];
 const highOrCriticalAdvisories = Object.values(report.vulnerabilities ?? {})
   .flatMap((vulnerability) => vulnerability.via ?? [])
   .filter(
