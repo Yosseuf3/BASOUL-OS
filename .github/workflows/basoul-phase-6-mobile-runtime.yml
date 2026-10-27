@@ -27,6 +27,8 @@ jobs:
           cache-dependency-path: mobile/package-lock.json
       - name: Install mobile dependencies
         run: npm ci
+      - name: Verify installed security patches
+        run: npm run test:security-patches
       - name: Production dependency audit
         run: npm run audit:production
       - name: Typecheck
