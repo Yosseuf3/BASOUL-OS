@@ -2,13 +2,17 @@ name: BASOUL Android Preview Build
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/android-preview-trigger-20261027.txt'
 
 permissions:
   contents: read
 
 jobs:
   build-android-preview:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     defaults:
       run:
