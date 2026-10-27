@@ -1,4 +1,5 @@
 import {readFileSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 const rsa = readFileSync('node_modules/node-forge/lib/rsa.js', 'utf8');
 assert.match(rsa, /obj\.value\[0\]\.value\.length < 1/);
@@ -8,4 +9,7 @@ const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
 assert.equal(lock.packages['node_modules/node-forge'].version, '1.4.0');
 assert.equal(lock.packages['node_modules/zod'].version, '4.6.6');
 assert.equal(lock.packages['node_modules/expo/node_modules/@expo/cli'].dependencies.zod, '^3.25.76');
-console.log('node-forge signature parser guard installed; Zod 4.6.6 is pinned in lockfile.');
+const rerun = spawnSync(process.execPath, ['scripts/patch-node-forge.mjs'], {encoding: 'utf8'});
+assert.equal(rerun.status, 0, `Second patch application failed: ${rerun.stderr}`);
+assert.match(rerun.stdout, /already installed/);
+console.log('node-forge patch is idempotent; Zod 4.6.6 is pinned in lockfile.');
