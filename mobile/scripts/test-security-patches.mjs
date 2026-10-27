@@ -6,6 +6,6 @@ assert.match(rsa, /obj\.value\[0\]\.value\.length > 2/);
 assert.match(rsa, /obj\.value\.length !== 2/);
 const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
 assert.equal(lock.packages['node_modules/node-forge'].version, '1.4.0');
-assert.equal(lock.packages['node_modules/zod'].version, '3.25.76');
+assert.equal(lock.packages['node_modules/zod'].version, '4.6.6');
 assert.equal(lock.packages['node_modules/expo/node_modules/@expo/cli'].dependencies.zod, '^3.25.76');
-console.log('node-forge signature parser guard installed; Zod remains tooling-only and requires upstream remediation.');
+console.log('node-forge signature parser guard installed; Zod 4.6.6 is pinned in lockfile.');
