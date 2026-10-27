@@ -1,0 +1,35 @@
+name: Experimental Zod 4 Expo CLI Compatibility
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'mobile/package.json'
+      - '.github/workflows/experiment-zod4-compat.yml'
+  workflow_dispatch:
+jobs:
+  compatibility:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+      - name: Install experimental Zod 4 without changing committed lockfile
+        run: npm install --package-lock=false
+      - name: Verify installed Zod version and Expo CLI dependency
+        run: |
+          node -e "const z=require('zod/package.json');if(z.version!=='4.6.6')process.exit(1);console.log('Zod',z.version)"
+          npm ls zod --all
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Expo Doctor
+        run: npm run doctor
+      - name: Expo config compatibility
+        run: npx expo config --type public --json > /tmp/basoul-expo-config.json
+      - name: Android export compatibility
+        run: npx expo export --platform android --output-dir /tmp/basoul-zod4-android-export
+      - name: iOS export compatibility
+        run: npx expo export --platform ios --output-dir /tmp/basoul-zod4-ios-export
