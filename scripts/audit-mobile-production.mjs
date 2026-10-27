@@ -95,13 +95,13 @@ if (
   fail("Mobile audit exception topology or pinned versions changed.");
 }
 
-const zod = packageAt("node_modules/zod", zodException.version);
+const zod = packageAt("node_modules/zod", "4.6.6");
 const zodParents = Object.entries(packages)
   .filter(([, metadata]) => metadata.dependencies?.zod)
   .map(([path]) => path)
   .sort();
 const zodInstallations = Object.keys(packages).filter((path) => path.endsWith("node_modules/zod"));
-if (!zod || cli.dependencies?.zod !== "^3.25.76" ||
+if (!zod || manifest.overrides?.zod !== "4.6.6" || cli.dependencies?.zod !== "^3.25.76" ||
     JSON.stringify(zodParents) !== JSON.stringify(["node_modules/expo/node_modules/@expo/cli"]) ||
     JSON.stringify(zodInstallations) !== JSON.stringify(["node_modules/zod"])) {
   fail("Mobile Zod exception dependency topology or pinned version changed.");
