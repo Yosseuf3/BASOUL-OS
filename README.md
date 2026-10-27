@@ -13,9 +13,7 @@ BASOUL is the technology masterbrand. YOSSEUF RADWAN remains the founder and per
 
 BASOUL OS unifies projects, tasks, clients, content, knowledge, finance, activity, notifications, administration, executive decision support, and an emerging Architecture workspace inside one governed platform.
 
-> **What should I do now?**
-
-![BASOUL OS Executive Dashboard](docs/assets/screenshots/executive-dashboard-v1.0.0.png)
+> **Android v4.0.0 (Build 32):** [verified EAS build and release-readiness checklist](docs/releases/ANDROID_V4_0_0_BUILD32_2026-10-27.md). Fresh screenshots from the current APK are pending device verification; historical v1.0.0 screenshots are not presented as current product imagery.
 
 ## Current product status
 
