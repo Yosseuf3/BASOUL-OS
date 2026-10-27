@@ -286,7 +286,7 @@ if (
 
 console.warn(
   [
-    `Mobile production dependency audit: ${nodeForgeException.advisory} and ${zodException.advisory} are temporarily approved only for exact build-tooling paths; ${bracesException.advisory} is permitted only if separately revalidated.`,
+    `Mobile production dependency audit: ${nodeForgeException.advisory} are temporarily approved only for exact build-tooling paths; ${bracesException.advisory} is permitted only if separately revalidated.`,
     "Classification: BUILD/TOOLING ONLY; not reachable from the BASOUL Android runtime.",
     "Zod 4.6.6 override verified; no Zod advisory permitted.",
     `Node-forge exception: expo@${nodeForgeException.versions.expo}, @expo/cli@${nodeForgeException.versions.cli},`,
