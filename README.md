@@ -13,7 +13,11 @@ BASOUL is the technology masterbrand. YOSSEUF RADWAN remains the founder and per
 
 BASOUL OS unifies projects, tasks, clients, content, knowledge, finance, activity, notifications, administration, executive decision support, and an emerging Architecture workspace inside one governed platform.
 
-> **Android v4.0.0 (Build 32):** [verified EAS build and release-readiness checklist](docs/releases/ANDROID_V4_0_0_BUILD32_2026-10-27.md). Fresh screenshots from the current APK are pending device verification; historical v1.0.0 screenshots are not presented as current product imagery.
+> **Android v4.0.0 (Build 32):** [verified APK and release checklist](docs/releases/ANDROID_V4_0_0_BUILD32_2026-10-27.md). Installation and cold launch passed on an Android emulator. Authenticated and physical-device testing remain pending; this is an internal-preview artifact.
+
+<img src="docs/assets/screenshots/android-4.0.0-build32-login.png" alt="Actual BASOUL Android 4.0.0 build 32 login screen captured on an emulator" width="360" />
+
+Actual Build 32 screenshot; no customer account or business data is shown. Historical screenshots remain archived under `docs/assets/screenshots/`.
 
 ## Current product status
 
