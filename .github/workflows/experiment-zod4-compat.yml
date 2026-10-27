@@ -1,0 +1,54 @@
+name: Experimental Zod 4 Expo CLI Compatibility
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'mobile/package.json'
+      - '.github/workflows/experiment-zod4-compat.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  compatibility:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+      - name: Regenerate lockfile for Zod 4.6.6
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Commit exact resolved lockfile on experimental branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        working-directory: .
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          if ! git diff --quiet -- mobile/package-lock.json; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add mobile/package-lock.json
+            git commit -m 'test(android): lock Zod 4.6.6 resolved dependency graph'
+            git fetch origin "$BRANCH_NAME"
+            git rebase FETCH_HEAD
+            git push origin HEAD:"$BRANCH_NAME"
+          fi
+      - name: Verify reproducible install with Zod 4.6.6
+        run: npm ci
+      - name: Verify installed Zod version and Expo CLI dependency
+        run: |
+          node -e "const z=require('zod/package.json');if(z.version!=='4.6.6')process.exit(1);console.log('Zod',z.version)"
+          npm ls zod --all
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Expo Doctor
+        run: npm run doctor
+      - name: Expo config compatibility
+        run: npx expo config --type public --json > /tmp/basoul-expo-config.json
+      - name: Android export compatibility
+        run: npx expo export --platform android --output-dir /tmp/basoul-zod4-android-export
+      - name: iOS export compatibility
+        run: npx expo export --platform ios --output-dir /tmp/basoul-zod4-ios-export

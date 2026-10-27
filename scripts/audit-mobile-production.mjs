@@ -85,6 +85,18 @@ if (
   fail("Mobile audit exception topology or pinned versions changed.");
 }
 
+const zod = packageAt("node_modules/zod", "4.6.6");
+const zodParents = Object.entries(packages)
+  .filter(([, metadata]) => metadata.dependencies?.zod)
+  .map(([path]) => path)
+  .sort();
+const zodInstallations = Object.keys(packages).filter((path) => path.endsWith("node_modules/zod"));
+if (!zod || manifest.overrides?.zod !== "4.6.6" || cli.dependencies?.zod !== "^3.25.76" ||
+    JSON.stringify(zodParents) !== JSON.stringify(["node_modules/expo/node_modules/@expo/cli"]) ||
+    JSON.stringify(zodInstallations) !== JSON.stringify(["node_modules/zod"])) {
+  fail("Mobile Zod exception dependency topology or pinned version changed.");
+}
+
 const forgeParents = Object.entries(packages)
   .filter(([, metadata]) => metadata.dependencies?.["node-forge"])
   .map(([path]) => path)
@@ -173,6 +185,7 @@ const collectRuntimeFiles = (directory) => {
 collectRuntimeFiles(join(mobileRoot, "src"));
 const forbiddenRuntimeImports = [
   "node-forge",
+  "zod",
   "@expo/cli",
   "@expo/code-signing-certificates",
   "braces",
@@ -260,6 +273,7 @@ if (
   (report.metadata?.vulnerabilities?.critical ?? 0) !== 0 ||
   highOrCriticalAdvisories.length !== 1 ||
   authorizedNodeForgeAdvisories.length !== 1 ||
+  
   authorizedBracesAdvisories.length !== 0 ||
   JSON.stringify(highOrCriticalPackages) !==
     JSON.stringify(expectedAffectedPackages)
@@ -272,8 +286,9 @@ if (
 
 console.warn(
   [
-    `Mobile production dependency audit: only ${nodeForgeException.advisory} is currently present and temporarily approved; ${bracesException.advisory} is permitted only if separately revalidated.`,
+    `Mobile production dependency audit: ${nodeForgeException.advisory} are temporarily approved only for exact build-tooling paths; ${bracesException.advisory} is permitted only if separately revalidated.`,
     "Classification: BUILD/TOOLING ONLY; not reachable from the BASOUL Android runtime.",
+    "Zod 4.6.6 override verified; no Zod advisory permitted.",
     `Node-forge exception: expo@${nodeForgeException.versions.expo}, @expo/cli@${nodeForgeException.versions.cli},`,
     `@expo/code-signing-certificates@${nodeForgeException.versions.certificates}, node-forge@${nodeForgeException.versions.forge}.`,
     `Braces exception: braces@${bracesException.versions.braces}, micromatch@${bracesException.versions.micromatch},`,
