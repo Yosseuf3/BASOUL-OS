@@ -1,0 +1,40 @@
+name: Pascal Architecture PoC
+
+on:
+  push:
+    branches:
+      - oss/pascal-architecture-poc
+    paths:
+      - 'experiments/pascal-architecture-poc/**'
+      - '.github/workflows/pascal-architecture-poc.yml'
+  pull_request:
+    paths:
+      - 'experiments/pascal-architecture-poc/**'
+      - '.github/workflows/pascal-architecture-poc.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: experiments/pascal-architecture-poc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: experiments/pascal-architecture-poc/package.json
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Typecheck BASOUL host
+        run: npm run typecheck
+      - name: Test constrained AI tool and persistence boundary
+        run: npm test
+      - name: Prepare web-ifc Node WASM for smoke test
+        run: sudo cp node_modules/web-ifc/web-ifc-node.wasm /web-ifc-node.wasm
+      - name: Convert real IFC fixture
+        run: npm run ifc:smoke
+      - name: Production build
+        run: npm run build
