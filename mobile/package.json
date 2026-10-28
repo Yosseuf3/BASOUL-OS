@@ -14,7 +14,6 @@
     "build:development": "eas build --profile development --platform all",
     "build:preview": "eas build --profile preview --platform all",
     "build:production": "eas build --profile production --platform all",
-    "postinstall": "node scripts/patch-node-forge.mjs",
     "test:security-patches": "node scripts/test-security-patches.mjs"
   },
   "dependencies": {
