@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "main": false,
-      "codex/android-security-exception-closure-20261028": false
+      "codex/android-security-exception-closure-20261028": false,
+      "codex/google-play-first-launch-20261028": false
     }
   },
   "services": {
