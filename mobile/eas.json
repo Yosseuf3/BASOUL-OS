@@ -35,7 +35,11 @@
     "production": {
       "extends": "base",
       "environment": "production",
-      "autoIncrement": true
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle",
+        "autoIncrement": false
+      }
     }
   },
   "submit": {

@@ -137,7 +137,7 @@ test("launcher resolves to the pinned approved artwork and protected Android ide
   assert.equal(appConfig.expo.android.package, "com.yosseufradwan.os");
   assert.equal(appConfig.expo.extra.eas.projectId, "6f770730-8c8e-49b0-81b9-f9773faf567a");
   assert.equal(appConfig.expo.version, "4.0.0");
-  assert.equal(appConfig.expo.android.versionCode, 33);
+  assert.equal(appConfig.expo.android.versionCode, 34);
 });
 
 test("footer renders version from configuration, not a stale release literal", () => {
