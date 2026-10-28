@@ -3,41 +3,7 @@ import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
-// Temporary BUILD/TOOLING-ONLY exception for GHSA-86w9-cpqp-85rv.
-// Revalidated 2026-10-08: expo@57.0.31 -> @expo/cli@57.0.32 -> node-forge@1.4.0,
-// including @expo/code-signing-certificates@0.0.6 -> node-forge@1.4.0.
-// node-forge is not reachable from the BASOUL Android runtime graph. Upstream
-// has no patched release as of approval. This exception expires 2026-10-30.
-const nodeForgeException = {
-  advisory: "GHSA-86w9-cpqp-85rv",
-  expiresAt: "2026-10-30T00:00:00Z",
-  versions: {
-    expo: "57.0.31",
-    cli: "57.0.32",
-    certificates: "0.0.6",
-    forge: "1.4.0",
-  },
-};
-
-// Separate temporary BUILD/TOOLING-ONLY exception for GHSA-vfj7-8cjw-p6xm.
-// Exact topology: one braces@3.0.3 installation, introduced only by
-// micromatch@4.0.8, whose only parent is metro-file-map@0.84.5.
-// Revalidated 2026-10-08: @expo/metro-file-map@57.0.4 no longer uses micromatch.
-// Metro file watching runs on the build host and is not
-// reachable from the BASOUL Android runtime. This exception expires 2026-10-30.
-const bracesException = {
-  advisory: "GHSA-vfj7-8cjw-p6xm",
-  expiresAt: "2026-10-30T00:00:00Z",
-  versions: {
-    braces: "3.0.3",
-    micromatch: "4.0.8",
-    expoMetroFileMap: "57.0.4",
-    metroFileMap: "0.84.5",
-  },
-};
-
-const scriptDirectory = dirname(fileURLToPath(import.meta.url));
-const repositoryRoot = resolve(scriptDirectory, "..");
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const mobileRoot = join(repositoryRoot, "mobile");
 const loadJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 const fail = (message, details) => {
@@ -45,250 +11,85 @@ const fail = (message, details) => {
   console.error(message);
   process.exit(1);
 };
-
-if (Date.now() >= new Date(nodeForgeException.expiresAt).getTime()) {
-  fail("Mobile node-forge audit exception expired on 2026-10-30.");
-}
-if (Date.now() >= new Date(bracesException.expiresAt).getTime()) {
-  fail("Mobile braces audit exception expired on 2026-10-30.");
-}
-
 const manifest = loadJson(join(mobileRoot, "package.json"));
-const lockfile = loadJson(join(mobileRoot, "package-lock.json"));
-const appConfig = loadJson(join(mobileRoot, "app.json"));
-const packages = lockfile.packages ?? {};
-const packageAt = (path, version) =>
-  packages[path]?.version === version ? packages[path] : null;
+const packages = loadJson(join(mobileRoot, "package-lock.json")).packages ?? {};
+const app = loadJson(join(mobileRoot, "app.json")).expo ?? {};
 
-const expo = packageAt("node_modules/expo", nodeForgeException.versions.expo);
-const cli = packageAt(
-  "node_modules/expo/node_modules/@expo/cli",
-  nodeForgeException.versions.cli,
-);
-const certificates = packageAt(
-  "node_modules/@expo/code-signing-certificates",
-  nodeForgeException.versions.certificates,
-);
-const forge = packageAt("node_modules/node-forge", nodeForgeException.versions.forge);
-
-if (
-  manifest.dependencies?.expo !== "57.0.31" ||
-  !expo ||
-  !cli ||
-  !certificates ||
-  !forge ||
-  expo.dependencies?.["@expo/cli"] !== "^57.0.32" ||
-  cli.dependencies?.["node-forge"] !== "^1.3.3" ||
-  cli.dependencies?.["@expo/code-signing-certificates"] !== "^0.0.6" ||
-  certificates.dependencies?.["node-forge"] !== "^1.3.3"
-) {
-  fail("Mobile audit exception topology or pinned versions changed.");
+// Official node-forge 1.4.2 includes the canonical DigestInfo fix for
+// CVE-2026-85393 (also GHSA-2g46-22mc-6gwp). No local crypto patch.
+// GHSA-vfj7-8cjw-p6xm was withdrawn on 2026-10-23. Every reported
+// HIGH/CRITICAL fails; there are no allowlists or expiry bypasses.
+const expectedVersions = {
+  "node_modules/expo": "57.0.31",
+  "node_modules/expo/node_modules/@expo/cli": "57.0.32",
+  "node_modules/@expo/code-signing-certificates": "0.0.6",
+  "node_modules/node-forge": "1.4.2",
+  "node_modules/zod": "4.6.6",
+};
+for (const [path, version] of Object.entries(expectedVersions)) {
+  if (packages[path]?.version !== version) fail(`Unreviewed mobile dependency: ${path}.`);
 }
-
-const zod = packageAt("node_modules/zod", "4.6.6");
-const zodParents = Object.entries(packages)
-  .filter(([, metadata]) => metadata.dependencies?.zod)
-  .map(([path]) => path)
-  .sort();
-const zodInstallations = Object.keys(packages).filter((path) => path.endsWith("node_modules/zod"));
-if (!zod || manifest.overrides?.zod !== "4.6.6" || cli.dependencies?.zod !== "^3.25.76" ||
-    JSON.stringify(zodParents) !== JSON.stringify(["node_modules/expo/node_modules/@expo/cli"]) ||
-    JSON.stringify(zodInstallations) !== JSON.stringify(["node_modules/zod"])) {
-  fail("Mobile Zod exception dependency topology or pinned version changed.");
+if (manifest.dependencies?.expo !== "57.0.31" || manifest.overrides?.zod !== "4.6.6" ||
+    manifest.scripts?.postinstall || manifest.overrides?.["node-forge"]) {
+  fail("Mobile security dependency or install policy changed.");
 }
-
-const forgeParents = Object.entries(packages)
-  .filter(([, metadata]) => metadata.dependencies?.["node-forge"])
-  .map(([path]) => path)
-  .sort();
-const expectedForgeParents = [
-  "node_modules/@expo/code-signing-certificates",
-  "node_modules/expo/node_modules/@expo/cli",
-].sort();
-const forgeInstallations = Object.entries(packages)
-  .filter(([path]) => path.endsWith("node_modules/node-forge"))
-  .map(([path]) => path);
-
-if (
-  JSON.stringify(forgeParents) !== JSON.stringify(expectedForgeParents) ||
-  forgeInstallations.length !== 1 ||
-  forgeInstallations[0] !== "node_modules/node-forge"
-) {
-  fail("Mobile audit exception dependency topology changed.");
+const parentsOf = (name) => Object.entries(packages)
+  .filter(([, metadata]) => metadata.dependencies?.[name]).map(([path]) => path).sort();
+const installationsOf = (name) => Object.keys(packages)
+  .filter((path) => path.endsWith(`node_modules/${name}`)).sort();
+if (JSON.stringify(parentsOf("node-forge")) !== JSON.stringify([
+  "node_modules/@expo/code-signing-certificates", "node_modules/expo/node_modules/@expo/cli",
+].sort()) || JSON.stringify(installationsOf("node-forge")) !== JSON.stringify(["node_modules/node-forge"]) ||
+    JSON.stringify(parentsOf("zod")) !== JSON.stringify(["node_modules/expo/node_modules/@expo/cli"]) ||
+    JSON.stringify(installationsOf("zod")) !== JSON.stringify(["node_modules/zod"])) {
+  fail("Mobile tooling dependency topology changed.");
 }
-
-const braces = packageAt("node_modules/braces", bracesException.versions.braces);
-const micromatch = packageAt(
-  "node_modules/micromatch",
-  bracesException.versions.micromatch,
-);
-const expoMetroFileMap = packageAt(
-  "node_modules/@expo/metro-file-map",
-  bracesException.versions.expoMetroFileMap,
-);
-const metroFileMap = packageAt(
-  "node_modules/metro-file-map",
-  bracesException.versions.metroFileMap,
-);
-const bracesParents = Object.entries(packages)
-  .filter(([, metadata]) => metadata.dependencies?.braces)
-  .map(([path]) => path)
-  .sort();
-const micromatchParents = Object.entries(packages)
-  .filter(([, metadata]) => metadata.dependencies?.micromatch)
-  .map(([path]) => path)
-  .sort();
-const bracesInstallations = Object.entries(packages)
-  .filter(([path]) => path.endsWith("node_modules/braces"))
-  .map(([path]) => path);
-const expectedMicromatchParents = [
-  "node_modules/metro-file-map",
-].sort();
-
-if (
-  !braces ||
-  !micromatch ||
-  !expoMetroFileMap ||
-  !metroFileMap ||
-  micromatch.dependencies?.braces !== "^3.0.3" ||
-  expoMetroFileMap.dependencies?.micromatch !== undefined ||
-  metroFileMap.dependencies?.micromatch !== "^4.0.4" ||
-  JSON.stringify(bracesParents) !== JSON.stringify(["node_modules/micromatch"]) ||
-  JSON.stringify(micromatchParents) !== JSON.stringify(expectedMicromatchParents) ||
-  bracesInstallations.length !== 1 ||
-  bracesInstallations[0] !== "node_modules/braces"
-) {
-  fail("Mobile braces audit exception topology or pinned versions changed.");
-}
-
-const expoConfig = appConfig.expo ?? {};
-if (
-  expoConfig.updates ||
-  JSON.stringify(expoConfig).includes("codeSigningCertificate") ||
-  JSON.stringify(expoConfig).includes("codeSigningMetadata") ||
-  manifest.dependencies?.["expo-updates"] ||
-  manifest.devDependencies?.["expo-updates"]
-) {
-  fail("Mobile audit exception invalid: Expo Updates/code-signing configuration is present.");
+if (app.android?.package !== "com.yosseufradwan.os" ||
+    app.extra?.eas?.projectId !== "6f770730-8c8e-49b0-81b9-f9773faf567a" ||
+    app.updates || JSON.stringify(app).includes("codeSigningCertificate") ||
+    JSON.stringify(app).includes("codeSigningMetadata") ||
+    manifest.dependencies?.["expo-updates"] || manifest.devDependencies?.["expo-updates"]) {
+  fail("Mobile identity or code-signing boundary changed.");
 }
 
 const runtimeFiles = [join(mobileRoot, "App.tsx")];
-const collectRuntimeFiles = (directory) => {
+const collect = (directory) => {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name);
-    if (entry.isDirectory()) collectRuntimeFiles(path);
-    else if ([".js", ".jsx", ".ts", ".tsx"].includes(extname(entry.name))) {
-      runtimeFiles.push(path);
-    }
+    if (entry.isDirectory()) collect(path);
+    else if ([".js", ".jsx", ".ts", ".tsx"].includes(extname(entry.name))) runtimeFiles.push(path);
   }
 };
-collectRuntimeFiles(join(mobileRoot, "src"));
-const forbiddenRuntimeImports = [
-  "node-forge",
-  "zod",
-  "@expo/cli",
-  "@expo/code-signing-certificates",
-  "braces",
-  "micromatch",
-  "@expo/metro-file-map",
-  "metro-file-map",
-  "@expo/metro",
-  "metro",
-];
+collect(join(mobileRoot, "src"));
+const tooling = ["node-forge", "zod", "@expo/cli", "@expo/code-signing-certificates",
+  "braces", "micromatch", "@expo/metro-file-map", "metro-file-map", "@expo/metro", "metro"];
 for (const path of runtimeFiles) {
   const source = readFileSync(path, "utf8");
-  if (
-    forbiddenRuntimeImports.some(
-      (specifier) =>
-        source.includes(`"${specifier}"`) || source.includes(`'${specifier}'`),
-    )
-  ) {
-    fail(`Mobile audit exception invalid: affected tooling is referenced by runtime source ${path}.`);
+  if (tooling.some((name) => source.includes(`"${name}"`) || source.includes(`'${name}'`))) {
+    fail(`Build tooling referenced by Android runtime: ${path}.`);
   }
 }
 
 const npmCli = process.env.npm_execpath;
-const npmCommand = npmCli
-  ? process.execPath
-  : process.platform === "win32"
-    ? "npm.cmd"
-    : "npm";
-const npmArgs = npmCli
-  ? [npmCli, "audit", "--omit=dev", "--audit-level=high", "--json"]
-  : ["audit", "--omit=dev", "--audit-level=high", "--json"];
-const audit = spawnSync(npmCommand, npmArgs, { encoding: "utf8", shell: false });
-
-if (!audit.stdout) {
-  fail("npm audit produced no JSON output.", audit.stderr);
-}
-
+const audit = spawnSync(npmCli ? process.execPath : process.platform === "win32" ? "npm.cmd" : "npm",
+  [...(npmCli ? [npmCli] : []), "audit", "--omit=dev", "--audit-level=high", "--json"],
+  { cwd: mobileRoot, encoding: "utf8", shell: false });
 let report;
 try {
   report = JSON.parse(audit.stdout);
 } catch {
-  fail("Unable to parse npm audit output.", `${audit.stdout}\n${audit.stderr ?? ""}`);
+  fail("Mobile security audit failed: missing or invalid npm audit evidence.", audit.stderr);
 }
-
-if (audit.status === 0) {
-  console.log("Mobile production dependency audit: 0 high/critical vulnerabilities.");
-  process.exit(0);
+const counts = report.metadata?.vulnerabilities;
+const reportedHigh = Object.values(report.vulnerabilities ?? {}).some(
+  (vulnerability) => ["high", "critical"].includes(vulnerability.severity) ||
+    (vulnerability.via ?? []).some((via) => typeof via === "object" &&
+      ["high", "critical"].includes(via.severity)));
+if (audit.error || audit.status !== 0 || report.error || !counts ||
+    !report.vulnerabilities || typeof report.vulnerabilities !== "object" ||
+    Array.isArray(report.vulnerabilities) ||
+    !Number.isInteger(counts.high) || !Number.isInteger(counts.critical) ||
+    counts.high !== 0 || counts.critical !== 0 || reportedHigh) {
+  fail("Mobile security audit failed: HIGH/CRITICAL finding or incomplete scanner evidence.", audit.stdout);
 }
-
-const highOrCriticalPackages = Object.entries(report.vulnerabilities ?? {})
-  .filter(([, vulnerability]) =>
-    ["high", "critical"].includes(vulnerability.severity),
-  )
-  .map(([name]) => name)
-  .sort();
-// npm audit now reports only the forge advisory: do not require an already
-// resolved braces advisory to remain present. Keep both dependency topology
-// and exception-expiry checks above unchanged.
-const expectedAffectedPackages = ["node-forge"];
-const highOrCriticalAdvisories = Object.values(report.vulnerabilities ?? {})
-  .flatMap((vulnerability) => vulnerability.via ?? [])
-  .filter(
-    (via) =>
-      typeof via === "object" &&
-      ["high", "critical"].includes(via.severity),
-  );
-const getGhsaId = (advisory) =>
-  advisory.url?.match(/GHSA-[\w-]+$/)?.[0] ?? null;
-const authorizedNodeForgeAdvisories = highOrCriticalAdvisories.filter(
-  (advisory) =>
-    advisory.name === "node-forge" &&
-    getGhsaId(advisory) === nodeForgeException.advisory,
-);
-const authorizedBracesAdvisories = highOrCriticalAdvisories.filter(
-  (advisory) =>
-    advisory.name === "braces" &&
-    getGhsaId(advisory) === bracesException.advisory,
-);
-
-if (
-  (report.metadata?.vulnerabilities?.critical ?? 0) !== 0 ||
-  highOrCriticalAdvisories.length !== 1 ||
-  authorizedNodeForgeAdvisories.length !== 1 ||
-  
-  authorizedBracesAdvisories.length !== 0 ||
-  JSON.stringify(highOrCriticalPackages) !==
-    JSON.stringify(expectedAffectedPackages)
-) {
-  fail(
-    "Mobile audit failed: an unapproved high/critical advisory or dependency path is present.",
-    audit.stdout,
-  );
-}
-
-console.warn(
-  [
-    `Mobile production dependency audit: ${nodeForgeException.advisory} are temporarily approved only for exact build-tooling paths; ${bracesException.advisory} is permitted only if separately revalidated.`,
-    "Classification: BUILD/TOOLING ONLY; not reachable from the BASOUL Android runtime.",
-    "Zod 4.6.6 override verified; no Zod advisory permitted.",
-    `Node-forge exception: expo@${nodeForgeException.versions.expo}, @expo/cli@${nodeForgeException.versions.cli},`,
-    `@expo/code-signing-certificates@${nodeForgeException.versions.certificates}, node-forge@${nodeForgeException.versions.forge}.`,
-    `Braces exception: braces@${bracesException.versions.braces}, micromatch@${bracesException.versions.micromatch},`,
-    `@expo/metro-file-map@${bracesException.versions.expoMetroFileMap}, metro-file-map@${bracesException.versions.metroFileMap}.`,
-    "Exception expires: 2026-10-30.",
-    "Any topology/version change or other high/critical advisory fails this gate.",
-  ].join(" "),
-);
+console.log(`Mobile production dependency audit: 0 HIGH/CRITICAL; ${counts.low ?? 0} LOW, ${counts.moderate ?? 0} MODERATE. No security exceptions.`);
