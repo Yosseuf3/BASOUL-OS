@@ -1,3 +1,4 @@
+import type { CanonicalTaskStatus } from "../../../packages/shared-types/src/task-status-contract";
 export type ProjectStatus = "Planning" | "Active" | "On Hold" | "Completed";
 export type PriorityLevel = "Low" | "Medium" | "High" | "Critical";
 
@@ -19,10 +20,11 @@ export type Task = {
   id: string;
   project_id: string;
   title: string;
-  status: "To Do" | "In Progress" | "Review" | "Done";
+  status: CanonicalTaskStatus;
   priority: PriorityLevel;
   progress: number;
   due_date: string | null;
+  updated_at: string;
 };
 
 export type Notification = {

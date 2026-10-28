@@ -18,6 +18,8 @@ import { GlobalSearchScreen } from "./src/features/search/GlobalSearchScreen";
 import { ArchitectureReviewScreen } from "./src/features/architecture/architecture-review-screen";
 import { AdministrationScreen } from "./src/features/administration/AdministrationScreen";
 import { AccountScreen } from "./src/features/account/AccountScreen";
+import { transitionMobileTask } from './src/services/task-transitions';
+import type { CanonicalTaskStatus } from '../packages/shared-types/src/task-status-contract';
 import { OrganizationContextStore, type OrganizationContext, type OrganizationSnapshot } from "./src/organizations/context";
 import { OrganizationBar } from "./src/organizations/OrganizationBar";
 import { accountChanged, losesOrganizationAccess, runOrganizationOperation, safeOperationError } from "./src/organizations/operation";
@@ -145,6 +147,21 @@ export default function App() {
   async function readNotification(id: string) { try { await operate((context) => markMobileNotificationRead(context, id)); } catch { /* Error displayed only for the current context. */ } }
   async function createTask(input: NewTaskInput) { await operate((context) => createMobileTask(context, input), () => setScreen("tasks")); }
   async function advanceTask(task: Task) { try { await operate((context) => advanceMobileTask(context, task)); } catch { /* Error displayed by operate. */ } }
+  async function transitionTask(task: Task, target: CanonicalTaskStatus) {
+    const snapshot=activeOrganization();
+    const sessionVersion=sessionRevision.current;
+    try { await operate(context=>transitionMobileTask(context,task,target)); }
+    catch(cause) {
+      const code=cause && typeof cause==='object' && 'code' in cause ? cause.code : undefined;
+      if((code==='PT409' || code==='40001') && sessionVersion===sessionRevision.current && organizationStore.current.isCurrent(snapshot.revision)) {
+        // Confirmed rejection: refresh reads only, never replay the mutation.
+        try {
+          const next=await loadMobileWorkspace(snapshot.selected!);
+          if(sessionVersion===sessionRevision.current && organizationStore.current.isCurrent(snapshot.revision)) setData(next);
+        } catch { /* Retain the original conflict and current organization. */ }
+      }
+    }
+  }
   async function convertFinding(finding: ArchitecturalFinding, projectId: string) {
     if (!session) return;
     const actionRevision = activeOrganization().revision;
@@ -227,7 +244,7 @@ export default function App() {
     {organizationReady ? <>
     {screen === "dashboard" ? <DashboardScreen data={data} onNavigate={setScreen} onRefresh={() => void refresh()} refreshing={loading} /> : null}
     {screen === "projects" ? <ProjectsScreen projects={data.projects} onBack={() => setScreen("dashboard")} /> : null}
-    {screen === "tasks" ? <TasksScreen tasks={data.tasks} projects={data.projects} onBack={() => setScreen("dashboard")} onCreate={() => setScreen("createTask")} onAdvance={(task) => void advanceTask(task)} /> : null}
+    {screen === "tasks" ? <TasksScreen tasks={data.tasks} projects={data.projects} onBack={() => setScreen("dashboard")} onCreate={() => setScreen("createTask")} onAdvance={(task) => void advanceTask(task)} onTransition={(task,target)=>void transitionTask(task,target)} /> : null}
     {screen === "notifications" ? <NotificationsScreen notifications={data.notifications} onBack={() => setScreen("dashboard")} onRead={readNotification} /> : null}
     {screen === "intelligence" ? <CommandCenterScreen data={data} onBack={() => setScreen("dashboard")} /> : null}
     {screen === "architecture" ? <ArchitectureReviewScreen data={data} onBack={() => setScreen("dashboard")} onConvertFinding={(finding, projectId) => void convertFinding(finding, projectId)} convertingFindingId={convertingFindingId} onDecideFinding={(finding, status) => void decideFinding(finding, status)} decidingFindingId={decidingFindingId} onDecidePlanElement={(elementId, status) => void decidePlanElement(elementId, status)} updatingPlanElementId={updatingPlanElementId} onUpdateReviewComment={(comment, status) => void decideReviewComment(comment, status)} updatingReviewCommentId={updatingReviewCommentId} onUploadDrawing={uploadDrawing} uploadingDrawing={uploadingDrawing} onRetryDrawing={retryDrawing} retryingDrawingId={retryingDrawingId} /> : null}

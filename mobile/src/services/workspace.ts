@@ -3,6 +3,8 @@ import { supabase } from "../config/supabase";
 import type { ArchitecturalDrawing, ArchitecturalFinding, ArchitecturalPlanElement, ArchitecturalReview, ArchitecturalReviewComment, MobileWorkspaceData, Notification, Project, Task } from "../types/domain";
 import type { OrganizationContext } from "../organizations/context";
 import { requireOrganizationRecord, validateOrganizationContext } from "./organizations";
+import { assertLegacyTaskWrite, TASK_WORKFLOW_WRITES_ENABLED } from "../../../packages/shared-types/src/task-status-contract";
+import { transitionMobileTask } from './task-transitions';
 
 const ARCHITECTURAL_DRAWINGS_BUCKET = "architectural-drawings";
 
@@ -61,7 +63,7 @@ export async function loadMobileWorkspace(context: OrganizationContext): Promise
       .order("updated_at", { ascending: false }),
     supabase
       .from("tasks")
-      .select("id,project_id,title,status,priority,progress,due_date")
+      .select("id,project_id,title,status,priority,progress,due_date,updated_at")
       .eq("organization_id", context.organizationId)
       .order("due_date", { ascending: true, nullsFirst: false }),
     supabase
@@ -310,14 +312,11 @@ export async function createMobileTask(context: OrganizationContext, input: { ti
 }
 
 export async function advanceMobileTask(context: OrganizationContext, task: Task): Promise<void> {
+  if (TASK_WORKFLOW_WRITES_ENABLED) { await transitionMobileTask(context,task,'In Progress'); return; }
   if (!supabase) throw new Error("Supabase is not configured.");
+  assertLegacyTaskWrite(task.status);
+  if (task.status !== "To Do") throw new Error("TASK_WORKFLOW_NOT_ACTIVATED");
   await validateOrganizationContext(context, "update");
-  const next: Record<Task["status"], { status: Task["status"]; progress: number }> = {
-    "To Do": { status: "In Progress", progress: Math.max(15, task.progress) },
-    "In Progress": { status: "Review", progress: Math.max(80, task.progress) },
-    Review: { status: "Done", progress: 100 },
-    Done: { status: "Done", progress: 100 },
-  };
-  const { error } = await supabase.from("tasks").update(next[task.status]).eq("id", task.id).eq("organization_id", context.organizationId).eq("user_id", context.userId).select("id").single();
+  const { error } = await supabase.from("tasks").update({ status: "In Progress", progress: task.progress }).eq("id", task.id).eq("organization_id", context.organizationId).eq("user_id", context.userId).select("id").single();
   if (error) throw error;
 }

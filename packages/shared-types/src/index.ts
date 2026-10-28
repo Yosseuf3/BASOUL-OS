@@ -2,7 +2,8 @@ export type ProjectStatus = "Planning" | "Active" | "On Hold" | "Completed";
 export type ProjectType = "Villa" | "Residential Building" | "Commercial" | "Office" | "Interior" | "Other";
 export type DesignPhase = "Concept" | "Schematic" | "Design Development" | "Construction Documents" | "Site Supervision" | "Handover";
 export type PriorityLevel = "Low" | "Medium" | "High" | "Critical";
-export type TaskStatus = "To Do" | "In Progress" | "Review" | "Done";
+export type { CanonicalTaskStatus as TaskStatus } from "./task-status-contract";
+import type { CanonicalTaskStatus as TaskStatus } from "./task-status-contract";
 export type ClientStatus = "Lead" | "Active" | "Inactive" | "Completed";
 
 export type Project = {
