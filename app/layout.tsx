@@ -8,6 +8,7 @@ import "./basoul-approved-assets.css";
 import "./basoul-polish.css";
 import "./basoul-product-surfaces.css";
 import "./basoul-i18n.css";
+import "./architecture-mobile.css";
 import { LanguageProvider } from "@/components/i18n/language-provider";
 import { LanguageToggle } from "@/components/i18n/language-toggle";
 
