@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const PUBLIC_AUTH_PATHS = new Set([
+  "/privacy",
+  "/account-deletion",
   "/login",
   "/signup",
   "/forgot-password",
