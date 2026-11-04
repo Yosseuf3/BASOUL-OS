@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { YvlButton, YvlTextInput } from "../../components/yvl-primitives";
 import { isMobileConfigured, supabase } from "../../config/supabase";
+import { PrivacyLinks } from "../../components/PrivacyLinks";
 import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 
 export function LoginScreen() {
@@ -86,6 +87,7 @@ export function LoginScreen() {
         </YvlButton>
         <Text style={styles.help}>مسار التطوير المعتمد: Email + Password. لا يعتمد تسجيل الدخول الأساسي على Magic Link.</Text>
         <Text style={styles.config}>{isMobileConfigured ? "الاتصال بالمنصة جاهز" : "إعداد Supabase مطلوب"}</Text>
+        <PrivacyLinks />
       </View>
     </ScrollView>
     </KeyboardAvoidingView>

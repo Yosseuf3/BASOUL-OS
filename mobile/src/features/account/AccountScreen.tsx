@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { basoulYvlNative as tokens } from "@basoul/yvl-adapter/native";
 import { Screen } from "../../components/Screen";
 import { YvlButton, YvlCard } from "../../components/yvl-primitives";
+import { PrivacyLinks } from "../../components/PrivacyLinks";
 
 export function AccountScreen({ email, onBack, onSignOut, signingOut, error }: {
   email?: string;
@@ -21,6 +22,7 @@ export function AccountScreen({ email, onBack, onSignOut, signingOut, error }: {
       <YvlButton tone="neutral" onPress={onSignOut} loading={signingOut} disabled={signingOut} accessibilityLabel="تسجيل الخروج"><Text style={styles.text}>تسجيل الخروج</Text></YvlButton>
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
     </YvlCard>
+    <PrivacyLinks />
   </Screen>;
 }
 

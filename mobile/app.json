@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.yosseufradwan.os",
-      "versionCode": 34
+      "versionCode": 35
     },
     "extra": {
       "product": "BASOUL",

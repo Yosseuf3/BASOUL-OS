@@ -8,7 +8,7 @@ test('Google Play production produces a reproducible signed bundle without chang
  assert.equal(app.android.package,'com.yosseufradwan.os');
  assert.equal(app.extra.eas.projectId,'6f770730-8c8e-49b0-81b9-f9773faf567a');
  assert.equal(app.version,'4.0.0');
- assert.equal(app.android.versionCode,34);
+ assert.equal(app.android.versionCode,35);
  assert.equal(eas.cli.appVersionSource,'local');
  assert.equal(eas.build.production.environment,'production');
  assert.equal(eas.build.production.android.buildType,'app-bundle');
